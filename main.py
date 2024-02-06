@@ -93,6 +93,7 @@ model_type_dict = {
     'semi-sup-svm':'tsvm',
     'semi-sup-label-propagation':'sslp',
     'semi-sup-label-spreading':'ssls',
+    'linear-classification':'linclf',
     'PARAMOPT':'pomdl',
 }
 
@@ -102,6 +103,7 @@ from sklearn.svm import SVC
 from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.semi_supervised import LabelPropagation
 from sklearn.semi_supervised import LabelSpreading
+from sklearn.linear_model import LogisticRegression
 model_dict = { # Dictionary of ACTUAL models for model parameter optimization
     'random-forest': RandomForestClassifier(),
     'semi-sup-random-forest': SelfTrainingClassifier(RandomForestClassifier( max_depth=3)), # NOTE: to speed up fitting set max_depth
@@ -109,6 +111,7 @@ model_dict = { # Dictionary of ACTUAL models for model parameter optimization
     'semi-sup-svm': SelfTrainingClassifier(SVC(kernel="rbf", gamma=0.5, probability=True)), # TODO: consider other SVM parameters
     'semi-sup-label-propagation': SelfTrainingClassifier(LabelPropagation()),
     'semi-sup-label-spreading': SelfTrainingClassifier(LabelSpreading()),
+    'linear-classification':LogisticRegression(),
 }
 
 param_id_dict = {  # Dictionary containing all possible parameters to optmize mapped to a single unique character to be used for labelling files/directories
@@ -429,7 +432,7 @@ class DataRepresentationBuilder:
         fig.tight_layout()
 
         if savefig:
-            # # ** SAVE FIGURE **
+            # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
             fnm_ = (all_output_dir + output_dir__ + figure_label_.split('\n')[0].replace(' ', '_').lower().replace('%',
                                                                                                                    'pcnt') + '_partition')
@@ -482,7 +485,7 @@ class DataRepresentationBuilder:
         fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
 
         if savefig:
-            # # ** SAVE FIGURE **
+            # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
             fnm_ = (all_output_dir + output_dir__ + figure_label_.split('\n')[0].replace(' ', '_').lower().replace('%',
                                                                                                                    'pcnt') + '_partition')
@@ -1263,7 +1266,7 @@ class DataRepresentationBuilder:
 
                         fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
 
-                        # # ** SAVE FIGURE **
+                        # ** SAVE FIGURE **
                         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
                         fnm_ = (all_output_dir + output_dir__ + figure_label_.split('\n')[0].replace(' ', '_').lower().replace('%',
                                                                                                                                'pcnt') + '_partition')
@@ -1340,7 +1343,7 @@ class DataRepresentationBuilder:
                 # wedges[pie_wedge_index_dict[dataset_]].set_zorder(99999)
                 output_dir__ = self.all_data_split_dir + 'figures/'
 
-                # # ** SAVE FIGURE **
+                # ** SAVE FIGURE **
                 plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
                 fnm_ = (all_output_dir + output_dir__ + 'pie_plot_' + dataset_)  # all_partitions')
                 fnm_svg_ = (all_output_dir + output_dir__ + 'svg_figs/' + 'pie_plot_' + dataset_)  # all_partitions')
@@ -1574,7 +1577,7 @@ class DataRepresentationBuilder:
                     ax_po_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
                     ax_test_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
 
-                    # # ** SAVE FIGURE **
+                    # ** SAVE FIGURE **
                     plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
                     output_dir__ = self.all_data_split_dir + 'figures/'
                     fnm_ = (all_output_dir + output_dir__ + '_data_splitting_carton_for_slides')
@@ -2135,13 +2138,12 @@ class DataRepresentationBuilder:
 
             plt.suptitle(e.replace('_',' ').capitalize(), fontsize = 12, fontweight = 'bold')
             fig.tight_layout() # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
-            plt.show()
-            # # ** SAVE FIGURE **
-            # plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
-            # fnm_ =     (self.output_directory+ 'figures/'+           'p-r_'+str(self.num_rerurun_model_building)+'-rnds_comp_po_'+e)
-            # fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'p-r_'+str(self.num_rerurun_model_building)+'-rnds_comp_po_'+e)
-            # fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
-            # fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
+            # ** SAVE FIGURE **
+            plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
+            fnm_ =     (self.output_directory+ 'figures/'+           'p-r_'+str(self.num_rerurun_model_building)+'-rnds_comp_po_'+e)
+            fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'p-r_'+str(self.num_rerurun_model_building)+'-rnds_comp_po_'+e)
+            fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
+            fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
 
 
     def plot_final_model_precision_recall_curves(self):
@@ -2185,21 +2187,23 @@ class DataRepresentationBuilder:
             )  # will be used to label x-ticks
             axs[i].set_title(metric_)
             if i ==2:
-                axs[i].set_title('Final Model Performances\n('+str(self.num_rerurun_model_building)+' Rounds)',fontweight='bold')
+                axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+
+            # update x-axis labels
+            axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], rotation=90)
 
         fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
                      ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
         fig.tight_layout()
 
-        plt.show()
 
-        # # ** SAVE FIGURE **
-        # plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
-        # fnm_ =     (self.output_directory+ 'figures/'+           'bxp_multimetric_'+str(self.num_rerurun_model_building)+'-rnds_final')
-        # fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_multimetric_'+str(self.num_rerurun_model_building)+'-rnds_final')
-        # fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
-        # fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
-        # print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
+        # ** SAVE FIGURE **
+        plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
+        fnm_ =     (self.output_directory+ 'figures/'+           'bxp_multimetric_'+str(self.num_rerurun_model_building)+'-rnds_final')
+        fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_multimetric_'+str(self.num_rerurun_model_building)+'-rnds_final')
+        fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
+        fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
+        print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
 
 
 
