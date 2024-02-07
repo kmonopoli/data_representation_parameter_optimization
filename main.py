@@ -2376,14 +2376,14 @@ class DataRepresentationBuilder:
             final_model_ct_per_param_val_dict = {} # holds counts of each parameter value used to build a final model
             for v__ in self.param_values_to_loop_:
                 ct_v__ = len([x for x in self.final_model_params_ls if str(x) == str(v__)])
-                final_model_ct_per_param_val_dict[v__] = ct_v__
+                final_model_ct_per_param_val_dict[str(v__)] = ct_v__
 
             for i in range(len(metrics_ls)):
                 metric_ = metrics_ls[i]
                 # Plot by parameter value
                 data_ = [list(final_detailed_metric_one_embd_df[
                                   [embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ + '_round_' + str(i) for i in
-                                   list(range(final_model_ct_per_param_val_dict[param_val_]))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                                   list(range(final_model_ct_per_param_val_dict[str(param_val_)]))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
 
                 bplot1 = axs[j,i].boxplot(
                     data_,
@@ -2514,4 +2514,6 @@ class DataRepresentationBuilder:
 
 # pr_po,k_po,pr_f,m_f,k_f
 
+drb = DataRepresentationBuilder(model_type__ = 'random-forest', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,8,9] ,num_rerurun_model_building__=5,flank_len__=10,
+                                encoding_ls__ = ['one-hot', 'ann_word2vec_gensim'])#, 'bow_gensim', 'ann_keras', 'bow_countvect'])
 
