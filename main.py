@@ -371,11 +371,13 @@ class DataRepresentationBuilder:
         print("Running model fittings...")
         pr_po, k_po, pr_f, m_f, k_f = self.run_model_fittings()
         print("Model Fittings complete!")
+
         print("Ploting precision-recall curves from Parameter Optimization...")
         self.plot_param_opt_precision_recall_curves()
         print("Ploting precision-recall curves from Final Model Building...")
         self.plot_final_model_precision_recall_curves() # TODO: finish writing method self.plot_param_opt_precision_recall_curves
         print("Curve plotting complete!")
+
         print("Plotting box plots from Parameter Optimization...")
         self.plot_param_opt_model_box_plots()
         print("Plotting box plots from Final Model Building...")
@@ -2148,6 +2150,7 @@ class DataRepresentationBuilder:
             fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'p-r_'+str(self.num_rerurun_model_building)+'-rnds_comp_po_'+e)
             fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
             fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
+            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
 
 
 
@@ -2330,6 +2333,7 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
         return
 
 
@@ -2369,12 +2373,17 @@ class DataRepresentationBuilder:
 
             metrics_ls = list(final_detailed_metric_one_embd_df.index)
 
+            final_model_ct_per_param_val_dict = {} # holds counts of each parameter value used to build a final model
+            for v__ in self.param_values_to_loop_:
+                ct_v__ = len([x for x in self.final_model_params_ls if str(x) == str(v__)])
+                final_model_ct_per_param_val_dict[v__] = ct_v__
+
             for i in range(len(metrics_ls)):
                 metric_ = metrics_ls[i]
                 # Plot by parameter value
                 data_ = [list(final_detailed_metric_one_embd_df[
                                   [embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ + '_round_' + str(i) for i in
-                                   list(range(self.num_rerurun_model_building))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                                   list(range(final_model_ct_per_param_val_dict[param_val_]))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
 
                 bplot1 = axs[j,i].boxplot(
                     data_,
