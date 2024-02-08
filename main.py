@@ -126,20 +126,33 @@ param_id_dict = {  # Dictionary containing all possible parameters to optmize ma
     None:'n',
     # Note: if add more parameters to optimize, add them here
 }
+### TODO: ERROR Model optimization --> ValueError: Input contains NaN.
+
+### TODO: ERROR Unlab dataset optimization --> FileNotFoundError: [Errno 2] No such file or directory: 'PARAMOPT'
+### TODO: ERROR Window size/Word freq cutoff | RF -->  TypeError: unsupported operand type(s) for +: 'int' and 'str'
+### TODO: ERROR ANN dimmension | RF TypeError: '>' not supported between instances of 'int' and 'str'
+
+### TODO: ERROR ANN dimmension | SemiSup RF --> ValueError: Cannot set a DataFrame with multiple columns to the single column seq_flank-50nts_target
+### TODO: ERROR Embedding | SemiSup RF -->      ValueError: Cannot set a DataFrame with multiple columns to the single column seq_flank-50nts_target
+
+### TODO: ERROR Semi-sup lab spreading --> TERM_MEMLIMIT:
+### TODO: ERROR ssrf kmer --> TERM_MEMLIMIT
+### TODO: ERROR TSVM  --> TERM_MEMLIMIT
+
 feature_encodings_dict = {
     'one-hot':'oh',
-    'bow_countvect':'bowcv',
-    'bow_gensim':'bowgen',
-    'ann_keras':'annk',
-    'ann_word2vec_gensim':'w2v'
+    'bow-countvect':'bowcv',
+    'bow-gensim':'bowgen',
+    'ann-keras':'annk',
+    'ann-word2vec-gensim':'w2v'
 }
 
 feature_encodings_titles_dict = {
     'one-hot':'One-Hot',
-    'bow_countvect':'BOW cv',
-    'bow_gensim':'BOW g',
-    'ann_keras':'ANN',
-    'ann_word2vec_gensim':'Word2Vec',
+    'bow-countvect':'BOW cv',
+    'bow-gensim':'BOW g',
+    'ann-keras':'ANN',
+    'ann-word2vec-gensim':'Word2Vec',
 }
 
 expr_key_norm_dict = {
@@ -191,7 +204,7 @@ class DataRepresentationBuilder:
                  unlabeled_data_size__=1.00,
                  plot_grid_splits__=False, plot_extra_visuals__=False,
                  run_round_num__=1,
-                 encoding_ls__ = ['one-hot', 'ann_word2vec_gensim', 'bow_gensim', 'ann_keras', 'bow_countvect'],
+                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim', 'bow-gensim', 'ann-keras', 'bow-countvect'],
                  metric_used_to_id_best_po__='F-Score',
                  f_beta__ = 0.5,
                  ):
@@ -744,7 +757,7 @@ class DataRepresentationBuilder:
         from embedding_methods.embedding_methods import embed_sequences_with_keras
         from embedding_methods.embedding_methods import embed_sequences_with_gensim_word2vec
 
-        #['one-hot', 'bow_countvect', 'bow_gensim', 'ann_keras', 'ann_word2vec_gensim']
+        #['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
 
         if self.parameter_to_optimize == 'kmer-size':
             kmer_sizes_ls = self.param_values_to_loop_
@@ -765,17 +778,17 @@ class DataRepresentationBuilder:
                     if encoding_ == 'one-hot': ### One-Hot Encoding ###
                         self.df['one-hot_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = one_hot_encode_sequences(
                             list(self.df[flank_seq_working_key__]))
-                    elif encoding_ == 'bow_countvect':### Bag-of-Words Embedding with Sklearn CountVectorizer###
-                        self.df['bow_countvect_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_bow_countvect(
+                    elif encoding_ == 'bow-countvect':### Bag-of-Words Embedding with Sklearn CountVectorizer###
+                        self.df['bow-countvect_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_bow_countvect(
                             list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_)  # , output_directory = output_directory)
-                    elif encoding_ == 'bow_gensim':### Bag-of-Words Embedding with Gensim Doc2bow ###
-                        self.df['bow_gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
+                    elif encoding_ == 'bow-gensim':### Bag-of-Words Embedding with Gensim Doc2bow ###
+                        self.df['bow-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
                             list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_)  # , output_directory = output_directory)
-                    elif encoding_ == 'ann_keras': ### Deep Embedding with ANN - Keras ###
-                        self.df['ann_keras_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_keras(
+                    elif encoding_ == 'ann-keras': ### Deep Embedding with ANN - Keras ###
+                        self.df['ann-keras_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_keras(
                             list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,output_dimmension_=self.output_dimmension_)  # , output_directory = output_directory)
-                    elif encoding_ == 'ann_word2vec_gensim':### Deep Embedding with Word2Vec - Gensim ###
-                        self.df['ann_word2vec_gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_word2vec(
+                    elif encoding_ == 'ann-word2vec-gensim':### Deep Embedding with Word2Vec - Gensim ###
+                        self.df['ann-word2vec-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_word2vec(
                             list(self.df[flank_seq_working_key__]), kmer_size_=kmer_,window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_)  # , output_directory = output_directory)
                     else:
                         raise ValueError('ERROR: encoding '+str(encoding_)+' is not supported')
@@ -799,16 +812,16 @@ class DataRepresentationBuilder:
         print(' '.join(print_vector_lens_start_ls))
         print(' '.join(print_vector_lens_end_ls))
         # print(len(self.df.iloc[0]['one-hot_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t',
-        #       len(self.df.iloc[0]['bow_countvect_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
-        #       len(self.df.iloc[0]['bow_gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
-        #       len(self.df.iloc[0]['ann_keras_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
-        #       len(self.df.iloc[0]['ann_word2vec_gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]))
+        #       len(self.df.iloc[0]['bow-countvect_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
+        #       len(self.df.iloc[0]['bow-gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
+        #       len(self.df.iloc[0]['ann-keras_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
+        #       len(self.df.iloc[0]['ann-word2vec-gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]))
         #
         # print(len(self.df.iloc[-1]['one-hot_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t',
-        #       len(self.df.iloc[-1]['bow_countvect_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
-        #       len(self.df.iloc[-1]['bow_gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
-        #       len(self.df.iloc[-1]['ann_keras_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
-        #       len(self.df.iloc[-1]['ann_word2vec_gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]))
+        #       len(self.df.iloc[-1]['bow-countvect_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
+        #       len(self.df.iloc[-1]['bow-gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
+        #       len(self.df.iloc[-1]['ann-keras_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
+        #       len(self.df.iloc[-1]['ann-word2vec-gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]))
 
 
 
@@ -1741,7 +1754,7 @@ class DataRepresentationBuilder:
                         flank_len__ = 0
                     else:
                         flank_len__ = flank_seq_working_key__.split('-')[-1].split('nts')[0]
-                    for e in self.feature_encoding_ls: # ['one-hot', 'bow_countvect', 'bow_gensim', 'ann_keras', 'ann_word2vec_gensim']
+                    for e in self.feature_encoding_ls: # ['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
                         for m_ in model_type_ls:
                             # Train Parameter Optimization Models
                             if self.parameter_to_optimize == 'kmer-size':
@@ -1760,7 +1773,7 @@ class DataRepresentationBuilder:
 
                             clf_po = model_dict[m_]
 
-                            if e == 'one-hot' or e == 'bow_gensim':
+                            if e == 'one-hot' or e == 'bow-gensim':
                                 X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
                             else:
                                 X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
@@ -1773,7 +1786,7 @@ class DataRepresentationBuilder:
                                 X_train_ = X_train_u_ + X_train_
                                 Y_train_ = np.array(Y_train_u_ + Y_train_)
 
-                            if e == 'one-hot' or e == 'bow_gensim':
+                            if e == 'one-hot' or e == 'bow-gensim':
                                 X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
                             else:
                                 X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
@@ -1925,7 +1938,7 @@ class DataRepresentationBuilder:
                 # Train Final  Models
                 clf_final = model_dict[model_type___]
 
-                if e == 'one-hot' or e == 'bow_gensim':
+                if e == 'one-hot' or e == 'bow-gensim':
                     X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
                 else:
                     X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
@@ -1938,7 +1951,7 @@ class DataRepresentationBuilder:
                     X_train_ = X_train_u_ + X_train_
                     Y_train_ = np.array(Y_train_u_ + Y_train_)
 
-                if e == 'one-hot' or e == 'bow_gensim':
+                if e == 'one-hot' or e == 'bow-gensim':
                     X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
                 else:
                     X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
@@ -2688,5 +2701,5 @@ class DataRepresentationBuilder:
 # pr_po,k_po,pr_f,m_f,k_f
 
 # drb = DataRepresentationBuilder(model_type__ = 'random-forest', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,8,9] ,num_rerurun_model_building__=5,flank_len__=10,
-#                                 encoding_ls__ = ['one-hot', 'ann_word2vec_gensim'])#, 'bow_gensim', 'ann_keras', 'bow_countvect'])
+#                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
 
