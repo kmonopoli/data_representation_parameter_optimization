@@ -2088,7 +2088,7 @@ class DataRepresentationBuilder:
                                           fontsize=8, color=param_col_ls_dict[best_aucprs_dict[n][0]])
 
                 for p in self.param_values_to_loop_: # different colors
-                    k__ =str(e) + '-' + self.parameter_to_optimize + '-' + str(p) + '_' + str(n)
+                    k__ =str(e) + '-' + self.parameter_to_optimize + '-' + str(p) + '_round_' + str(n)
                     if k__ in pr_curves_keys_:
                         prt_ls = self.paramop_performance_curves_encodings_dict[k__]['Precision_Recall_Curve']
                         axs[row_,col_].plot(
@@ -2210,7 +2210,7 @@ class DataRepresentationBuilder:
 
                 )  # will be used to label x-ticks
                 axs[j,i].set_title(metric_)
-                if i == 2:
+                if i == 3:
                     if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                         axs[j,i].set_title('Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n'+str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
                     else:
@@ -2229,8 +2229,8 @@ class DataRepresentationBuilder:
 
         # ** SAVE FIGURE **
         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-        fnm_ = (self.output_directory + 'figures/' + 'bxp_multimetric_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_paramop')
-        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_multimetric_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_paramop')
+        fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po')
+        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
         print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -2242,7 +2242,7 @@ class DataRepresentationBuilder:
 
 
     def plot_final_model_precision_recall_curves(self):
-        ## TODO: Plot Final Model Precision-Recall curves as a single figure
+        ## Plot Final Model Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
 
@@ -2268,8 +2268,8 @@ class DataRepresentationBuilder:
 
 
         # Plot a single PLOT for each embedding type
-        fig, axs = plt.subplots(len(self.feature_encoding_ls )+ 1)
-        fig.set_size_inches(w=9, h=3, )  # NOTE: h and w must be large enough to accomodate any legends
+        fig, axs = plt.subplots(0,len(self.feature_encoding_ls )+ 1)
+        fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
 
         for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
             axs[col_].set_title(str(e))
@@ -2371,6 +2371,7 @@ class DataRepresentationBuilder:
             # Get parameter VALUES only for each selected embedding
             param_vals_one_embd_ = list(set([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)]))
 
+
             metrics_ls = list(final_detailed_metric_one_embd_df.index)
 
             final_model_ct_per_param_val_dict = {} # holds counts of each parameter value used to build a final model
@@ -2381,9 +2382,19 @@ class DataRepresentationBuilder:
             for i in range(len(metrics_ls)):
                 metric_ = metrics_ls[i]
                 # Plot by parameter value
-                data_ = [list(final_detailed_metric_one_embd_df[
-                                  [embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ + '_round_' + str(i) for i in
-                                   list(range(final_model_ct_per_param_val_dict[str(param_val_)]))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                # data_ = [list(final_detailed_metric_one_embd_df[
+                #                   [embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ + '_round_' + str(i) for i in
+                #                    list(range(final_model_ct_per_param_val_dict[str(param_val_)]))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                # get columns for single parameter value and metric
+
+                cols_to_select_ = []
+                for param_val_ in param_vals_one_embd_:
+                    # Get rounds for given parameter value and embedding
+                    rounds_per_one_param_val_ = [int(x.split('_round_')[-1]) for x in list(final_detailed_metric_one_embd_df.columns) if embedding_type_final_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' in x]
+                    for rnd__ in rounds_per_one_param_val_:
+                        cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
+
+                data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
 
                 bplot1 = axs[j,i].boxplot(
                     data_,
@@ -2396,7 +2407,7 @@ class DataRepresentationBuilder:
 
                 )  # will be used to label x-ticks
                 axs[j,i].set_title(metric_)
-                if i == 2:
+                if i == 3:
                     axs[j,i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
 
                 # update x-axis labels
@@ -2414,8 +2425,8 @@ class DataRepresentationBuilder:
 
         # ** SAVE FIGURE **
         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-        fnm_ = (self.output_directory + 'figures/' + 'bxp_multimetric_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
-        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_multimetric_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
+        fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
+        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
         print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -2475,8 +2486,8 @@ class DataRepresentationBuilder:
 
         # ** SAVE FIGURE **
         plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
-        fnm_ =     (self.output_directory+ 'figures/'+           'bxp_multimetric_'+str(self.num_rerurun_model_building)+'-rnds_final')
-        fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_multimetric_'+str(self.num_rerurun_model_building)+'-rnds_final')
+        fnm_ =     (self.output_directory+ 'figures/'+           'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
+        fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
         fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
         fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
         print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
@@ -2514,6 +2525,6 @@ class DataRepresentationBuilder:
 
 # pr_po,k_po,pr_f,m_f,k_f
 
-drb = DataRepresentationBuilder(model_type__ = 'random-forest', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,8,9] ,num_rerurun_model_building__=5,flank_len__=10,
-                                encoding_ls__ = ['one-hot', 'ann_word2vec_gensim'])#, 'bow_gensim', 'ann_keras', 'bow_countvect'])
+# drb = DataRepresentationBuilder(model_type__ = 'random-forest', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,8,9] ,num_rerurun_model_building__=5,flank_len__=10,
+#                                 encoding_ls__ = ['one-hot', 'ann_word2vec_gensim'])#, 'bow_gensim', 'ann_keras', 'bow_countvect'])
 
