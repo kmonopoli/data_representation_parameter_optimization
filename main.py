@@ -2199,7 +2199,7 @@ class DataRepresentationBuilder:
         # fig, axs = plt.subplots(len(self.feature_encoding_ls), len(paramop_detailed_metric_df))
         # fig.set_size_inches(w=14, h=3 * len(self.feature_encoding_ls))
         # Update: Make plots in sets of two or fewer (so not too large)
-        num_plots_ =  int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)/2)
+        num_plots_ =  int(int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)%2))
         paired_feature_encoding_ls = [self.feature_encoding_ls[i:i+2] for i in range(0, len(self.feature_encoding_ls), 2)]
 
         for plotn_ in list(range(num_plots_)):
@@ -2428,7 +2428,7 @@ class DataRepresentationBuilder:
             top_5_rnds_for_emb_ = list( aucpr_by_round_dict.keys())[:5]
 
             # Then plot just the top 5 curves
-            for n in range(top_5_rnds_for_emb_):  # loop through rounds
+            for n in top_5_rnds_for_emb_:  # loop through rounds
                 # Get p-r curves per round for given embedding and round
                 key__ = str(e) + '_' + str(n)
                 pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
@@ -2510,7 +2510,7 @@ class DataRepresentationBuilder:
         # fig, axs = plt.subplots( len(self.feature_encoding_ls), len(final_detailed_metric_df))
         # fig.set_size_inches(w=14, h=3*len(self.feature_encoding_ls))
         # Update: Make plots in sets of two or fewer (so not too large)
-        num_plots_ = int(len(self.feature_encoding_ls) / 2) + (len(self.feature_encoding_ls) / 2)
+        num_plots_ =  int(int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)%2))
         paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 2] for i in range(0, len(self.feature_encoding_ls), 2)]
 
         for plotn_ in list(range(num_plots_)):
