@@ -191,7 +191,7 @@ class DataRepresentationBuilder:
                  unlabeled_data_size__=1.00,
                  plot_grid_splits__=False, plot_extra_visuals__=False,
                  run_round_num__=1,
-                 encoding_ls__ = ['one-hot', 'ann_word2vec_gensim'],#, 'bow_gensim', 'ann_keras', 'bow_countvect'],
+                 encoding_ls__ = ['one-hot', 'ann_word2vec_gensim', 'bow_gensim', 'ann_keras', 'bow_countvect'],
                  metric_used_to_id_best_po__='F-Score',
                  f_beta__ = 0.5,
                  ):
@@ -2514,10 +2514,9 @@ class DataRepresentationBuilder:
 
 # TODO: pickle final models
 # TODO: export metrics/scores to a file?
-# TODO: plot final model p-r curves
-# TODO: pickle final models
 # TODO: For Semi-supervised: Add back in the unlabelled data to the testing set?
 # TODO: add back in undefined middle values and evaluate model (possibly using needle-in-haystack method)
+# TODO: fix errors when running on cluster (semi-supervised?) - see LSF emails
 
 #print("Process Complete!")
 
