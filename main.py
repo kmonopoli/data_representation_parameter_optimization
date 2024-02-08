@@ -2290,13 +2290,13 @@ class DataRepresentationBuilder:
                     color=param_col_ls_dict[p],
                 )
 
-                axs[col_].plot(
-                    rcurve__,  # r_OH,# x
-                    unach_rcurve__,  # p_OH,# y
-                    lw=1,
-                    color=param_col_ls_dict[p],
-                    linestyle='dashed',
-                )
+                # axs[col_].plot(
+                #     rcurve__,  # r_OH,# x
+                #     unach_rcurve__,  # p_OH,# y
+                #     lw=1,
+                #     color=param_col_ls_dict[p],
+                #     linestyle='dashed',
+                # )
 
             # Format Axes
             axs[col_].set_xlim(0, 1)
