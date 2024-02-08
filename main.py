@@ -2238,32 +2238,63 @@ class DataRepresentationBuilder:
                     data_ = [list(paramop_detailed_metric_one_embd_df[
                                       [embedding_type_paramop_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' + str(i) for i in
                                        list(range(self.num_rerurun_model_building))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    # Multiple rows
+                    try:
+                        bplot1 = axs[j,i].boxplot(
+                            data_,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
 
-                    bplot1 = axs[j,i].boxplot(
-                        data_,
-                        vert=True,  # vertical box alignment
-                        patch_artist=True,  # fill with color
-                        labels=param_vals_one_embd_,
-                        flierprops=flierprops__, boxprops=boxprops__,
-                        capprops=dict(color='black'),
-                        whiskerprops=dict(color='black'),
+                        )  # will be used to label x-ticks
+                        axs[j,i].set_title(metric_)
+                        if i == 3:
+                            #if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                            if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n'+str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                            else:
+                                axs[j,i].set_title(str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
 
-                    )  # will be used to label x-ticks
-                    axs[j,i].set_title(metric_)
-                    if i == 3:
-                        #if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
-                        if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                            axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n'+str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                        # update x-axis labels
+                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize))
+                        if metric_ == 'MCC':
+                            axs[j,i].set_ylim(-1, 1)
                         else:
-                            axs[j,i].set_title(str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                            axs[j,i].set_ylim(0,1)
 
-                    # update x-axis labels
-                    axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
-                    axs[j,i].set_xlabel(str(self.parameter_to_optimize))
-                    if metric_ == 'MCC':
-                        axs[j,i].set_ylim(-1, 1)
-                    else:
-                        axs[j,i].set_ylim(0,1)
+                    # One row
+                    except:
+                        bplot1 = axs[i].boxplot(
+                            data_,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
+
+                        )  # will be used to label x-ticks
+                        axs[i].set_title(metric_)
+                        if i == 3:
+                            # if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                            if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(embedding_type_paramop_eval_) + '\n' + str(metric_))  # ,fontweight='bold')
+                            else:
+                                axs[i].set_title(str(embedding_type_paramop_eval_) + '\n' + str(metric_))  # ,fontweight='bold')
+
+                        # update x-axis labels
+                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize))
+                        if metric_ == 'MCC':
+                            axs[i].set_ylim(-1, 1)
+                        else:
+                            axs[i].set_ylim(0, 1)
+
+
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
             fig.tight_layout()
@@ -2566,33 +2597,62 @@ class DataRepresentationBuilder:
                             cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
 
                     data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    # Multiple Rows
+                    try:
+                        bplot1 = axs[j,i].boxplot(
+                            data_,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
 
-                    bplot1 = axs[j,i].boxplot(
-                        data_,
-                        vert=True,  # vertical box alignment
-                        patch_artist=True,  # fill with color
-                        labels=param_vals_one_embd_,
-                        flierprops=flierprops__, boxprops=boxprops__,
-                        capprops=dict(color='black'),
-                        whiskerprops=dict(color='black'),
+                        )  # will be used to label x-ticks
+                        axs[j,i].set_title(metric_)
+                        if i == 3:
+                            #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                            if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                            else:
+                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
 
-                    )  # will be used to label x-ticks
-                    axs[j,i].set_title(metric_)
-                    if i == 3:
-                        #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
-                        if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                            axs[j, i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                        # update x-axis labels
+                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize))
+
+                        if metric_ == 'MCC':
+                            axs[j,i].set_ylim(-1, 1)
                         else:
-                            axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                            axs[j,i].set_ylim(0, 1)
+                    # Single Row
+                    except:
+                        bplot1 = axs[i].boxplot(
+                            data_,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
 
-                    # update x-axis labels
-                    axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
-                    axs[j,i].set_xlabel(str(self.parameter_to_optimize))
+                        )  # will be used to label x-ticks
+                        axs[i].set_title(metric_)
+                        if i == 3:
+                            # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                            if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                            else:
+                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_))  # ,fontweight='bold')
 
-                    if metric_ == 'MCC':
-                        axs[j,i].set_ylim(-1, 1)
-                    else:
-                        axs[j,i].set_ylim(0, 1)
+                        # update x-axis labels
+                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize))
+
+                        if metric_ == 'MCC':
+                            axs[i].set_ylim(-1, 1)
+                        else:
+                            axs[i].set_ylim(0, 1)
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
