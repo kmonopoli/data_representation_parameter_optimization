@@ -2268,7 +2268,7 @@ class DataRepresentationBuilder:
 
 
         # Plot a single PLOT for each embedding type
-        fig, axs = plt.subplots(0,len(self.feature_encoding_ls )+ 1)
+        fig, axs = plt.subplots(1,len(self.feature_encoding_ls )+ 1)
         fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
 
         for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
