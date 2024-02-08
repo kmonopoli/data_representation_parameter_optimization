@@ -375,7 +375,8 @@ class DataRepresentationBuilder:
         print("Ploting precision-recall curves from Parameter Optimization...")
         self.plot_param_opt_precision_recall_curves()
         print("Ploting precision-recall curves from Final Model Building...")
-        self.plot_final_model_precision_recall_curves() # TODO: finish writing method self.plot_param_opt_precision_recall_curves
+        self.plot_final_model_precision_recall_curves()
+        self.plot_final_model_top_precision_recall_curves()
         print("Curve plotting complete!")
 
         print("Plotting box plots from Parameter Optimization...")
@@ -2084,20 +2085,29 @@ class DataRepresentationBuilder:
             col_ = 0
             row_ = 0
             for n in range(self.num_rerurun_model_building):  # different axes per round
-                axs[row_, col_].set_title('Round: ' + str(n + 1) + '\nBest ' + self.parameter_to_optimize + str(best_aucprs_dict[n][0]),
-                                          fontsize=8, color=param_col_ls_dict[best_aucprs_dict[n][0]])
+                axs[row_, col_].set_title('Round: ' + str(n + 1) + '\nBest ' + self.parameter_to_optimize +' '+ str(best_aucprs_dict[n][0]),
+                                          fontsize=8, fontweight= 'bold', color=param_col_ls_dict[best_aucprs_dict[n][0]])
 
                 for p in self.param_values_to_loop_: # different colors
                     k__ =str(e) + '-' + self.parameter_to_optimize + '-' + str(p) + '_round_' + str(n)
                     if k__ in pr_curves_keys_:
                         prt_ls = self.paramop_performance_curves_encodings_dict[k__]['Precision_Recall_Curve']
-                        axs[row_,col_].plot(
-                            prt_ls[1],#r_OH,# x
-                            prt_ls[0],#p_OH,# y
-                            lw=1,
-                            color= param_col_ls_dict[p],
-                            #color = embd_color_dict[embd_][key__],
-                        )
+                        if (self.parameter_to_optimize == 'kmer-size') and (e == 'one-hot'):
+                            axs[row_, col_].plot(
+                                prt_ls[1],  # r_OH,# x
+                                prt_ls[0],  # p_OH,# y
+                                lw=1,
+                                color=greys_col_ls_dict[p],
+                                # color = embd_color_dict[embd_][key__],
+                            )
+                        else:
+                            axs[row_,col_].plot(
+                                prt_ls[1],#r_OH,# x
+                                prt_ls[0],#p_OH,# y
+                                lw=1,
+                                color= param_col_ls_dict[p],
+                                #color = embd_color_dict[embd_][key__],
+                            )
 
                         aucpr_ = metrics.auc(prt_ls[1], prt_ls[0])
 
@@ -2158,6 +2168,9 @@ class DataRepresentationBuilder:
         ## Plot Compiled Multimetrics Model Performance - Parameter Optimization Models
         # Each column of paramop_detailed_metric_df contains a single round for a single embedding type
         paramop_detailed_metric_df = pd.DataFrame(self.paramop_performance_metrics_encodings_dict)
+        fnm_ = (self.output_directory + 'figures/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_paramopt.csv')
+        paramop_detailed_metric_df.to_csv(fnm_,index=False)
+        print("Parameter Optimization Models Performance Metrics Dataframe saved to:\n\t",fnm_)
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
@@ -2170,74 +2183,87 @@ class DataRepresentationBuilder:
         # one row per embedding
         # one axis per performance metric
         # one box per embedding per axis
-        fig, axs = plt.subplots(len(self.feature_encoding_ls), len(paramop_detailed_metric_df))
-        fig.set_size_inches(w=12, h=3*len(self.feature_encoding_ls))
+        # fig, axs = plt.subplots(len(self.feature_encoding_ls), len(paramop_detailed_metric_df))
+        # fig.set_size_inches(w=14, h=3 * len(self.feature_encoding_ls))
+        # Update: Make plots in sets of two or fewer (so not too large)
+        num_plots_ =  int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)/2)
+        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i+2] for i in range(0, len(self.feature_encoding_ls), 2)]
 
-        # Split Evaluation Metric Data per parameter value
-        # Loop through each embedding type
-        for embedding_type_paramop_eval_, j in zip(self.feature_encoding_ls, list(range(len(self.feature_encoding_ls)))):
-            # From paramop_detailed_metric_df get just columns for a single selected embedding type
-            # Get just columns with selected embedding metric (embedding_type_paramop_eval_)
-            cols_with_embd_ = [x for x in list(paramop_detailed_metric_df.columns) if embedding_type_paramop_eval_ in x]
-            print("Columns from paramop_detailed_metric_df with embedding = 'embedding_type_paramop_eval_' = " +
-                  str(embedding_type_paramop_eval_) + " - ", len(cols_with_embd_), 'out of', len(list(paramop_detailed_metric_df.columns)))
+        for plotn_ in list(range(num_plots_)):
+            fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(paramop_detailed_metric_df))
+            fig.set_size_inches(w=14, h=3*len(paired_feature_encoding_ls[plotn_]))
 
-            # Get just columns with selected embedding metric (embedding_type_paramop_eval_)
-            paramop_detailed_metric_one_embd_df = paramop_detailed_metric_df[cols_with_embd_]
+            # Split Evaluation Metric Data per parameter value
+            # Loop through each embedding type
+            #for embedding_type_paramop_eval_, j in zip(self.feature_encoding_ls, list(range(len(self.feature_encoding_ls)))):
+            for embedding_type_paramop_eval_, j in zip(paired_feature_encoding_ls[plotn_], list(range(len(paired_feature_encoding_ls[plotn_])))):
 
-            # Get parameter VALUES only for each selected embedding
-            param_vals_one_embd_ = list(set([x.split(str(self.parameter_to_optimize) + '-')[-1].split('_round_')[0] for x in list(paramop_detailed_metric_one_embd_df.columns)]))
+                # From paramop_detailed_metric_df get just columns for a single selected embedding type
+                # Get just columns with selected embedding metric (embedding_type_paramop_eval_)
+                cols_with_embd_ = [x for x in list(paramop_detailed_metric_df.columns) if embedding_type_paramop_eval_ in x]
+                print("Columns from paramop_detailed_metric_df with embedding = 'embedding_type_paramop_eval_' = " +
+                      str(embedding_type_paramop_eval_) + " - ", len(cols_with_embd_), 'out of', len(list(paramop_detailed_metric_df.columns)))
 
-            metrics_ls = list(paramop_detailed_metric_one_embd_df.index)
+                # Get just columns with selected embedding metric (embedding_type_paramop_eval_)
+                paramop_detailed_metric_one_embd_df = paramop_detailed_metric_df[cols_with_embd_]
 
+                # Get parameter VALUES only for each selected embedding
+                param_vals_one_embd_ = list(set([x.split(str(self.parameter_to_optimize) + '-')[-1].split('_round_')[0] for x in list(paramop_detailed_metric_one_embd_df.columns)]))
 
+                # If Parameter values are integers, order them from smallest to larget
+                try:
+                    int_param_vals_one_embd_ = [int(x) for x in param_vals_one_embd_]
+                    int_param_vals_one_embd_.sort()
+                    param_vals_one_embd_ = [str(x) for x in int_param_vals_one_embd_]
+                except:
+                    pass
+                metrics_ls = list(paramop_detailed_metric_one_embd_df.index)
 
-            for i in range(len(metrics_ls)):
-                metric_ = metrics_ls[i]
-                # Plot by parameter value
-                data_ = [list(paramop_detailed_metric_one_embd_df[
-                                  [embedding_type_paramop_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' + str(i) for i in
-                                   list(range(self.num_rerurun_model_building))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                for i in range(len(metrics_ls)):
+                    metric_ = metrics_ls[i]
+                    # Plot by parameter value
+                    data_ = [list(paramop_detailed_metric_one_embd_df[
+                                      [embedding_type_paramop_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' + str(i) for i in
+                                       list(range(self.num_rerurun_model_building))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
 
-                bplot1 = axs[j,i].boxplot(
-                    data_,
-                    vert=True,  # vertical box alignment
-                    patch_artist=True,  # fill with color
-                    labels=param_vals_one_embd_,
-                    flierprops=flierprops__, boxprops=boxprops__,
-                    capprops=dict(color='black'),
-                    whiskerprops=dict(color='black'),
+                    bplot1 = axs[j,i].boxplot(
+                        data_,
+                        vert=True,  # vertical box alignment
+                        patch_artist=True,  # fill with color
+                        labels=param_vals_one_embd_,
+                        flierprops=flierprops__, boxprops=boxprops__,
+                        capprops=dict(color='black'),
+                        whiskerprops=dict(color='black'),
 
-                )  # will be used to label x-ticks
-                axs[j,i].set_title(metric_)
-                if i == 3:
-                    if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
-                        axs[j,i].set_title('Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n'+str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                    )  # will be used to label x-ticks
+                    axs[j,i].set_title(metric_)
+                    if i == 3:
+                        #if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                        if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                            axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n'+str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                        else:
+                            axs[j,i].set_title(str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+
+                    # update x-axis labels
+                    axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
+                    axs[j,i].set_xlabel(str(self.parameter_to_optimize))
+                    if metric_ == 'MCC':
+                        axs[j,i].set_ylim(-1, 1)
                     else:
-                        axs[j,i].set_title(str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                        axs[j,i].set_ylim(0,1)
+            fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
+                         ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+            fig.tight_layout()
 
-                # update x-axis labels
-                axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0)
-                axs[j,i].set_xlabel(str(self.parameter_to_optimize))
-                if metric_ == 'MCC':
-                    axs[j,i].set_ylim(-1, 1)
-                else:
-                    axs[j,i].set_ylim(0,1)
-        fig.suptitle('Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
-                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
-        fig.tight_layout()
-
-        # ** SAVE FIGURE **
-        plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-        fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po')
-        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po')
-        fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
-        fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+            # ** SAVE FIGURE **
+            plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+            fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po_'+str(plotn_+1))
+            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po_'+str(plotn_+1))
+            fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+            fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
 
         return
-
-
 
 
 
@@ -2336,6 +2362,119 @@ class DataRepresentationBuilder:
         print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
         return
 
+    def plot_final_model_top_precision_recall_curves(self):
+        ## Plot Top 5 Final Model Precision-Recall curves as a single figure
+        sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
+                             self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
+
+        pr_curves_dict_ = self.final_performance_curves_encodings_dict
+        pr_curves_keys_ = self.final_key_ls
+
+        import seaborn as sns
+        param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
+        greys_col_ls = list(sns.color_palette("Greys", len(self.param_values_to_loop_)).as_hex())
+
+        # Create dictionary of parameter colors based on parameter
+        param_col_ls_dict = {}
+        for i in range(len(self.param_values_to_loop_)):
+            param_col_ls_dict[self.param_values_to_loop_[i]] = param_col_ls[i]
+
+        greys_col_ls_dict = {}
+        for i in range(len(self.param_values_to_loop_)):
+            greys_col_ls_dict[self.param_values_to_loop_[i]] = greys_col_ls[i]
+
+        embd_color_dict = {}
+        for e in self.feature_encoding_ls:
+            embd_color_dict[e] = param_col_ls_dict
+
+
+        # Plot a single PLOT for each embedding type
+        fig, axs = plt.subplots(1,len(self.feature_encoding_ls )+ 1)
+        fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
+
+
+        for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
+            axs[col_].set_title(str(e))
+            aucpr_by_round_dict = {}
+            # First Loop through rounds to get top 5 curves by AUCPR (for a given embedding
+            for n in range(self.num_rerurun_model_building):  # loop through rounds
+
+                # Get p-r curves per round for given embedding and round
+                key__ = str(e) + '_' + str(n)
+                pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][0]
+                unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][1]
+                p = self.final_model_params_ls[n]
+                aucpr_ = metrics.auc(rcurve__, pcurve__)
+                aucpr_by_round_dict[n] = aucpr_
+
+            # Sort aucpr_by_round_dict by values from largest aucpr to smallest
+            aucpr_by_round_dict = {k: v for k, v in sorted(aucpr_by_round_dict.items(), key=lambda item: item[1])[::-1]}
+            # get rounds (dictkeys) of top 5 performing models
+            top_5_rnds_for_emb_ = list( aucpr_by_round_dict.keys())[:5]
+
+            # Then plot just the top 5 curves
+            for n in range(top_5_rnds_for_emb_):  # loop through rounds
+                # Get p-r curves per round for given embedding and round
+                key__ = str(e) + '_' + str(n)
+                pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][0]
+                unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][1]
+                p = self.final_model_params_ls[n]
+                axs[col_].plot(
+                    rcurve__,  # r_OH,# x
+                    pcurve__,  # p_OH,# y
+                    lw=1,
+                    color=param_col_ls_dict[p],
+                )
+
+                # axs[col_].plot(
+                #     rcurve__,  # r_OH,# x
+                #     unach_rcurve__,  # p_OH,# y
+                #     lw=1,
+                #     color=param_col_ls_dict[p],
+                #     linestyle='dashed',
+                # )
+
+            # Format Axes
+            axs[col_].set_xlim(0, 1)
+            axs[col_].set_ylim(0, 1.1)
+            axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
+            axs[col_].tick_params(direction='in', which='both', length=3, width=1)
+
+            if col_ == 0:
+                axs[col_].set_xlabel('Recall')
+                axs[col_].set_ylabel('Precision')
+                axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
+
+            else:
+                axs[col_].set_xticklabels([])
+                axs[col_].set_yticklabels([])
+
+        # Add legend for parameter values
+        from matplotlib.lines import Line2D
+        legend_elements = []
+        for val__, i in zip(list(set(self.final_model_params_ls)), range(len(list(set(self.final_model_params_ls))))):
+        #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
+            legend_elements.append(Line2D([0], [0],
+                                          color=param_col_ls_dict[val__],  # embd_color_dict[embd_][val__],
+                                          lw=4, label=str(val__)))
+        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
+        axs[-1].axis('off')
+
+        fig.suptitle('Top 5 Precision-Recall Curves Final Models - Per Embedding ' + str(self.num_rerurun_model_building) +
+                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+        fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
+        # ** SAVE FIGURE **
+        plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+        fnm_ = (self.output_directory + 'figures/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final')
+        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final')
+        fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+        fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        # return
 
 
     def plot_final_model_box_plots_per_param_val(self):
@@ -2343,6 +2482,9 @@ class DataRepresentationBuilder:
 
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
         final_detailed_metric_df = pd.DataFrame(self.final_detailed_performance_metrics_encodings_dict)
+        fnm_ = (self.output_directory + 'figures/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final.csv')
+        final_detailed_metric_df.to_csv(fnm_,index=False)
+        print("Final Models Performance Metrics Dataframe saved to:\n\t",fnm_)
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
@@ -2352,84 +2494,104 @@ class DataRepresentationBuilder:
 
         # one axis per performance metric
         # one box per embedding per axis
-        fig, axs = plt.subplots( len(self.feature_encoding_ls), len(final_detailed_metric_df))
-        fig.set_size_inches(w=12, h=3*len(self.feature_encoding_ls))
+        # fig, axs = plt.subplots( len(self.feature_encoding_ls), len(final_detailed_metric_df))
+        # fig.set_size_inches(w=14, h=3*len(self.feature_encoding_ls))
+        # Update: Make plots in sets of two or fewer (so not too large)
+        num_plots_ = int(len(self.feature_encoding_ls) / 2) + (len(self.feature_encoding_ls) / 2)
+        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 2] for i in range(0, len(self.feature_encoding_ls), 2)]
+
+        for plotn_ in list(range(num_plots_)):
+            fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
+            fig.set_size_inches(w=14, h=3 * len(paired_feature_encoding_ls[plotn_]))
 
 
-        # Split Evaluation Metric Data per parameter value
-        # Loop through all embeddings used
-        for embedding_type_final_eval_, j in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):
-            # From final_detailed_metric_df get just columns for a single selected embedding type
-            # Get just columns with selected embedding metric (embedding_type_final_eval_)
-            cols_with_embd_ = [x for x in list(final_detailed_metric_df.columns) if embedding_type_final_eval_ in x]
-            print("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
-                  str(embedding_type_final_eval_)+" - ",len(cols_with_embd_),'out of',len(list(final_detailed_metric_df.columns)))
+            # Split Evaluation Metric Data per parameter value
+            # Loop through all embeddings used
+            #for embedding_type_final_eval_, j in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):
+            for embedding_type_final_eval_, j in zip(paired_feature_encoding_ls[plotn_], list(range(len(paired_feature_encoding_ls[plotn_])))):
 
-            # Get just columns with selected embedding metric (embedding_type_final_eval_)
-            final_detailed_metric_one_embd_df = final_detailed_metric_df[cols_with_embd_]
+                # From final_detailed_metric_df get just columns for a single selected embedding type
+                # Get just columns with selected embedding metric (embedding_type_final_eval_)
+                cols_with_embd_ = [x for x in list(final_detailed_metric_df.columns) if embedding_type_final_eval_ in x]
+                print("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
+                      str(embedding_type_final_eval_)+" - ",len(cols_with_embd_),'out of',len(list(final_detailed_metric_df.columns)))
 
-            # Get parameter VALUES only for each selected embedding
-            param_vals_one_embd_ = list(set([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)]))
+                # Get just columns with selected embedding metric (embedding_type_final_eval_)
+                final_detailed_metric_one_embd_df = final_detailed_metric_df[cols_with_embd_]
 
+                # Get parameter VALUES only for each selected embedding
+                param_vals_one_embd_ = list(set([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)]))
 
-            metrics_ls = list(final_detailed_metric_one_embd_df.index)
+                # If Parameter values are integers, order them from smallest to larget
+                try:
+                    int_param_vals_one_embd_ = [int(x) for x in param_vals_one_embd_]
+                    int_param_vals_one_embd_.sort()
+                    param_vals_one_embd_ = [str(x) for x in int_param_vals_one_embd_]
+                except:
+                    pass
 
-            final_model_ct_per_param_val_dict = {} # holds counts of each parameter value used to build a final model
-            for v__ in self.param_values_to_loop_:
-                ct_v__ = len([x for x in self.final_model_params_ls if str(x) == str(v__)])
-                final_model_ct_per_param_val_dict[str(v__)] = ct_v__
+                metrics_ls = list(final_detailed_metric_one_embd_df.index)
 
-            for i in range(len(metrics_ls)):
-                metric_ = metrics_ls[i]
-                # Plot by parameter value
-                # data_ = [list(final_detailed_metric_one_embd_df[
-                #                   [embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ + '_round_' + str(i) for i in
-                #                    list(range(final_model_ct_per_param_val_dict[str(param_val_)]))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
-                # get columns for single parameter value and metric
+                final_model_ct_per_param_val_dict = {} # holds counts of each parameter value used to build a final model
+                for v__ in self.param_values_to_loop_:
+                    ct_v__ = len([x for x in self.final_model_params_ls if str(x) == str(v__)])
+                    final_model_ct_per_param_val_dict[str(v__)] = ct_v__
 
-                cols_to_select_ = []
-                for param_val_ in param_vals_one_embd_:
-                    # Get rounds for given parameter value and embedding
-                    rounds_per_one_param_val_ = [int(x.split('_round_')[-1]) for x in list(final_detailed_metric_one_embd_df.columns) if embedding_type_final_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' in x]
-                    for rnd__ in rounds_per_one_param_val_:
-                        cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
+                for i in range(len(metrics_ls)):
+                    metric_ = metrics_ls[i]
+                    # Plot by parameter value
+                    # data_ = [list(final_detailed_metric_one_embd_df[
+                    #                   [embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ + '_round_' + str(i) for i in
+                    #                    list(range(final_model_ct_per_param_val_dict[str(param_val_)]))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    # get columns for single parameter value and metric
 
-                data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    cols_to_select_ = []
+                    for param_val_ in param_vals_one_embd_:
+                        # Get rounds for given parameter value and embedding
+                        rounds_per_one_param_val_ = [int(x.split('_round_')[-1]) for x in list(final_detailed_metric_one_embd_df.columns) if embedding_type_final_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' in x]
+                        for rnd__ in rounds_per_one_param_val_:
+                            cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
 
-                bplot1 = axs[j,i].boxplot(
-                    data_,
-                    vert=True,  # vertical box alignment
-                    patch_artist=True,  # fill with color
-                    labels=param_vals_one_embd_,
-                    flierprops=flierprops__, boxprops=boxprops__,
-                    capprops=dict(color='black'),
-                    whiskerprops=dict(color='black'),
+                    data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
 
-                )  # will be used to label x-ticks
-                axs[j,i].set_title(metric_)
-                if i == 3:
-                    axs[j,i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                    bplot1 = axs[j,i].boxplot(
+                        data_,
+                        vert=True,  # vertical box alignment
+                        patch_artist=True,  # fill with color
+                        labels=param_vals_one_embd_,
+                        flierprops=flierprops__, boxprops=boxprops__,
+                        capprops=dict(color='black'),
+                        whiskerprops=dict(color='black'),
 
-                # update x-axis labels
-                axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0)
-                axs[j,i].set_xlabel(str(self.parameter_to_optimize))
+                    )  # will be used to label x-ticks
+                    axs[j,i].set_title(metric_)
+                    if i == 3:
+                        #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                        if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                            axs[j, i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                        else:
+                            axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
 
-                if metric_ == 'MCC':
-                    axs[j,i].set_ylim(-1, 1)
-                else:
-                    axs[j,i].set_ylim(0, 1)
+                    # update x-axis labels
+                    axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
+                    axs[j,i].set_xlabel(str(self.parameter_to_optimize))
 
-        fig.suptitle('Compiled Multiple Metrics Final Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
-                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
-        fig.tight_layout()
+                    if metric_ == 'MCC':
+                        axs[j,i].set_ylim(-1, 1)
+                    else:
+                        axs[j,i].set_ylim(0, 1)
 
-        # ** SAVE FIGURE **
-        plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-        fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
-        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
-        fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
-        fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+            fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
+                         ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+            fig.tight_layout()
+
+            # ** SAVE FIGURE **
+            plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+            fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_'+str(plotn_+1))
+            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_'+str(plotn_+1))
+            fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+            fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
         return
 
 
@@ -2517,6 +2679,7 @@ class DataRepresentationBuilder:
 # TODO: For Semi-supervised: Add back in the unlabelled data to the testing set?
 # TODO: add back in undefined middle values and evaluate model (possibly using needle-in-haystack method)
 # TODO: fix errors when running on cluster (semi-supervised?) - see LSF emails
+# TODO: for final boxplots by parameter value include count of models with each parameter value (on x-axis)
 
 #print("Process Complete!")
 
