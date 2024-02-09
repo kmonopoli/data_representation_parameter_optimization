@@ -1802,8 +1802,13 @@ class DataRepresentationBuilder:
                             print("Evaluating model performance of paramopt model...")
                             from sklearn.metrics import precision_recall_curve
                             print('\n\n\npreds_po :',set(preds_po),'\n\n\n')
-                            p_po_, r_po_, ts_po_ = precision_recall_curve(Y_paramopt_, preds_po)
-                            aucpr_po_ = metrics.auc(r_po_, p_po_)
+
+                            ## In cases where is LabelSpreading or LabelPropagation model and One-Hot Encoding,
+                            #     will have an NaN when trying to compute precision-recall
+                            # TODO: fix for final model p-r curve making too
+                            if not (((m_ == 'semi-sup-label-propagation') or (m_ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
+                                p_po_, r_po_, ts_po_ = precision_recall_curve(Y_paramopt_, preds_po)
+                                aucpr_po_ = metrics.auc(r_po_, p_po_)
 
                             from sklearn.metrics import f1_score
                             fscore_po_ = f1_score(Y_paramopt_, preds_binary_po)  # , average=None)
@@ -1818,21 +1823,35 @@ class DataRepresentationBuilder:
                             from sklearn.metrics import matthews_corrcoef
                             mcc_po_ = matthews_corrcoef(Y_paramopt_, preds_binary_po)
 
-                            # Compute Unacheiveable Region
-                            class_dist_po = p_po_[0]  # class distribution (Pr=1)
-                            unach_recalls_po = list(r_po_)[::-1]
-                            # compute y (precision) values from the x (recall) values
-                            unach_precs_po = []
-                            for x in unach_recalls_po:
-                                y = (class_dist_po * x) / ((1 - class_dist_po) + (class_dist_po * x))
-                                unach_precs_po.append(y)
-                            unach_p_r_po_ = [unach_precs_po, unach_recalls_po]
-                            auc_unach_adj_po_ = metrics.auc(r_po_, p_po_) - metrics.auc(unach_recalls_po, unach_precs_po)
+                            ## In cases where is LabelSpreading or LabelPropagation model and One-Hot Encoding,
+                            #     will have an NaN when trying to compute precision-recall
+                            # TODO: fix for final model p-r curve making too
+                            if not(((m_ == 'semi-sup-label-propagation' ) or (m_ == 'semi-sup-label-spreading')) and (e == 'one-hot')) :
+                                p_po_, r_po_, ts_po_ = precision_recall_curve(Y_paramopt_, preds_po)
+                                aucpr_po_ = metrics.auc(r_po_, p_po_)
 
-                            paramop_performance_curves_dict_ = {
-                                'Precision_Recall_Curve': [p_po_, r_po_, ts_po_],
-                                'Unacheivabe_Region_Curve': [unach_precs_po, unach_recalls_po],
-                            }
+                                # Compute Unacheiveable Region
+                                class_dist_po = p_po_[0]  # class distribution (Pr=1)
+                                unach_recalls_po = list(r_po_)[::-1]
+                                # compute y (precision) values from the x (recall) values
+                                unach_precs_po = []
+                                for x in unach_recalls_po:
+                                    y = (class_dist_po * x) / ((1 - class_dist_po) + (class_dist_po * x))
+                                    unach_precs_po.append(y)
+                                unach_p_r_po_ = [unach_precs_po, unach_recalls_po]
+                                auc_unach_adj_po_ = metrics.auc(r_po_, p_po_) - metrics.auc(unach_recalls_po, unach_precs_po)
+
+                                paramop_performance_curves_dict_ = {
+                                    'Precision_Recall_Curve': [p_po_, r_po_, ts_po_],
+                                    'Unacheivable_Region_Curve': [unach_precs_po, unach_recalls_po],
+                                }
+
+                            else:
+                                print("WARNING: because model-type is "+str(m_)+' and encoding type is '+str(e)+' Precision-Recall curves cannot be created for this model')
+                                paramop_performance_curves_dict_ = {
+                                    'Precision_Recall_Curve': [[], [], []],
+                                    'Unacheivable_Region_Curve': [[], []],
+                                }
 
                             paramop_performance_metrics_dict_ = {
                                 'AUCPR': aucpr_po_,
@@ -1965,8 +1984,11 @@ class DataRepresentationBuilder:
                 ## Evaluate Parameter Optimization Model Performance
                 from sklearn.metrics import precision_recall_curve
 
-                p_final_, r_final_, ts_final_ = precision_recall_curve(Y_test_, preds_final)
-                aucpr_final_ = metrics.auc(r_final_, p_final_)
+                # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                if not (((model_type___ == 'semi-sup-label-propagation') or (model_type___ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
+                    p_final_, r_final_, ts_final_ = precision_recall_curve(Y_test_, preds_final)
+                    aucpr_final_ = metrics.auc(r_final_, p_final_)
+
                 from sklearn.metrics import f1_score
 
                 fscore_final_ = f1_score(Y_test_, preds_binary_final)  # , average=None)
@@ -1981,21 +2003,29 @@ class DataRepresentationBuilder:
 
                 mcc_final_ = matthews_corrcoef(Y_test_, preds_binary_final)
 
-                # Compute Unacheiveable Region
-                class_dist_final = p_final_[0]  # class distribution (Pr=1)
-                unach_recalls_final = list(r_final_)[::-1]
-                # compute y (precision) values from the x (recall) values
-                unach_precs_final = []
-                for x in unach_recalls_final:
-                    y = (class_dist_final * x) / ((1 - class_dist_final) + (class_dist_final * x))
-                    unach_precs_final.append(y)
-                unach_p_r_final_ = [unach_precs_final, unach_recalls_final]
-                auc_unach_adj_final_ = metrics.auc(r_final_, p_final_) - metrics.auc(unach_recalls_final, unach_precs_final)
+                # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                if not (((model_type___ == 'semi-sup-label-propagation') or (model_type___ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
+                    # Compute Unacheiveable Region
+                    class_dist_final = p_final_[0]  # class distribution (Pr=1)
+                    unach_recalls_final = list(r_final_)[::-1]
+                    # compute y (precision) values from the x (recall) values
+                    unach_precs_final = []
+                    for x in unach_recalls_final:
+                        y = (class_dist_final * x) / ((1 - class_dist_final) + (class_dist_final * x))
+                        unach_precs_final.append(y)
+                    unach_p_r_final_ = [unach_precs_final, unach_recalls_final]
+                    auc_unach_adj_final_ = metrics.auc(r_final_, p_final_) - metrics.auc(unach_recalls_final, unach_precs_final)
 
-                final_performance_curves_dict_ = {
-                    'Precision_Recall_Curve': [p_final_, r_final_, ts_final_],
-                    'Unacheivabe_Region_Curve': [unach_precs_final, unach_recalls_final],
-                }
+                    final_performance_curves_dict_ = {
+                        'Precision_Recall_Curve': [p_final_, r_final_, ts_final_],
+                        'Unacheivable_Region_Curve': [unach_precs_final, unach_recalls_final],
+                    }
+                else:
+                    print("WARNING: because model-type is " + str(m_) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model')
+                    paramop_performance_curves_dict_ = {
+                        'Precision_Recall_Curve': [[], [], []],
+                        'Unacheivable_Region_Curve': [[], []],
+                    }
 
                 final_performance_metrics_dict_ = {
                     'AUCPR': aucpr_final_,
@@ -2088,11 +2118,17 @@ class DataRepresentationBuilder:
                 for p in self.param_values_to_loop_:  # different colors
                     k__ =str(e) + '-' + self.parameter_to_optimize + '-' + str(p) + '_round_' + str(n)
                     if k__ in pr_curves_keys_:
-                        prt_ls = self.paramop_performance_curves_encodings_dict[k__]['Precision_Recall_Curve']
-                        aucpr_ = metrics.auc(prt_ls[1], prt_ls[0])
-                        if aucpr_ > best_round_aucpr_:
-                            best_round_aucpr_ = aucpr_
-                            best_round_param_ = p
+
+                        # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                        if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
+                                ('label' in self.model_type_) and (e == 'one-hot'))):
+                                prt_ls = self.paramop_performance_curves_encodings_dict[k__]['Precision_Recall_Curve']
+                                aucpr_ = metrics.auc(prt_ls[1], prt_ls[0])
+                                if aucpr_ > best_round_aucpr_:
+                                    best_round_aucpr_ = aucpr_
+                                    best_round_param_ = p
+                        else: # case where label-spreading/label-propag and one-hot encoding
+                            aucpr_ = 0
                 best_aucprs_dict[n] = [best_round_param_,best_round_aucpr_,]
 
             col_ = 0
@@ -2104,25 +2140,29 @@ class DataRepresentationBuilder:
                 for p in self.param_values_to_loop_: # different colors
                     k__ =str(e) + '-' + self.parameter_to_optimize + '-' + str(p) + '_round_' + str(n)
                     if k__ in pr_curves_keys_:
-                        prt_ls = self.paramop_performance_curves_encodings_dict[k__]['Precision_Recall_Curve']
-                        if (self.parameter_to_optimize == 'kmer-size') and (e == 'one-hot'):
-                            axs[row_, col_].plot(
-                                prt_ls[1],  # r_OH,# x
-                                prt_ls[0],  # p_OH,# y
-                                lw=1,
-                                color=greys_col_ls_dict[p],
-                                # color = embd_color_dict[embd_][key__],
-                            )
-                        else:
-                            axs[row_,col_].plot(
-                                prt_ls[1],#r_OH,# x
-                                prt_ls[0],#p_OH,# y
-                                lw=1,
-                                color= param_col_ls_dict[p],
-                                #color = embd_color_dict[embd_][key__],
-                            )
 
-                        aucpr_ = metrics.auc(prt_ls[1], prt_ls[0])
+                        # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                        if not(((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
+                                ('label' in self.model_type_) and (e == 'one-hot'))):
+                            prt_ls = self.paramop_performance_curves_encodings_dict[k__]['Precision_Recall_Curve']
+                            if (self.parameter_to_optimize == 'kmer-size') and (e == 'one-hot'):
+                                axs[row_, col_].plot(
+                                    prt_ls[1],  # r_OH,# x
+                                    prt_ls[0],  # p_OH,# y
+                                    lw=1,
+                                    color=greys_col_ls_dict[p],
+                                    # color = embd_color_dict[embd_][key__],
+                                )
+                            else:
+                                axs[row_,col_].plot(
+                                    prt_ls[1],#r_OH,# x
+                                    prt_ls[0],#p_OH,# y
+                                    lw=1,
+                                    color= param_col_ls_dict[p],
+                                    #color = embd_color_dict[embd_][key__],
+                                )
+
+                            aucpr_ = metrics.auc(prt_ls[1], prt_ls[0])
 
                         #print(row_,col_)
                 if col_ == rows_cols_compiled_po_fig-1:
@@ -2341,32 +2381,39 @@ class DataRepresentationBuilder:
         fig, axs = plt.subplots(1,len(self.feature_encoding_ls )+ 1)
         fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
 
+
         for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
             axs[col_].set_title(str(e))
             for n in range(self.num_rerurun_model_building):  # loop through rounds
 
+
+
                 # Get p-r curves per round for given embedding and round
                 key__ = str(e) + '_' + str(n)
-                pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
-                rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
-                unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][0]
-                unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][1]
                 p = self.final_model_params_ls[n]
+                # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
+                        ('label' in self.model_type_) and (e == 'one-hot'))):
 
-                axs[col_].plot(
-                    rcurve__,  # r_OH,# x
-                    pcurve__,  # p_OH,# y
-                    lw=1,
-                    color=param_col_ls_dict[p],
-                )
+                    pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                    rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
+                    unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
 
-                # axs[col_].plot(
-                #     rcurve__,  # r_OH,# x
-                #     unach_rcurve__,  # p_OH,# y
-                #     lw=1,
-                #     color=param_col_ls_dict[p],
-                #     linestyle='dashed',
-                # )
+                    axs[col_].plot(
+                        rcurve__,  # r_OH,# x
+                        pcurve__,  # p_OH,# y
+                        lw=1,
+                        color=param_col_ls_dict[p],
+                    )
+
+                    # axs[col_].plot(
+                    #     rcurve__,  # r_OH,# x
+                    #     unach_rcurve__,  # p_OH,# y
+                    #     lw=1,
+                    #     color=param_col_ls_dict[p],
+                    #     linestyle='dashed',
+                    # )
 
             # Format Axes
             axs[col_].set_xlim(0, 1)
@@ -2445,13 +2492,17 @@ class DataRepresentationBuilder:
 
                 # Get p-r curves per round for given embedding and round
                 key__ = str(e) + '_' + str(n)
-                pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
-                rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
-                unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][0]
-                unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][1]
                 p = self.final_model_params_ls[n]
-                aucpr_ = metrics.auc(rcurve__, pcurve__)
-                aucpr_by_round_dict[n] = aucpr_
+                # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
+                        ('label' in self.model_type_) and (e == 'one-hot'))):
+
+                    pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                    rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
+                    unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
+                    aucpr_ = metrics.auc(rcurve__, pcurve__)
+                    aucpr_by_round_dict[n] = aucpr_
 
             # Sort aucpr_by_round_dict by values from largest aucpr to smallest
             aucpr_by_round_dict = {k: v for k, v in sorted(aucpr_by_round_dict.items(), key=lambda item: item[1])[::-1]}
@@ -2462,25 +2513,28 @@ class DataRepresentationBuilder:
             for n in top_5_rnds_for_emb_:  # loop through rounds
                 # Get p-r curves per round for given embedding and round
                 key__ = str(e) + '_' + str(n)
-                pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
-                rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
-                unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][0]
-                unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivabe_Region_Curve'][1]
                 p = self.final_model_params_ls[n]
-                axs[col_].plot(
-                    rcurve__,  # r_OH,# x
-                    pcurve__,  # p_OH,# y
-                    lw=1,
-                    color=param_col_ls_dict[p],
-                )
+                # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
+                        ('label' in self.model_type_) and (e == 'one-hot'))):
+                    pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                    rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
+                    unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
+                    axs[col_].plot(
+                        rcurve__,  # r_OH,# x
+                        pcurve__,  # p_OH,# y
+                        lw=1,
+                        color=param_col_ls_dict[p],
+                    )
 
-                # axs[col_].plot(
-                #     rcurve__,  # r_OH,# x
-                #     unach_rcurve__,  # p_OH,# y
-                #     lw=1,
-                #     color=param_col_ls_dict[p],
-                #     linestyle='dashed',
-                # )
+                    # axs[col_].plot(
+                    #     rcurve__,  # r_OH,# x
+                    #     unach_rcurve__,  # p_OH,# y
+                    #     lw=1,
+                    #     color=param_col_ls_dict[p],
+                    #     linestyle='dashed',
+                    # )
 
             # Format Axes
             axs[col_].set_xlim(0, 1)
@@ -2728,8 +2782,197 @@ class DataRepresentationBuilder:
         print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
 
 
-
-
+    def plot_data_splits_graphic(self):
+        # Plots graphic of bars depicting proportional sizes of dataset splits with numeric labels (useful for making cartoon for ppt slides)
+        # TODO: finish method
+        return # end: plot_data_splits_graphic
+        # # fig,axs = plt.subplots(6, )
+        #
+        # ineff_col = '#3AA6E2'
+        # eff_col = '#F7B531'
+        # undef_col = '#B6B6B7'
+        #
+        # fig = plt.figure(layout="constrained")
+        # # fig.set_size_inches(w=10,h=6.5)
+        # fig.set_size_inches(w=11.6, h=6.2)
+        # spec = fig.add_gridspec(nrows=6, ncols=6, hspace=0.35, wspace=0.05)
+        #
+        # ax_top_all = fig.add_subplot(spec[0, :])
+        # ax_no_undef = fig.add_subplot(spec[1, 0:5])
+        #
+        # # row_ = 2
+        # # ax_train_label = fig.add_subplot(spec[row_, 0:4])
+        # # ax_po_label = fig.add_subplot(spec[row_, 4:5])
+        # # ax_test_label = fig.add_subplot(spec[row_, 5:6])
+        # # ax_train_label.axis('off')
+        # # ax_po_label.axis('off')
+        # # ax_test_label.axis('off')
+        #
+        # row_ = 2
+        # ax_train_example = fig.add_subplot(spec[row_, 0:4])
+        # ax_po_example = fig.add_subplot(spec[row_, 4:5])
+        # ax_test_example = fig.add_subplot(spec[row_, 5:6])
+        #
+        # row_ = row_ + 1
+        # ax_train_1 = fig.add_subplot(spec[row_, 0:4])
+        # ax_po_1 = fig.add_subplot(spec[row_, 4:5])
+        # ax_test_1 = fig.add_subplot(spec[row_, 5:6])
+        #
+        # row_ = row_ + 1
+        # ax_train_2 = fig.add_subplot(spec[row_, 0:4])
+        # ax_po_2 = fig.add_subplot(spec[row_, 4:5])
+        # ax_test_2 = fig.add_subplot(spec[row_, 5:6])
+        #
+        # row_ = row_ + 1
+        # ax_train_3 = fig.add_subplot(spec[row_, 0:4])
+        # ax_po_3 = fig.add_subplot(spec[row_, 4:5])
+        # ax_test_3 = fig.add_subplot(spec[row_, 5:6])
+        #
+        # ax_train_dict_ = {0: ax_train_1, 1: ax_train_2, 2: ax_train_3, num_rerurun_model_building - 1: ax_train_3}
+        # ax_po_dict_ = {0: ax_po_1, 1: ax_po_2, 2: ax_po_3, num_rerurun_model_building - 1: ax_po_3}
+        # ax_test_dict_ = {0: ax_test_1, 1: ax_test_2, 2: ax_test_3, num_rerurun_model_building - 1: ax_test_3}
+        #
+        # # 1) Top Bar
+        # ax_curr_ = ax_top_all
+        # ax_curr_.barh([0], [len(df_no_unlab[df_no_unlab['class'] == 'efficient'])], color=eff_col)
+        # ax_curr_.barh([0], [len(df_mid_undefined)], left=[len(df_no_unlab[df_no_unlab['class'] == 'efficient'])], color=undef_col)
+        # ax_curr_.barh([0], [len(df_no_unlab[df_no_unlab['class'] == 'inefficient'])], left=[len(df_no_unlab[df_no_unlab['class'] == 'efficient']) + len(df_mid_undefined)], color=ineff_col)
+        # ax_curr_.xlims = (0, 1000)
+        # ax_curr_.axis('off')
+        # for container in ax_curr_.containers:
+        #     ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
+        #
+        # # 2) Excluded Undefined Bar
+        # ax_curr_ = ax_no_undef
+        # ax_curr_.barh([0], [len(df_no_unlab[df_no_unlab['class'] == 'efficient'])], color=eff_col)
+        # ax_curr_.barh([0], [len(df_no_unlab[df_no_unlab['class'] == 'inefficient'])], left=[len(df_no_unlab[df_no_unlab['class'] == 'efficient'])], color=ineff_col)
+        # ax_curr_.xlims = (0, 1000)
+        # ax_curr_.axis('off')
+        # for container in ax_curr_.containers:
+        #     ax_curr_.bar_label(container, labels=[str(container.datavalues[0]) + '  (' + str(int(np.round(100 * (container.datavalues[0] / len(df_no_unlab)), 0))) + '%)'], label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
+        #
+        # # 3) Data splitting Bar Example
+        # # Labels
+        # ax_train_example.set_title('Training\n' + str(int((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)))) + '% (~' +
+        #                            str((int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100))) + (int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100)))) +
+        #                            ' siRNAs)')
+        #
+        # ax_po_example.set_title('Parameter\nOptimization\n' + str(paramopt_set_size_pcnt_) + '% (~' +
+        #                         str((int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * (paramopt_set_size_pcnt_ / 100))) + (int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (paramopt_set_size_pcnt_ / 100)))) +
+        #                         ' siRNAs)')
+        #
+        # ax_test_example.set_title('Testing\n' + str(test_set_size_pcnt_) + '% (~' +
+        #                           str((int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * (test_set_size_pcnt_ / 100))) + (int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (test_set_size_pcnt_ / 100)))) +
+        #                           ' siRNAs)')
+        #
+        # # Bars
+        # ax_curr_ = ax_train_example
+        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100))], color=eff_col)
+        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100))], left=[int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100))], color=ineff_col)
+        # ax_curr_.xlims = (0, 1000)
+        # ax_curr_.axis('off')
+        # for container in ax_curr_.containers:
+        #     ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
+        #
+        # ax_curr_ = ax_po_example
+        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (paramopt_set_size_pcnt_ / 100))], color=eff_col)
+        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * (paramopt_set_size_pcnt_ / 100))], left=[int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (paramopt_set_size_pcnt_ / 100))], color=ineff_col)
+        # ax_curr_.xlims = (0, 1000)
+        # ax_curr_.axis('off')
+        # for container in ax_curr_.containers:
+        #     ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
+        #
+        # ax_curr_ = ax_test_example
+        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (test_set_size_pcnt_ / 100))], color=eff_col)
+        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * (test_set_size_pcnt_ / 100))], left=[int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (test_set_size_pcnt_ / 100))], color=ineff_col)
+        # ax_curr_.xlims = (0, 1000)
+        # ax_curr_.axis('off')
+        # for container in ax_curr_.containers:
+        #     ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
+        #
+        # # 4) Random Splitting (all rounds)
+        # # Train
+        # dataset_ = 'Train'
+        # for n_ in [0, 1, num_rerurun_model_building - 1]:  # range(num_rerurun_model_building)[0:1]:
+        #     # Get dataset for given round
+        #     data_fnm_ = all_output_dir + all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_' + data_fnm_dict[dataset_] + '_' + str(data_pcnt_sz_dict[dataset_]) + 'pcnt_partition.csv'
+        #     df_ = pd.read_csv(data_fnm_)
+        #     df_['class'].value_counts()['efficient']
+        #
+        #     eff_ct_curr_ = df_['class'].value_counts()['efficient']
+        #     ineff_ct_curr_ = df_['class'].value_counts()['inefficient']
+        #
+        #     ax_curr_ = ax_train_dict_[n_]  # ax_train_1
+        #     ax_curr_.barh([0], [eff_ct_curr_], color=eff_col)
+        #     ax_curr_.barh([0], [ineff_ct_curr_], left=[eff_ct_curr_], color=ineff_col)
+        #     ax_curr_.xlims = (0, 1000)
+        #     ax_curr_.axis('off')
+        #     for container in ax_curr_.containers:
+        #         ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
+        #
+        # # Paramopt
+        # dataset_ = 'Paramopt'
+        # for n_ in [0, 1, 2]:  # range(num_rerurun_model_building)[0:1]:
+        #     # Get dataset for given round
+        #     data_fnm_ = all_output_dir + all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_' + data_fnm_dict[dataset_] + '_' + str(data_pcnt_sz_dict[dataset_]) + 'pcnt_partition.csv'
+        #     df_ = pd.read_csv(data_fnm_)
+        #     df_['class'].value_counts()['efficient']
+        #
+        #     eff_ct_curr_ = df_['class'].value_counts()['efficient']
+        #     ineff_ct_curr_ = df_['class'].value_counts()['inefficient']
+        #
+        #     ax_curr_ = ax_po_dict_[n_]  # ax_po_1
+        #     ax_curr_.barh([0], [eff_ct_curr_], color=eff_col)
+        #     ax_curr_.barh([0], [ineff_ct_curr_], left=[eff_ct_curr_], color=ineff_col)
+        #     ax_curr_.xlims = (0, 1000)
+        #     ax_curr_.axis('off')
+        #     for container in ax_curr_.containers:
+        #         ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
+        #
+        # # Test
+        # dataset_ = 'Test'
+        # for n_ in [0, 1, 2]:  # range(num_rerurun_model_building)[0:1]:
+        #     # Get dataset for given round
+        #     data_fnm_ = all_output_dir + all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_' + data_fnm_dict[dataset_] + '_' + str(data_pcnt_sz_dict[dataset_]) + 'pcnt_partition.csv'
+        #     df_ = pd.read_csv(data_fnm_)
+        #     df_['class'].value_counts()['efficient']
+        #
+        #     eff_ct_curr_ = df_['class'].value_counts()['efficient']
+        #     ineff_ct_curr_ = df_['class'].value_counts()['inefficient']
+        #
+        #     ax_curr_ = ax_test_dict_[n_]  # ax_test_1
+        #     ax_curr_.barh([0], [eff_ct_curr_], color=eff_col)
+        #     ax_curr_.barh([0], [ineff_ct_curr_], left=[eff_ct_curr_], color=ineff_col)
+        #     ax_curr_.xlims = (0, 1000)
+        #     ax_curr_.axis('off')
+        #
+        #     for container in ax_curr_.containers:
+        #         ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
+        #
+        # ax_train_1.set_title('      ', rotation=90, fontweight='bold', fontsize=30, fontfamily='Times New Roman')
+        # ax_po_1.set_title('      ', rotation=90, fontweight='bold', fontsize=30, fontfamily='Times New Roman')
+        # ax_test_1.set_title('      ', rotation=90, fontweight='bold', fontsize=30, fontfamily='Times New Roman')
+        #
+        # ax_train_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
+        # ax_po_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
+        # ax_test_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
+        #
+        # # fig.suptitle('Data Splitting',fontweight='bold',color = '#202275')
+        #
+        # # ax_top_all.figure(facecolor='yellow')
+        # # ax_top_all.set_facecolor('yellow')
+        # # ax_po_1.fill('yellow')
+        #
+        # # # ** SAVE FIGURE **
+        # plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+        # fnm_ = (all_output_dir + output_dir__ + '_data_splitting_carton_for_slides')
+        # fnm_svg_ = fnm_
+        #
+        # fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+        # # print('Figure saved to:',fnm_svg_+'.svg')
+        #
+        # fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=True)
+        # print('Figure saved to:', fnm_ + '.png')
 
 
 
