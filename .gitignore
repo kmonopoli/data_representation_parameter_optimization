@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+output_model_fitting/
 
 new_input_data/
 *.csv
