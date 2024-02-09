@@ -398,7 +398,7 @@ class DataRepresentationBuilder:
         print("Plotting box plots from Parameter Optimization...")
         self.plot_param_opt_model_box_plots()
         print("Plotting box plots from Final Model Building...")
-        self.plot_final_model_box_plots()
+        #self.plot_final_model_box_plots()
         self.plot_final_model_box_plots_per_param_val()
         print("Box plotting complete!")
 
@@ -2038,7 +2038,7 @@ class DataRepresentationBuilder:
                         'Precision_Recall_Curve': [p_final_, r_final_, ts_final_],
                         'Unacheivable_Region_Curve': [unach_precs_final, unach_recalls_final],
                     }
-                    aucpr_adj_final_ = aucpr_final_ - p_final_[0],
+                    aucpr_adj_final_ = aucpr_final_ - p_final_[0]
                 else:
                     print("WARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model')
                     paramop_performance_curves_dict_ = {
@@ -2678,6 +2678,7 @@ class DataRepresentationBuilder:
                             cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
 
                     data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    print(data_)
                     # Multiple Rows
                     try:
                         bplot1 = axs[j,i].boxplot(
@@ -2749,65 +2750,65 @@ class DataRepresentationBuilder:
         return
 
 
-    def plot_final_model_box_plots(self):
-        print("Plotting box plots for final models...")
-        ## Plot Compiled Multimetrics Model Performance - Final Models
-
-        final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
-
-        metrics_ls = list(final_metric_df.index)
-        enc_ls_ = self.feature_encoding_ls
-
-        flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
-        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
-        medianprops__1 = dict(linewidth=2, color='goldenrod')
-        medianprops__2 = dict(linewidth=2, color='#2c8799')
-        medianprops__3 = dict(linewidth=2, color='firebrick')
-
-        # one axis per performance metric
-        # one box per embedding per axis
-        fig, axs = plt.subplots(1, len(final_metric_df))
-        fig.set_size_inches(w=12, h=3)
-
-        for i in range(len(metrics_ls)):
-            metric_ = metrics_ls[i]
-
-            data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in
-                     enc_ls_]
-            bplot1 = axs[i].boxplot(
-                data_,
-                vert=True,  # vertical box alignment
-                patch_artist=True,  # fill with color
-                labels=enc_ls_,
-                flierprops=flierprops__, boxprops=boxprops__,
-                capprops=dict(color='black'),
-                whiskerprops=dict(color='black'),
-
-            )  # will be used to label x-ticks
-            axs[i].set_title(metric_)
-            if i ==2:
-                axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
-
-            # update x-axis labels
-            axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], rotation=90)
-
-            if metric_ == 'MCC':
-                axs[i].set_ylim(-1, 1)
-            else:
-                axs[i].set_ylim(0, 1)
-
-        fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
-                     ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
-        fig.tight_layout()
-
-
-        # ** SAVE FIGURE **
-        plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
-        fnm_ =     (self.output_directory+ 'figures/'+           'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
-        fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
-        fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
-        fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
-        print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
+    # def plot_final_model_box_plots(self):
+    #     print("Plotting box plots for final models...")
+    #     ## Plot Compiled Multimetrics Model Performance - Final Models
+    #
+    #     final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
+    #
+    #     metrics_ls = list(final_metric_df.index)
+    #     enc_ls_ = self.feature_encoding_ls
+    #
+    #     flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
+    #     boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+    #     medianprops__1 = dict(linewidth=2, color='goldenrod')
+    #     medianprops__2 = dict(linewidth=2, color='#2c8799')
+    #     medianprops__3 = dict(linewidth=2, color='firebrick')
+    #
+    #     # one axis per performance metric
+    #     # one box per embedding per axis
+    #     fig, axs = plt.subplots(1, len(final_metric_df))
+    #     fig.set_size_inches(w=12, h=3)
+    #
+    #     for i in range(len(metrics_ls)):
+    #         metric_ = metrics_ls[i]
+    #
+    #         data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in
+    #                  enc_ls_]
+    #         bplot1 = axs[i].boxplot(
+    #             data_,
+    #             vert=True,  # vertical box alignment
+    #             patch_artist=True,  # fill with color
+    #             labels=enc_ls_,
+    #             flierprops=flierprops__, boxprops=boxprops__,
+    #             capprops=dict(color='black'),
+    #             whiskerprops=dict(color='black'),
+    #
+    #         )  # will be used to label x-ticks
+    #         axs[i].set_title(metric_)
+    #         if i ==2:
+    #             axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+    #
+    #         # update x-axis labels
+    #         axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], rotation=90)
+    #
+    #         if metric_ == 'MCC':
+    #             axs[i].set_ylim(-1, 1)
+    #         else:
+    #             axs[i].set_ylim(0, 1)
+    #
+    #     fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
+    #                  ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
+    #     fig.tight_layout()
+    #
+    #
+    #     # ** SAVE FIGURE **
+    #     plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
+    #     fnm_ =     (self.output_directory+ 'figures/'+           'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
+    #     fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
+    #     fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
+    #     fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
+    #     print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
 
 
     def plot_data_splits_graphic(self):
@@ -3034,8 +3035,8 @@ class DataRepresentationBuilder:
 # drb = DataRepresentationBuilder(model_type__ = 'random-forest', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,8,9] ,num_rerurun_model_building__=5,flank_len__=10,
 #                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
 
-drb = DataRepresentationBuilder(model_type__ = 'semi-sup-label-spreading', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
-                                encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
-
-# drb = DataRepresentationBuilder(model_type__ = 'random-forest', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
+# drb = DataRepresentationBuilder(model_type__ = 'semi-sup-label-spreading', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
 #                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
+
+drb = DataRepresentationBuilder(model_type__ = 'linear-classification', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
+                                encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
