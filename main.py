@@ -129,6 +129,7 @@ param_id_dict = {  # Dictionary containing all possible parameters to optmize ma
 ### TODO: ERROR Model optimization --> ValueError: Input contains NaN.
 
 ### TODO: ERROR Unlab dataset optimization --> FileNotFoundError: [Errno 2] No such file or directory: 'PARAMOPT'
+
 ### TODO: ERROR Window size/Word freq cutoff | RF -->  TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ### TODO: ERROR ANN dimmension | RF TypeError: '>' not supported between instances of 'int' and 'str'
 
@@ -1699,8 +1700,7 @@ class DataRepresentationBuilder:
         # Build Final Models
         self.build_final_models()
 
-        return (self.paramop_performance_curves_encodings_dict, self.paramop_key_ls,
-                self.final_performance_curves_encodings_dict, self.final_performance_metrics_encodings_dict, self.final_key_ls)
+        return #(self.paramop_performance_curves_encodings_dict, self.paramop_key_ls,self.final_performance_curves_encodings_dict, self.final_performance_metrics_encodings_dict, self.final_key_ls)
 
 
 
@@ -1845,6 +1845,8 @@ class DataRepresentationBuilder:
                                     'Precision_Recall_Curve': [p_po_, r_po_, ts_po_],
                                     'Unacheivable_Region_Curve': [unach_precs_po, unach_recalls_po],
                                 }
+                                aucpr_po_adj_ = aucpr_po_ - p_po_[0]
+
 
                             else:
                                 print("WARNING: because model-type is "+str(m_)+' and encoding type is '+str(e)+' Precision-Recall curves cannot be created for this model')
@@ -1852,10 +1854,13 @@ class DataRepresentationBuilder:
                                     'Precision_Recall_Curve': [[], [], []],
                                     'Unacheivable_Region_Curve': [[], []],
                                 }
+                                aucpr_po_ = 0
+                                aucpr_po_adj_ = 0
+                                auc_unach_adj_po_ = 0
 
                             paramop_performance_metrics_dict_ = {
                                 'AUCPR': aucpr_po_,
-                                'AUCPR-adj': aucpr_po_ - p_po_[0],
+                                'AUCPR-adj': aucpr_po_adj_,
                                 'AUCPR-unach-adj': auc_unach_adj_po_,
                                 'F-Score': fscore_po_,
                                 'Fbeta-Score':fbetascore_po_,
@@ -2020,16 +2025,20 @@ class DataRepresentationBuilder:
                         'Precision_Recall_Curve': [p_final_, r_final_, ts_final_],
                         'Unacheivable_Region_Curve': [unach_precs_final, unach_recalls_final],
                     }
+                    aucpr_adj_final_ = aucpr_final_ - p_final_[0],
                 else:
-                    print("WARNING: because model-type is " + str(m_) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model')
+                    print("WARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model')
                     paramop_performance_curves_dict_ = {
                         'Precision_Recall_Curve': [[], [], []],
                         'Unacheivable_Region_Curve': [[], []],
                     }
+                    aucpr_final_ = 0
+                    aucpr_adj_final_ = 0
+                    auc_unach_adj_final_ =0
 
                 final_performance_metrics_dict_ = {
                     'AUCPR': aucpr_final_,
-                    'AUCPR-adj': aucpr_final_ - p_final_[0],
+                    'AUCPR-adj': aucpr_adj_final_,
                     'AUCPR-unach-adj': auc_unach_adj_final_,
                     'F-Score': fscore_final_,
                     'Fbeta-Score': fbetascore_final_,
@@ -3006,3 +3015,5 @@ class DataRepresentationBuilder:
 # drb = DataRepresentationBuilder(model_type__ = 'random-forest', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,8,9] ,num_rerurun_model_building__=5,flank_len__=10,
 #                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
 
+drb = DataRepresentationBuilder(model_type__ = 'semi-sup-label-spreading', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [2,9] ,num_rerurun_model_building__=2,flank_len__=50,
+                                encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
