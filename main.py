@@ -383,7 +383,9 @@ class DataRepresentationBuilder:
         self.create_processed_datasets()
         print("Creating processed datasets complete!")
         print("Running model fittings...")
-        pr_po, k_po, pr_f, m_f, k_f = self.run_model_fittings()
+        #pr_po, k_po, pr_f, m_f, k_f = self.run_model_fittings()
+        self.run_model_fittings()
+
         print("Model Fittings complete!")
 
         print("Ploting precision-recall curves from Parameter Optimization...")
@@ -651,6 +653,7 @@ class DataRepresentationBuilder:
 
 
     def load_in_unlab_data(self):
+        print("loading in unlabeled Data..")
         ###############################################################################################################
         ###############################  (if applicable) Load in Unlabeled Data   #####################################
         ###############################################################################################################
@@ -745,6 +748,7 @@ class DataRepresentationBuilder:
 
 
     def perform_feature_embedding(self):
+        print("Performing feature embedding...")
         ###############################################################################################################
         ###############################          Perform Feature Embedding        #####################################
         ###############################################################################################################
@@ -827,6 +831,7 @@ class DataRepresentationBuilder:
 
 
     def split_train_test_paramopt(self):
+        print("Splitting Datasets into train/test/paramopt...")
         ##############################################################################################################
         #################################    Split Dataset into Train:Paramopt:Test    ###############################
         ##############################################################################################################
@@ -1078,6 +1083,7 @@ class DataRepresentationBuilder:
 
     def plot_data_splits(self):
         if (self.plot_grid_splits_):
+            print("Plotting data splits as a grid...")
             # Plot Data Splitting for each round in a single figure
             if self.num_rerurun_model_building > 2:
                 train_col = '#D46F37'
@@ -1377,6 +1383,7 @@ class DataRepresentationBuilder:
 
     def plot_bar_data_splits(self):
         if self.plot_extra_visuals_:
+            print("Plotting data bar splits...")
             if self.num_rerurun_model_building > 2:
                 # fig,axs = plt.subplots(6, )
 
@@ -1625,6 +1632,7 @@ class DataRepresentationBuilder:
 
 
     def run_model_fittings(self):
+        print("Running model fittings..")
 
         # Create a unique self.modeltrain_id_
         from random import randint
@@ -1706,6 +1714,7 @@ class DataRepresentationBuilder:
 
 
     def parameter_optimization(self):
+        print("Running parameter optimization...")
 
         self.top_param_val_per_round_dict = {}
         self.paramop_performance_metrics_encodings_dict = {}
@@ -1755,6 +1764,7 @@ class DataRepresentationBuilder:
                     else:
                         flank_len__ = flank_seq_working_key__.split('-')[-1].split('nts')[0]
                     for e in self.feature_encoding_ls: # ['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
+                        print('\tLoop Embedding:', e) # TODO: delete this line
                         for m_ in model_type_ls:
                             # Train Parameter Optimization Models
                             if self.parameter_to_optimize == 'kmer-size':
@@ -1800,6 +1810,8 @@ class DataRepresentationBuilder:
 
                             ## Evaluate Parameter Optimization Model Performance
                             print("Evaluating model performance of paramopt model...")
+                            print("\tModel type:",m_)
+                            print('\tEmbedding:',e)
                             from sklearn.metrics import precision_recall_curve
                             print('\n\n\npreds_po :',set(preds_po),'\n\n\n')
 
@@ -1921,6 +1933,7 @@ class DataRepresentationBuilder:
 
 
     def build_final_models(self):
+        print("Building Final Models...")
         self.final_models_encodings_dict = {}
         self.final_performance_metrics_encodings_dict = {}
         self.final_detailed_performance_metrics_encodings_dict = {}
@@ -2063,6 +2076,7 @@ class DataRepresentationBuilder:
 
 
     def plot_param_opt_precision_recall_curves(self):
+        print("Plotting P-R curves for parameter optimization...")
         ## Plot compiled Parameter Optimization Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
@@ -2227,6 +2241,7 @@ class DataRepresentationBuilder:
 
 
     def plot_param_opt_model_box_plots(self):
+        print("Plotting box plots for parameter optimization...")
         ## Plot Compiled Multimetrics Model Performance - Parameter Optimization Models
         # Each column of paramop_detailed_metric_df contains a single round for a single embedding type
         paramop_detailed_metric_df = pd.DataFrame(self.paramop_performance_metrics_encodings_dict)
@@ -2361,6 +2376,7 @@ class DataRepresentationBuilder:
 
 
     def plot_final_model_precision_recall_curves(self):
+        print("Plotting precision-recall curves for final models...")
         ## Plot Final Model Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
@@ -2463,6 +2479,7 @@ class DataRepresentationBuilder:
         return
 
     def plot_final_model_top_precision_recall_curves(self):
+        print("Plotting top precision recall curves from final models...")
         ## Plot Top 5 Final Model Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
@@ -2585,6 +2602,7 @@ class DataRepresentationBuilder:
 
 
     def plot_final_model_box_plots_per_param_val(self):
+        print("Plotting box plots for final models per parameter value...")
         ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
 
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
@@ -2732,6 +2750,7 @@ class DataRepresentationBuilder:
 
 
     def plot_final_model_box_plots(self):
+        print("Plotting box plots for final models...")
         ## Plot Compiled Multimetrics Model Performance - Final Models
 
         final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
@@ -3017,3 +3036,6 @@ class DataRepresentationBuilder:
 
 drb = DataRepresentationBuilder(model_type__ = 'semi-sup-label-spreading', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
+
+# drb = DataRepresentationBuilder(model_type__ = 'random-forest', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
+#                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
