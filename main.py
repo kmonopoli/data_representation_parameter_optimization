@@ -1780,8 +1780,10 @@ class DataRepresentationBuilder:
                                 print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', m_, '**  ')
                                 param_ = m_
 
-
-                            clf_po = model_dict[m_]
+                            if m_ == 'PARAMOPT':
+                                clf_po = model_dict['random-forest']
+                            else:
+                                clf_po = model_dict[m_]
 
                             if e == 'one-hot' or e == 'bow-gensim':
                                 X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
