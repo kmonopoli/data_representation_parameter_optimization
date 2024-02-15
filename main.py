@@ -148,6 +148,7 @@ feature_encodings_dict = {
     'ann-word2vec-gensim':'w2v'
 }
 
+
 feature_encodings_titles_dict = {
     'one-hot':'One-Hot',
     'bow-countvect':'BOW cv',
@@ -264,7 +265,7 @@ class DataRepresentationBuilder:
             if parameter_to_optimize__ == 'flank-length':
                 # check that flank lengths are between 0 and 100
                 for l_ in custom_parameter_values_to_loop__:
-                    if (l_ > 100) or (l_ < 0) or type(l_ != int):
+                    if (l_ > 100) or (l_ < 0) or (type(l_) != int):
                         raise ValueError("ERROR: Invalid flank_length in custom_parameter_to_optimize__ list : " + str(l_) + " , flank_length be an integer between 0 and 100")
             if parameter_to_optimize__ == 'unlabeled_data_type':
                 # check unlabeled data type list is supported
@@ -398,8 +399,8 @@ class DataRepresentationBuilder:
         print("Plotting box plots from Parameter Optimization...")
         self.plot_param_opt_model_box_plots()
         print("Plotting box plots from Final Model Building...")
-        #self.plot_final_model_box_plots()
         self.plot_final_model_box_plots_per_param_val()
+        self.plot_final_model_box_plots_per_metric()
         print("Box plotting complete!")
 
         print("PROCESS FINISHED")
@@ -633,7 +634,11 @@ class DataRepresentationBuilder:
                         # Get flanking sequence of desired length WITHOUT target region (drop sequences that don't have long enough flanking sequences)
                         # and create new column to store sequences
                         self.df[flank_seq_working_key__] = self.df.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], flank_len_, False), axis=1)
-                self.param_opt_working_keys_ls.append(flank_seq_working_key__)
+                try:
+                    self.param_opt_working_keys_ls.append(flank_seq_working_key__)
+                except:
+                    self.param_opt_working_keys_ls = []
+                    self.param_opt_working_keys_ls.append(flank_seq_working_key__)
                 #for f_ in self.param_opt_working_keys_ls:
                     #print('\n', f_, ' ', list(self.df[f_].apply(lambda x: len(x)).value_counts().index)[0])
 
@@ -1608,7 +1613,7 @@ class DataRepresentationBuilder:
                 # ** SAVE FIGURE **
                 plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
                 output_dir__ = self.all_data_split_dir + 'figures/'
-                fnm_ = (all_output_dir + output_dir__ + '_data_splitting_carton_for_slides')
+                fnm_ = (all_output_dir + output_dir__ + '_split_cartoon_')
                 fnm_svg_ = fnm_
 
                 fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
@@ -1931,10 +1936,19 @@ class DataRepresentationBuilder:
             # if self.parameter_to_optimize == 'model':
             #     self.model_type_ = param_val_
 
+        # Export top parameters for each round of parameter optimization
+        fnm_ = self.output_directory + 'figures/' + 'best_param_per_' + str(self.num_rerurun_model_building) + '-rnds_paramop.csv'
+        with open(fnm_,'w+') as f:
+            f.write('round, '+str(self.parameter_to_optimize) + ',\n')
+            for n_ in self.num_rerurun_model_building:
+                f.write(str(n_)+', '+str(self.top_param_val_per_round_dict[n_])+',\n')
+        f.close()
+        print('Top parameters per round of paramopt model building saved to:\n\t',fnm_)
 
 
 
     def build_final_models(self):
+        import pickle
         print("Building Final Models...")
         self.final_models_encodings_dict = {}
         self.final_performance_metrics_encodings_dict = {}
@@ -2072,6 +2086,12 @@ class DataRepresentationBuilder:
                 #     - Same as the  list of top parameters from each round of parameter optimization
                 #     - If parameter to optimize is Kmer will just contain integer kmer sizes ex: [3, 9, 12]
                 self.final_model_params_ls.append(param_val_)
+
+                # Pickle final models (per round, per embedding)
+                fnm_ = self.output_directory + 'models/' + 'final_'+model_type_dict[model_type___]+'_model_rnd-' + str(n_+1) + '_'+feature_encodings_dict[e]+'.pickle'
+                pickle.dump(clf_final,fnm_)
+                print('Final model '+str(n_+1)+' with encoding '+str(e)+' saved to:', fnm_.replace(self.output_directory, '~/'))
+                ##clf__ = pickle.load(pickle_file)
 
 
 
@@ -2234,8 +2254,8 @@ class DataRepresentationBuilder:
             fig.tight_layout() # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
             # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
-            fnm_ =     (self.output_directory+ 'figures/'+           'p-r_'+str(self.num_rerurun_model_building)+'-rnds_comp_po_'+e)
-            fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'p-r_'+str(self.num_rerurun_model_building)+'-rnds_comp_po_'+e)
+            fnm_ =     (self.output_directory+ 'figures/'+           'p-r_'+str(self.num_rerurun_model_building)+'-rnds_po_'+e)
+            fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'p-r_'+str(self.num_rerurun_model_building)+'-rnds_po_'+e)
             fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
             fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
             print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -2248,7 +2268,7 @@ class DataRepresentationBuilder:
         # Each column of paramop_detailed_metric_df contains a single round for a single embedding type
         paramop_detailed_metric_df = pd.DataFrame(self.paramop_performance_metrics_encodings_dict)
         fnm_ = (self.output_directory + 'figures/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_paramopt.csv')
-        paramop_detailed_metric_df.to_csv(fnm_,index=False)
+        paramop_detailed_metric_df.to_csv(fnm_,index=True)
         print("Parameter Optimization Models Performance Metrics Dataframe saved to:\n\t",fnm_)
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
@@ -2610,7 +2630,7 @@ class DataRepresentationBuilder:
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
         final_detailed_metric_df = pd.DataFrame(self.final_detailed_performance_metrics_encodings_dict)
         fnm_ = (self.output_directory + 'figures/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final.csv')
-        final_detailed_metric_df.to_csv(fnm_,index=False)
+        final_detailed_metric_df.to_csv(fnm_,index=True)
         print("Final Models Performance Metrics Dataframe saved to:\n\t",fnm_)
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
@@ -2752,287 +2772,79 @@ class DataRepresentationBuilder:
         return
 
 
-    # def plot_final_model_box_plots(self):
-    #     print("Plotting box plots for final models...")
-    #     ## Plot Compiled Multimetrics Model Performance - Final Models
-    #
-    #     final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
-    #
-    #     metrics_ls = list(final_metric_df.index)
-    #     enc_ls_ = self.feature_encoding_ls
-    #
-    #     flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
-    #     boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
-    #     medianprops__1 = dict(linewidth=2, color='goldenrod')
-    #     medianprops__2 = dict(linewidth=2, color='#2c8799')
-    #     medianprops__3 = dict(linewidth=2, color='firebrick')
-    #
-    #     # one axis per performance metric
-    #     # one box per embedding per axis
-    #     fig, axs = plt.subplots(1, len(final_metric_df))
-    #     fig.set_size_inches(w=12, h=3)
-    #
-    #     for i in range(len(metrics_ls)):
-    #         metric_ = metrics_ls[i]
-    #
-    #         data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in
-    #                  enc_ls_]
-    #         bplot1 = axs[i].boxplot(
-    #             data_,
-    #             vert=True,  # vertical box alignment
-    #             patch_artist=True,  # fill with color
-    #             labels=enc_ls_,
-    #             flierprops=flierprops__, boxprops=boxprops__,
-    #             capprops=dict(color='black'),
-    #             whiskerprops=dict(color='black'),
-    #
-    #         )  # will be used to label x-ticks
-    #         axs[i].set_title(metric_)
-    #         if i ==2:
-    #             axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
-    #
-    #         # update x-axis labels
-    #         axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], rotation=90)
-    #
-    #         if metric_ == 'MCC':
-    #             axs[i].set_ylim(-1, 1)
-    #         else:
-    #             axs[i].set_ylim(0, 1)
-    #
-    #     fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
-    #                  ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
-    #     fig.tight_layout()
-    #
-    #
-    #     # ** SAVE FIGURE **
-    #     plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
-    #     fnm_ =     (self.output_directory+ 'figures/'+           'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
-    #     fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
-    #     fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
-    #     fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
-    #     print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
-
-
-    def plot_data_splits_graphic(self):
-        # Plots graphic of bars depicting proportional sizes of dataset splits with numeric labels (useful for making cartoon for ppt slides)
-        # TODO: finish method
-        return # end: plot_data_splits_graphic
-        # # fig,axs = plt.subplots(6, )
+    def plot_final_model_box_plots_per_metric(self):
+        # TODO: finish this method!
+        print("Plotting box plots -- per performance metric -- for final models...")
+        ## Plot Compiled Multimetrics Model Performance - Final Models per metric
+        ##  - TODO: makes different figure for each different perameter value selected
+        # final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
         #
-        # ineff_col = '#3AA6E2'
-        # eff_col = '#F7B531'
-        # undef_col = '#B6B6B7'
+        # metrics_ls = list(final_metric_df.index)
+        # enc_ls_ = self.feature_encoding_ls
         #
-        # fig = plt.figure(layout="constrained")
-        # # fig.set_size_inches(w=10,h=6.5)
-        # fig.set_size_inches(w=11.6, h=6.2)
-        # spec = fig.add_gridspec(nrows=6, ncols=6, hspace=0.35, wspace=0.05)
+        # flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
+        # boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+        # medianprops__1 = dict(linewidth=2, color='goldenrod')
+        # medianprops__2 = dict(linewidth=2, color='#2c8799')
+        # medianprops__3 = dict(linewidth=2, color='firebrick')
         #
-        # ax_top_all = fig.add_subplot(spec[0, :])
-        # ax_no_undef = fig.add_subplot(spec[1, 0:5])
+        # # one axis per performance metric
+        # # one box per embedding per axis
+        # fig, axs = plt.subplots(1, len(final_metric_df))
+        # fig.set_size_inches(w=12, h=3)
         #
-        # # row_ = 2
-        # # ax_train_label = fig.add_subplot(spec[row_, 0:4])
-        # # ax_po_label = fig.add_subplot(spec[row_, 4:5])
-        # # ax_test_label = fig.add_subplot(spec[row_, 5:6])
-        # # ax_train_label.axis('off')
-        # # ax_po_label.axis('off')
-        # # ax_test_label.axis('off')
+        # for i in range(len(metrics_ls)):
+        #     metric_ = metrics_ls[i]
         #
-        # row_ = 2
-        # ax_train_example = fig.add_subplot(spec[row_, 0:4])
-        # ax_po_example = fig.add_subplot(spec[row_, 4:5])
-        # ax_test_example = fig.add_subplot(spec[row_, 5:6])
+        #     data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in
+        #              enc_ls_]
+        #     bplot1 = axs[i].boxplot(
+        #         data_,
+        #         vert=True,  # vertical box alignment
+        #         patch_artist=True,  # fill with color
+        #         labels=enc_ls_,
+        #         flierprops=flierprops__, boxprops=boxprops__,
+        #         capprops=dict(color='black'),
+        #         whiskerprops=dict(color='black'),
         #
-        # row_ = row_ + 1
-        # ax_train_1 = fig.add_subplot(spec[row_, 0:4])
-        # ax_po_1 = fig.add_subplot(spec[row_, 4:5])
-        # ax_test_1 = fig.add_subplot(spec[row_, 5:6])
+        #     )  # will be used to label x-ticks
+        #     axs[i].set_title(metric_)
+        #     if i ==2:
+        #         axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
         #
-        # row_ = row_ + 1
-        # ax_train_2 = fig.add_subplot(spec[row_, 0:4])
-        # ax_po_2 = fig.add_subplot(spec[row_, 4:5])
-        # ax_test_2 = fig.add_subplot(spec[row_, 5:6])
+        #     # update x-axis labels
+        #     axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], rotation=90)
         #
-        # row_ = row_ + 1
-        # ax_train_3 = fig.add_subplot(spec[row_, 0:4])
-        # ax_po_3 = fig.add_subplot(spec[row_, 4:5])
-        # ax_test_3 = fig.add_subplot(spec[row_, 5:6])
+        #     if metric_ == 'MCC':
+        #         axs[i].set_ylim(-1, 1)
+        #     else:
+        #         axs[i].set_ylim(0, 1)
         #
-        # ax_train_dict_ = {0: ax_train_1, 1: ax_train_2, 2: ax_train_3, num_rerurun_model_building - 1: ax_train_3}
-        # ax_po_dict_ = {0: ax_po_1, 1: ax_po_2, 2: ax_po_3, num_rerurun_model_building - 1: ax_po_3}
-        # ax_test_dict_ = {0: ax_test_1, 1: ax_test_2, 2: ax_test_3, num_rerurun_model_building - 1: ax_test_3}
+        # fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
+        #              ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
+        # fig.tight_layout()
         #
-        # # 1) Top Bar
-        # ax_curr_ = ax_top_all
-        # ax_curr_.barh([0], [len(df_no_unlab[df_no_unlab['class'] == 'efficient'])], color=eff_col)
-        # ax_curr_.barh([0], [len(df_mid_undefined)], left=[len(df_no_unlab[df_no_unlab['class'] == 'efficient'])], color=undef_col)
-        # ax_curr_.barh([0], [len(df_no_unlab[df_no_unlab['class'] == 'inefficient'])], left=[len(df_no_unlab[df_no_unlab['class'] == 'efficient']) + len(df_mid_undefined)], color=ineff_col)
-        # ax_curr_.xlims = (0, 1000)
-        # ax_curr_.axis('off')
-        # for container in ax_curr_.containers:
-        #     ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
         #
-        # # 2) Excluded Undefined Bar
-        # ax_curr_ = ax_no_undef
-        # ax_curr_.barh([0], [len(df_no_unlab[df_no_unlab['class'] == 'efficient'])], color=eff_col)
-        # ax_curr_.barh([0], [len(df_no_unlab[df_no_unlab['class'] == 'inefficient'])], left=[len(df_no_unlab[df_no_unlab['class'] == 'efficient'])], color=ineff_col)
-        # ax_curr_.xlims = (0, 1000)
-        # ax_curr_.axis('off')
-        # for container in ax_curr_.containers:
-        #     ax_curr_.bar_label(container, labels=[str(container.datavalues[0]) + '  (' + str(int(np.round(100 * (container.datavalues[0] / len(df_no_unlab)), 0))) + '%)'], label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
-        #
-        # # 3) Data splitting Bar Example
-        # # Labels
-        # ax_train_example.set_title('Training\n' + str(int((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)))) + '% (~' +
-        #                            str((int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100))) + (int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100)))) +
-        #                            ' siRNAs)')
-        #
-        # ax_po_example.set_title('Parameter\nOptimization\n' + str(paramopt_set_size_pcnt_) + '% (~' +
-        #                         str((int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * (paramopt_set_size_pcnt_ / 100))) + (int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (paramopt_set_size_pcnt_ / 100)))) +
-        #                         ' siRNAs)')
-        #
-        # ax_test_example.set_title('Testing\n' + str(test_set_size_pcnt_) + '% (~' +
-        #                           str((int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * (test_set_size_pcnt_ / 100))) + (int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (test_set_size_pcnt_ / 100)))) +
-        #                           ' siRNAs)')
-        #
-        # # Bars
-        # ax_curr_ = ax_train_example
-        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100))], color=eff_col)
-        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100))], left=[int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * ((100 - (test_set_size_pcnt_ + paramopt_set_size_pcnt_)) / 100))], color=ineff_col)
-        # ax_curr_.xlims = (0, 1000)
-        # ax_curr_.axis('off')
-        # for container in ax_curr_.containers:
-        #     ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
-        #
-        # ax_curr_ = ax_po_example
-        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (paramopt_set_size_pcnt_ / 100))], color=eff_col)
-        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * (paramopt_set_size_pcnt_ / 100))], left=[int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (paramopt_set_size_pcnt_ / 100))], color=ineff_col)
-        # ax_curr_.xlims = (0, 1000)
-        # ax_curr_.axis('off')
-        # for container in ax_curr_.containers:
-        #     ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
-        #
-        # ax_curr_ = ax_test_example
-        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (test_set_size_pcnt_ / 100))], color=eff_col)
-        # ax_curr_.barh([0], [int(len(df_no_unlab[df_no_unlab['class'] == 'inefficient']) * (test_set_size_pcnt_ / 100))], left=[int(len(df_no_unlab[df_no_unlab['class'] == 'efficient']) * (test_set_size_pcnt_ / 100))], color=ineff_col)
-        # ax_curr_.xlims = (0, 1000)
-        # ax_curr_.axis('off')
-        # for container in ax_curr_.containers:
-        #     ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
-        #
-        # # 4) Random Splitting (all rounds)
-        # # Train
-        # dataset_ = 'Train'
-        # for n_ in [0, 1, num_rerurun_model_building - 1]:  # range(num_rerurun_model_building)[0:1]:
-        #     # Get dataset for given round
-        #     data_fnm_ = all_output_dir + all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_' + data_fnm_dict[dataset_] + '_' + str(data_pcnt_sz_dict[dataset_]) + 'pcnt_partition.csv'
-        #     df_ = pd.read_csv(data_fnm_)
-        #     df_['class'].value_counts()['efficient']
-        #
-        #     eff_ct_curr_ = df_['class'].value_counts()['efficient']
-        #     ineff_ct_curr_ = df_['class'].value_counts()['inefficient']
-        #
-        #     ax_curr_ = ax_train_dict_[n_]  # ax_train_1
-        #     ax_curr_.barh([0], [eff_ct_curr_], color=eff_col)
-        #     ax_curr_.barh([0], [ineff_ct_curr_], left=[eff_ct_curr_], color=ineff_col)
-        #     ax_curr_.xlims = (0, 1000)
-        #     ax_curr_.axis('off')
-        #     for container in ax_curr_.containers:
-        #         ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
-        #
-        # # Paramopt
-        # dataset_ = 'Paramopt'
-        # for n_ in [0, 1, 2]:  # range(num_rerurun_model_building)[0:1]:
-        #     # Get dataset for given round
-        #     data_fnm_ = all_output_dir + all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_' + data_fnm_dict[dataset_] + '_' + str(data_pcnt_sz_dict[dataset_]) + 'pcnt_partition.csv'
-        #     df_ = pd.read_csv(data_fnm_)
-        #     df_['class'].value_counts()['efficient']
-        #
-        #     eff_ct_curr_ = df_['class'].value_counts()['efficient']
-        #     ineff_ct_curr_ = df_['class'].value_counts()['inefficient']
-        #
-        #     ax_curr_ = ax_po_dict_[n_]  # ax_po_1
-        #     ax_curr_.barh([0], [eff_ct_curr_], color=eff_col)
-        #     ax_curr_.barh([0], [ineff_ct_curr_], left=[eff_ct_curr_], color=ineff_col)
-        #     ax_curr_.xlims = (0, 1000)
-        #     ax_curr_.axis('off')
-        #     for container in ax_curr_.containers:
-        #         ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
-        #
-        # # Test
-        # dataset_ = 'Test'
-        # for n_ in [0, 1, 2]:  # range(num_rerurun_model_building)[0:1]:
-        #     # Get dataset for given round
-        #     data_fnm_ = all_output_dir + all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_' + data_fnm_dict[dataset_] + '_' + str(data_pcnt_sz_dict[dataset_]) + 'pcnt_partition.csv'
-        #     df_ = pd.read_csv(data_fnm_)
-        #     df_['class'].value_counts()['efficient']
-        #
-        #     eff_ct_curr_ = df_['class'].value_counts()['efficient']
-        #     ineff_ct_curr_ = df_['class'].value_counts()['inefficient']
-        #
-        #     ax_curr_ = ax_test_dict_[n_]  # ax_test_1
-        #     ax_curr_.barh([0], [eff_ct_curr_], color=eff_col)
-        #     ax_curr_.barh([0], [ineff_ct_curr_], left=[eff_ct_curr_], color=ineff_col)
-        #     ax_curr_.xlims = (0, 1000)
-        #     ax_curr_.axis('off')
-        #
-        #     for container in ax_curr_.containers:
-        #         ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold', fontsize=12)
-        #
-        # ax_train_1.set_title('      ', rotation=90, fontweight='bold', fontsize=30, fontfamily='Times New Roman')
-        # ax_po_1.set_title('      ', rotation=90, fontweight='bold', fontsize=30, fontfamily='Times New Roman')
-        # ax_test_1.set_title('      ', rotation=90, fontweight='bold', fontsize=30, fontfamily='Times New Roman')
-        #
-        # ax_train_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
-        # ax_po_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
-        # ax_test_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
-        #
-        # # fig.suptitle('Data Splitting',fontweight='bold',color = '#202275')
-        #
-        # # ax_top_all.figure(facecolor='yellow')
-        # # ax_top_all.set_facecolor('yellow')
-        # # ax_po_1.fill('yellow')
-        #
-        # # # ** SAVE FIGURE **
-        # plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-        # fnm_ = (all_output_dir + output_dir__ + '_data_splitting_carton_for_slides')
-        # fnm_svg_ = fnm_
-        #
-        # fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
-        # # print('Figure saved to:',fnm_svg_+'.svg')
-        #
-        # fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=True)
-        # print('Figure saved to:', fnm_ + '.png')
+        # # ** SAVE FIGURE **
+        # plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
+        # fnm_ =     (self.output_directory+ 'figures/'+           'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
+        # fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
+        # fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
+        # fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
+        # print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
+        return
 
 
 
 
-#print("Running directly from main.py...")
-#drb = DataRepresentationBuilder(parameter_to_optimize__ = 'kmer-size')
-##drb = DataRepresentationBuilder(parameter_to_optimize__ = 'flank-length',model_type__ = 'semi-sup-random-forest')
 
 
-#drb.create_processed_datasets()
 
-#pr_po,kf,pr_f,m_f,k_f = drb.run_model_fittings()
-
-#drb.plot_param_opt_precision_recall_curves()
-#drb.plot_final_model_box_plots()
-
-
-# TODO: pickle final models
-# TODO: export metrics/scores to a file?
-# TODO: For Semi-supervised: Add back in the unlabelled data to the testing set?
+# TODO: (maybe?) export metrics/scores from parameter optimization to a file?
+# TODO: (maybe?) For Semi-supervised: Add back in the unlabelled data to the testing set?
 # TODO: add back in undefined middle values and evaluate model (possibly using needle-in-haystack method)
-# TODO: fix errors when running on cluster (semi-supervised?) - see LSF emails
 # TODO: for final boxplots by parameter value include count of models with each parameter value (on x-axis)
 
-#print("Process Complete!")
-
-#print(m_f)
-
-# pr_po,k_po,pr_f,m_f,k_f
 
 # drb = DataRepresentationBuilder(model_type__ = 'random-forest', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,8,9] ,num_rerurun_model_building__=5,flank_len__=10,
 #                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
@@ -3040,5 +2852,5 @@ class DataRepresentationBuilder:
 # drb = DataRepresentationBuilder(model_type__ = 'semi-sup-label-spreading', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
 #                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
 
-drb = DataRepresentationBuilder(model_type__ = 'linear-classification', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
-                                encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
+# drb = DataRepresentationBuilder(model_type__ = 'linear-classification', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
+#                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
