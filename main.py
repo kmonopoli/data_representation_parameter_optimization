@@ -209,13 +209,21 @@ class DataRepresentationBuilder:
                  encoding_ls__ = ['one-hot', 'ann-word2vec-gensim', 'bow-gensim', 'ann-keras', 'bow-countvect'],
                  metric_used_to_id_best_po__='F-Score',
                  f_beta__ = 0.5,
+                 run_param_optimization__ = True,
+                 use_existing_processed_dataset__ = False,
                  ):
         '''
         #########################################################################################################################################
         #####################################        Dataset Parameters (Instance Variables)        #############################################
         #########################################################################################################################################
         '''
+        import pandas as pd
         pd.set_option('display.max_columns', None)
+
+        if not run_param_optimization__:
+            print("IMPORTANT: run_param_optimization__ is set to ("+str(run_param_optimization__)+") so will not be running parameter optimization"+
+                  "(will only be building final models). Any mention of parameter optimization from Constructor can be ignored." )
+
         # Clean input data
         if region__ not in region_types:
             raise ValueError("ERROR: Invalid region name. Expected one of: %s" % region_types)
@@ -277,7 +285,6 @@ class DataRepresentationBuilder:
                 for t_ in custom_parameter_values_to_loop__:
                     if t_ not in encodings_ls:
                         raise ValueError("ERROR: Invalid feature_encoding in custom_parameter_to_optimize__ list : " + str(t_) + " , Expected one of: %s" % encodings_ls)
-
         # Set General parameters
         self.num_rerurun_model_building = num_rerurun_model_building__  # times to rerun building models using INDEPENDENT 80:10:10 datasets
         self.run_round_num = run_round_num__  # NOTE: for running additional looping beyond num_rerurun_model_building__, currently not used
@@ -296,6 +303,8 @@ class DataRepresentationBuilder:
         self.plot_extra_visuals_ = plot_extra_visuals__
         self.metric_used_to_id_best_po = metric_used_to_id_best_po__   # TODO: change to different metric?
         self.f_beta_ = f_beta__
+        self.run_param_optimization_ = run_param_optimization__
+        self.use_existing_processed_dataset_ = use_existing_processed_dataset__
 
         # Splits for Train:Parameter Opt:Test
         self.test_set_size_pcnt_ = 15
@@ -359,52 +368,72 @@ class DataRepresentationBuilder:
             self.unlabelled_data_ = 'PARAMOPT' 
             self.input_unlabeled_data_file = None
 
-        self.all_data_label_str_ = (  # general label describing siRNA data used for model building
-                '-'.join(self.species_ls) +
-                '_' + self.chemical_scaffold_lab +
-                '_' + '-'.join(self.screen_type_ls) +
 
-                '_' + param_norm_label_dict[self.normalized_] +
-                '_effco-' + str(self.effco_) +
-                '|ineffco-' + str(self.ineffco_) + '-' + remove_undefined_label_dict[self.remove_undefined_]
-        ).replace(' ', '_')
+        if not self.use_existing_processed_dataset_:
+            # General label describing siRNA data used for model building
+            self.all_data_label_str_ = (
+                    '-'.join(self.species_ls) +
+                    '_' + self.chemical_scaffold_lab +
+                    '_' + '-'.join(self.screen_type_ls) +
 
-        self.abbrev_all_data_label_str_ = (
-                '-'.join([x[0] for x in self.species_ls]) +
-                '_' + self.chemical_scaffold_lab +
-                '_' + '-'.join(self.screen_type_ls) +
-                '_' + '-'.join([feature_encodings_dict[e] for e in self.feature_encoding_ls]) +
-                '_' + param_norm_label_dict[self.normalized_].replace('alized', '').replace('-', '') +
-                '_' + str(self.effco_) +
-                '-' + str(self.ineffco_) + '-' + remove_undefined_label_dict_abbrev[self.remove_undefined_]
-        ).replace(' ', '_')
-            
-        print("Construction complete!")
-        print("Creating processed datasets...")
-        self.create_processed_datasets()
-        print("Creating processed datasets complete!")
+                    '_' + param_norm_label_dict[self.normalized_] +
+                    '_effco-' + str(self.effco_) +
+                    '|ineffco-' + str(self.ineffco_) + '-' + remove_undefined_label_dict[self.remove_undefined_]
+            ).replace(' ', '_')
+            # Abbreviation of General label describing siRNA data used for model building
+            self.abbrev_all_data_label_str_ = (
+                    '-'.join([x[0] for x in self.species_ls]) +
+                    '_' + self.chemical_scaffold_lab +
+                    '_' + '-'.join(self.screen_type_ls) +
+                    '_' + '-'.join([feature_encodings_dict[e] for e in self.feature_encoding_ls]) +
+                    '_' + param_norm_label_dict[self.normalized_].replace('alized', '').replace('-', '') +
+                    '_' + str(self.effco_) +
+                    '-' + str(self.ineffco_) + '-' + remove_undefined_label_dict_abbrev[self.remove_undefined_]
+            ).replace(' ', '_')
+
+            print("Construction complete!")
+            print("Creating processed datasets...")
+            print("\t all_data_label_str_ = "+str(self.all_data_label_str_))
+            print("\t abbrev_all_data_label_str_ = " + str(self.abbrev_all_data_label_str_))
+            ##self.create_processed_datasets()
+            print("Creating processed datasets complete!")
+        else:
+            print("IMPORTANT: use_existing_processed_dataset__ is set to ("+str(use_existing_processed_dataset__)+") so will use existing processed data to build models")
+            # Exclude semi-supervised model building from utilizing pre-loaded data (since embeddings of unlabeled data are not stored and all data must be embedded at the same time for some embedding methods)
+            if ('semi-sup-' in self.model_type_):
+                raise Exception("ERROR: cannot use existing processed datasets for model type ("+str(self.model_type_)+") because is semi-supervised learning and embeddigs of unlabeled data are not stored")
+            if (self.parameter_to_optimize == 'model') and (np.any(['semi-sup' in x for x in self.param_values_to_loop_])):
+                raise Exception("ERROR: cannot use existing processed datasets if optimizing model type when one or more of those models utilize semi-supervised learning"+
+                                " ("+str(self.param_values_to_loop_)+") because embeddigs of unlabeled data are not stored")
+
+            self.load_in_existing_process_datasets()
+
         print("Running model fittings...")
         #pr_po, k_po, pr_f, m_f, k_f = self.run_model_fittings()
         self.run_model_fittings()
 
         print("Model Fittings complete!")
 
-        print("Ploting precision-recall curves from Parameter Optimization...")
-        self.plot_param_opt_precision_recall_curves()
-        print("Ploting precision-recall curves from Final Model Building...")
-        self.plot_final_model_precision_recall_curves()
-        self.plot_final_model_top_precision_recall_curves()
-        print("Curve plotting complete!")
-
-        print("Plotting box plots from Parameter Optimization...")
-        self.plot_param_opt_model_box_plots()
-        print("Plotting box plots from Final Model Building...")
-        self.plot_final_model_box_plots_per_param_val()
-        self.plot_final_model_box_plots_per_metric()
-        print("Box plotting complete!")
-
-        print("PROCESS FINISHED")
-        #return ## End constructor
+        # if self.run_param_optimization_:
+        #     print("Ploting precision-recall curves from Parameter Optimization...")
+        #     self.plot_param_opt_precision_recall_curves()
+        #
+        # print("Ploting precision-recall curves from Final Model Building...")
+        # self.plot_final_model_precision_recall_curves()
+        # self.plot_final_model_top_precision_recall_curves()
+        # print("Curve plotting complete!")
+        #
+        # if self.run_param_optimization_:
+        #     print("Plotting box plots from Parameter Optimization...")
+        #     self.plot_param_opt_model_box_plots()
+        #
+        # print("Plotting box plots from Final Model Building...")
+        # self.plot_final_model_box_plots_per_param_val()
+        # self.plot_final_model_box_plots_per_metric()
+        # print("Box plotting complete!")
+        #
+        # print("PROCESS FINISHED")
+        # #return ## End constructor
 
     def plot_thresholds(self, df_, figure_label_, output_dir__='', savefig=True):
         fig, ax = plt.subplots()
@@ -525,6 +554,35 @@ class DataRepresentationBuilder:
 
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png')
+
+    def load_in_existing_process_datasets(self):
+        '''
+        Loads in existing pre-processed (embedded and split) data
+        Also updates all class variables/parameters that are set/defined when calling create_processed_datasets()
+
+        Only supported for supervised model building
+        '''
+
+        # TODO: Finish writing code to manage utilizing existing dataset:
+        #  1) find correct dataset file name (matching input parameters)
+        #  2) load in unlabeled data on the fly (since cannot store it)
+
+        raise Exception("TODO: Finish writing code to load in existing pre-processed datasets")
+
+        # TODO: Set parameters normally set when calling create_processed_datasets()
+
+        # TODO: Set parameters normally set when calling perform_feature_embedding()
+
+        # TODO: Set parameters normally set when calling split_train_test_paramopt()
+
+        # TODO: (possibly, might not be necessary since not always called when processing data?) Set parameters normally set when calling plot_data_splits()
+        # TODO: (possibly, might not be necessary since not always called when processing data?) Set parameters normally set when calling plot_pie_of_data_splits()
+        # TODO: (possibly, might not be necessary since not always called when processing data?) Set parameters normally set when calling plot_bar_data_splits()
+
+        # Set parameters normally set when calling load_in_unlab_data()
+        self.indxs_mid_undefined = list(self.df[self.df['numeric_class'] == -1].index)
+        self.indxs_labeled_data = list(self.df.index)
+
 
     def create_processed_datasets(self):
         print("Creating processed datasets...")
@@ -1634,86 +1692,100 @@ class DataRepresentationBuilder:
         ###################################      (Parameter Optimization & Final Model Building)     ############################################
         #########################################################################################################################################
 
+    #########################################################################################################################################
+    ##################################################           Run Model Fittings           ###############################################
+    #########################################################################################################################################
 
 
     def run_model_fittings(self):
-        print("Running model fittings..")
-
-        # Create a unique self.modeltrain_id_
-        from random import randint
-        # self.modeltrain_id_ = 'SUPk'+str(randint(10000, 99999) ) # ID used to find output data filie
-        self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
-        # be sure modeltrain_id_ doesn't exist already
-        while self.modeltrain_id_ in [x[0:9] for x in os.listdir(all_output_dir)]:
-            self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
-            # print("self.modeltrain_id_ already exists, generating new ID...")
-            # print("NEW self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
-        print("self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
-        self.all_output_dir_param_opt_round_ = 'popt-' + str(self.modeltrain_id_) + '_' + self.parameter_to_optimize + '_total-' + str(self.run_round_num) + '-rounds/'
-        if not os.path.exists(all_output_dir + self.all_output_dir_param_opt_round_):
-            os.makedirs(all_output_dir + self.all_output_dir_param_opt_round_)
-            print("Output for all " + str(self.run_round_num) + " Parameter Optimization Rounds stored in:\n" + os.getcwd() + all_output_dir + self.all_output_dir_param_opt_round_)
-
-        self.output_directory = 'output_' + model_type_dict[self.model_type_] + '_run_' + str(self.modeltrain_id_) + '_' + self.date_
-        self.output_directory += '/'
-        self.output_directory = all_output_dir + self.all_output_dir_param_opt_round_ + self.output_directory
-
-        if not os.path.exists(self.output_directory):
-            os.makedirs(self.output_directory)
-            print("Output data stored in:\n" + os.getcwd() + self.output_directory)
-            if not os.path.exists(self.output_directory + 'figures/'):
-                os.makedirs(self.output_directory + 'figures/')
-            if not os.path.exists(self.output_directory + 'figures/svg_figs/'):
-                os.makedirs(self.output_directory + 'figures/svg_figs/')
-            if not os.path.exists(self.output_directory + 'models/'):
-                os.makedirs(self.output_directory + 'models/')
-            if not os.path.exists(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/'):
-                os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/')
-            if not os.path.exists(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/'):
-                os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/')
+        '''
+        Calls methods to build models
+         * If self.run_param_optimization_ == True:
+            * will run parameter optimiztion AND build final models
+        * If self.run_param_optimization_ == False:
+            * Will run separate final model building method
+        '''
+        if self.run_param_optimization_:
+            print("Running model fittings for both Parameter Optimization and after Final Model Building..")
         else:
-            raise Exception(
-                'ERROR: folder with name "' + self.output_directory.replace(all_output_dir + self.all_output_dir_param_opt_round_,
-                                                                            '') + '" already exists in ' + os.getcwd() + all_output_dir + self.all_output_dir_param_opt_round_ +
-                '\n - To re-run and build models with same conditions rename existing output folder' + '\n\n' +
-                'If continue will OVERWRITE data in this folder')
+            print("Running model fittings ONLY for final models (no parameter optimization)")
 
-        ## File info string used so can label figures from parameter optimization with all appropriate IDs even before parameters have been optimized
-        ##    NOTE: comment out parameter(s) to be optimized and replace value with 'PARAMOPT':
 
-        self.output_run_file_info_string_ = (
-                'data-' + str(self.datasplit_id_) + '_popt-' + str(self.modeltrain_id_) +
-                '_' + '-'.join(self.species_ls) +
-                '_' + self.chemical_scaffold_lab +
-                '_' + '-'.join(self.screen_type_ls) +
-
-                '_' + str(param_norm_label_dict[self.normalized_]) +
-                '_effco-' + str(self.effco_) +
-                '|ineffco-' + str(self.ineffco_) + '-' + str(remove_undefined_label_dict[self.remove_undefined_]) +
-                '_PARAMOPT-'+str(self.parameter_to_optimize).replace('_', '-').replace(' ','-') +
-
-                '_' + self.region_.replace('_', '-') +
-                '_flank-len-' + str(self.flank_len_) +
-                '_kmer-size-' + str(self.kmer_size_) +
-                '_model-'+self.model_type_.replace('_', '-').replace(' ','-') +
-                '_' + '-'.join([x.replace('_', '-').replace(' ','-') for x in self.feature_encoding_ls]) +
-
-                '_window-size-' + str(self.window_size_) +
-                '_word-freq-cutoff-' + str(self.word_freq_cutoff_) +
-
-                '_n-rounds-' + str(self.num_rerurun_model_building) +
-                '_hldout-' + str(self.test_set_size_pcnt_) +
-
-                '_' + self.unlabelled_data_ +
-                '_paramopt_pcnt_sz-' + str(self.paramopt_set_size_pcnt_) +
-                '_' + self.date_
-        )
-        # Perform Parameter Optimization first
-        self.parameter_optimization()
-        # Build Final Models
-        self.build_final_models()
-
-        return #(self.paramop_performance_curves_encodings_dict, self.paramop_key_ls,self.final_performance_curves_encodings_dict, self.final_performance_metrics_encodings_dict, self.final_key_ls)
+        # # Create a unique self.modeltrain_id_
+        # from random import randint
+        # # self.modeltrain_id_ = 'SUPk'+str(randint(10000, 99999) ) # ID used to find output data filie
+        # self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
+        # # be sure modeltrain_id_ doesn't exist already
+        # while self.modeltrain_id_ in [x[0:9] for x in os.listdir(all_output_dir)]:
+        #     self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
+        #     # print("self.modeltrain_id_ already exists, generating new ID...")
+        #     # print("NEW self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
+        # print("self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
+        # self.all_output_dir_param_opt_round_ = 'popt-' + str(self.modeltrain_id_) + '_' + self.parameter_to_optimize + '_total-' + str(self.run_round_num) + '-rounds/'
+        # if not os.path.exists(all_output_dir + self.all_output_dir_param_opt_round_):
+        #     os.makedirs(all_output_dir + self.all_output_dir_param_opt_round_)
+        #     print("Output for all " + str(self.run_round_num) + " Parameter Optimization Rounds stored in:\n" + os.getcwd() + all_output_dir + self.all_output_dir_param_opt_round_)
+        #
+        # self.output_directory = 'output_' + model_type_dict[self.model_type_] + '_run_' + str(self.modeltrain_id_) + '_' + self.date_
+        # self.output_directory += '/'
+        # self.output_directory = all_output_dir + self.all_output_dir_param_opt_round_ + self.output_directory
+        #
+        # if not os.path.exists(self.output_directory):
+        #     os.makedirs(self.output_directory)
+        #     print("Output data stored in:\n" + os.getcwd() + self.output_directory)
+        #     if not os.path.exists(self.output_directory + 'figures/'):
+        #         os.makedirs(self.output_directory + 'figures/')
+        #     if not os.path.exists(self.output_directory + 'figures/svg_figs/'):
+        #         os.makedirs(self.output_directory + 'figures/svg_figs/')
+        #     if not os.path.exists(self.output_directory + 'models/'):
+        #         os.makedirs(self.output_directory + 'models/')
+        #     if not os.path.exists(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/'):
+        #         os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/')
+        #     if not os.path.exists(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/'):
+        #         os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/')
+        # else:
+        #     raise Exception(
+        #         'ERROR: folder with name "' + self.output_directory.replace(all_output_dir + self.all_output_dir_param_opt_round_,
+        #                                                                     '') + '" already exists in ' + os.getcwd() + all_output_dir + self.all_output_dir_param_opt_round_ +
+        #         '\n - To re-run and build models with same conditions rename existing output folder' + '\n\n' +
+        #         'If continue will OVERWRITE data in this folder')
+        #
+        # ## File info string used so can label figures from parameter optimization with all appropriate IDs even before parameters have been optimized
+        # ##    NOTE: comment out parameter(s) to be optimized and replace value with 'PARAMOPT':
+        #
+        # self.output_run_file_info_string_ = (
+        #         'data-' + str(self.datasplit_id_) + '_popt-' + str(self.modeltrain_id_) +
+        #         '_' + '-'.join(self.species_ls) +
+        #         '_' + self.chemical_scaffold_lab +
+        #         '_' + '-'.join(self.screen_type_ls) +
+        #
+        #         '_' + str(param_norm_label_dict[self.normalized_]) +
+        #         '_effco-' + str(self.effco_) +
+        #         '|ineffco-' + str(self.ineffco_) + '-' + str(remove_undefined_label_dict[self.remove_undefined_]) +
+        #         '_PARAMOPT-'+str(self.parameter_to_optimize).replace('_', '-').replace(' ','-') +
+        #
+        #         '_' + self.region_.replace('_', '-') +
+        #         '_flank-len-' + str(self.flank_len_) +
+        #         '_kmer-size-' + str(self.kmer_size_) +
+        #         '_model-'+self.model_type_.replace('_', '-').replace(' ','-') +
+        #         '_' + '-'.join([x.replace('_', '-').replace(' ','-') for x in self.feature_encoding_ls]) +
+        #
+        #         '_window-size-' + str(self.window_size_) +
+        #         '_word-freq-cutoff-' + str(self.word_freq_cutoff_) +
+        #
+        #         '_n-rounds-' + str(self.num_rerurun_model_building) +
+        #         '_hldout-' + str(self.test_set_size_pcnt_) +
+        #
+        #         '_' + self.unlabelled_data_ +
+        #         '_paramopt_pcnt_sz-' + str(self.paramopt_set_size_pcnt_) +
+        #         '_' + self.date_
+        # )
+        # # Perform Parameter Optimization first
+        # self.parameter_optimization()
+        # # Build Final Models
+        # self.build_final_models()
+        #
+        # return #(self.paramop_performance_curves_encodings_dict, self.paramop_key_ls,self.final_performance_curves_encodings_dict, self.final_performance_metrics_encodings_dict, self.final_key_ls)
 
 
 
