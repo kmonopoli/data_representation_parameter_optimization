@@ -42,12 +42,18 @@ pylab.rcParams.update(params)
 # For organizing output files, everything will go into this folder
 all_output_dir = 'output_model_fitting/'
 
+# For storing parameter info from data processing to access pre-processed datasets
+processed_dataset_parameters_index_file = 'processed-data-param-index.csv'
+
+
 # Directory path to and file holding siRNA data
 input_data_dir = 'new_input_data/'
 #input_data_dir = '/Users/kmonopoli/Dropbox (UMass Medical School)/compiling_sirna_screening_data/'
 input_data_file = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sirnas-bdna-75-genes_JAN-29-2024.csv'
 #input_data_file = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_(4392sirnas-bdna|75-genes)_JAN-29-2024.csv'
 
+# Holds additional siRNA data for evaluating final models
+external_data_file = 'newly_added_sirna_screen_data_777-sirnas|-bdna_FEB-22-2024.csv'
 
 # Dictionaries used for labelling
 remove_undefined_label_dict = {True: 'removed undefined siRNAs', False: 'retained undefined siRNAs'}
@@ -123,7 +129,7 @@ param_id_dict = {  # Dictionary containing all possible parameters to optmize ma
     'unlabeled_data_type':'u',
     'unlabeled_data_size':'z',
     'feature_encoding':'e',
-    None:'n',
+    'None':'n',
     # Note: if add more parameters to optimize, add them here
 }
 ### TODO: ERROR Model optimization --> ValueError: Input contains NaN.
@@ -177,9 +183,10 @@ default_params_to_loop_dict = {
     'unlabeled_data_type': unlabelled_data_types,
     'unlabeled_data_size': [0.00, 0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 1.00],  # decimal proportion of whole unlabelled dataset to take (0.50 = 50%, 1.00 = 100%)
     'feature_encoding':encodings_ls,
-    None: [],
+    'None': [],
     # Note: if add more parameters to optimize, add them here
 }
+
 
 
 #print("TEST - running Main 3: After global variables")
@@ -211,6 +218,7 @@ class DataRepresentationBuilder:
                  f_beta__ = 0.5,
                  run_param_optimization__ = True,
                  use_existing_processed_dataset__ = False,
+                 apply_final_models_to_external_dataset__ = False, # whether or not to use external_data_file to evaluate final models
                  ):
         '''
         #########################################################################################################################################
@@ -223,6 +231,10 @@ class DataRepresentationBuilder:
         if not run_param_optimization__:
             print("IMPORTANT: run_param_optimization__ is set to ("+str(run_param_optimization__)+") so will not be running parameter optimization"+
                   "(will only be building final models). Any mention of parameter optimization from Constructor can be ignored." )
+
+        if not run_param_optimization__:
+            if parameter_to_optimize__ != 'None':
+                raise Exception("ERROR: if run_param_optimization__ is set to (" + str(run_param_optimization__) + " parameter_to_optimize__ must be set to 'None' but is currently (" + str(parameter_to_optimize__) + ")")
 
         # Clean input data
         if region__ not in region_types:
@@ -301,10 +313,11 @@ class DataRepresentationBuilder:
         self.parameter_to_optimize = parameter_to_optimize__
         self.plot_grid_splits_ = plot_grid_splits__
         self.plot_extra_visuals_ = plot_extra_visuals__
-        self.metric_used_to_id_best_po = metric_used_to_id_best_po__   # TODO: change to different metric?
+        self.metric_used_to_id_best_po = metric_used_to_id_best_po__  # TODO: change to different metric?
         self.f_beta_ = f_beta__
         self.run_param_optimization_ = run_param_optimization__
         self.use_existing_processed_dataset_ = use_existing_processed_dataset__
+        self.apply_final_models_to_external_dataset_ = apply_final_models_to_external_dataset__ # whether or not to use external_data_file to evaluate final models
 
         # Splits for Train:Parameter Opt:Test
         self.test_set_size_pcnt_ = 15
@@ -332,6 +345,8 @@ class DataRepresentationBuilder:
             else:
                 self.param_opt_working_keys_ls = []
 
+        print("NOTE: parameter_to_optimize = ("+str(self.parameter_to_optimize)+") if this parameter was set in the input, it will be ignored!"+
+              "\t Instead will consider these parameter values: [ "+str(', '.join([str(x) for x in self.param_values_to_loop_])) + "]" )
 
         if self.parameter_to_optimize == 'kmer-size':
             self.kmer_size_ = 'PARAMOPT' 
@@ -353,7 +368,7 @@ class DataRepresentationBuilder:
         elif self.parameter_to_optimize == 'feature_encoding':
             self.feature_encoding_ls = self.param_values_to_loop_
         else:
-            self.parameter_to_optimize = None
+            self.parameter_to_optimize = 'None'
             if len(custom_parameter_values_to_loop__) != 0:
                 raise ValueError("ERROR: custom_parameter_values_to_loop__ is not empty but parameter_to_optimize was:" + str(self.parameter_to_optimize))
 
@@ -368,8 +383,37 @@ class DataRepresentationBuilder:
             self.unlabelled_data_ = 'PARAMOPT' 
             self.input_unlabeled_data_file = None
 
+        # Get date - for labeling and saving files
+        self.date_ = calendar.month_abbr[datetime.now().month].upper() + '-' + str(datetime.now().day) + '-' + str(
+            datetime.now().year)
+        print("Date set successfully!",str(self.date_))
 
-        if not self.use_existing_processed_dataset_:
+        #print("Construction complete!")
+
+
+        existing_dataset_dir__ = ''
+        if self.use_existing_processed_dataset_:
+            print("Searching for existing pre-processed data with matching parameters...")
+            # Exclude semi-supervised model building from utilizing pre-loaded data (since embeddings of unlabeled data are not stored and all data must be embedded at the same time for some embedding methods)
+            if ('semi-sup-' in self.model_type_):
+                raise Exception("ERROR: cannot use existing processed datasets for model type (" + str(self.model_type_) + ") because is semi-supervised learning and embeddigs of unlabeled data are not stored")
+            if (self.parameter_to_optimize == 'model') and (np.any(['semi-sup' in x for x in self.param_values_to_loop_])):
+                raise Exception("ERROR: cannot use existing processed datasets if optimizing model type when one or more of those models utilize semi-supervised learning" +
+                                " (" + str(self.param_values_to_loop_) + ") because embeddings of unlabeled data are not stored")
+
+            # First identify directory of pre-processed dataset matching current parameters to load in (if it exists)
+            existing_dataset_dir__ = self.find_existing_processed_datasets()
+
+        # Load in existing pre-processed data (only if it exists)
+        if self.use_existing_processed_dataset_ and (existing_dataset_dir__ != ''):
+            print("IMPORTANT: use_existing_processed_dataset__ is set to (" + str(use_existing_processed_dataset__) + ") so will use existing processed data to build models")
+            print("Loading in pre-processed dataset ("+str(existing_dataset_dir__)+") ...")
+            self.load_in_existing_process_datasets(existing_dataset_dir__)
+
+            print("Loading existing pre-processed datasets complete!")
+
+        else:
+            print("Creating processed datasets...")
             # General label describing siRNA data used for model building
             self.all_data_label_str_ = (
                     '-'.join(self.species_ls) +
@@ -391,49 +435,48 @@ class DataRepresentationBuilder:
                     '-' + str(self.ineffco_) + '-' + remove_undefined_label_dict_abbrev[self.remove_undefined_]
             ).replace(' ', '_')
 
-            print("Construction complete!")
-            print("Creating processed datasets...")
+
             print("\t all_data_label_str_ = "+str(self.all_data_label_str_))
             print("\t abbrev_all_data_label_str_ = " + str(self.abbrev_all_data_label_str_))
-            ##self.create_processed_datasets()
-            print("Creating processed datasets complete!")
-        else:
-            print("IMPORTANT: use_existing_processed_dataset__ is set to ("+str(use_existing_processed_dataset__)+") so will use existing processed data to build models")
-            # Exclude semi-supervised model building from utilizing pre-loaded data (since embeddings of unlabeled data are not stored and all data must be embedded at the same time for some embedding methods)
-            if ('semi-sup-' in self.model_type_):
-                raise Exception("ERROR: cannot use existing processed datasets for model type ("+str(self.model_type_)+") because is semi-supervised learning and embeddigs of unlabeled data are not stored")
-            if (self.parameter_to_optimize == 'model') and (np.any(['semi-sup' in x for x in self.param_values_to_loop_])):
-                raise Exception("ERROR: cannot use existing processed datasets if optimizing model type when one or more of those models utilize semi-supervised learning"+
-                                " ("+str(self.param_values_to_loop_)+") because embeddigs of unlabeled data are not stored")
 
-            self.load_in_existing_process_datasets()
+            self.create_processed_datasets()
+            print("Creating processed datasets complete!")
 
         print("Running model fittings...")
-        #pr_po, k_po, pr_f, m_f, k_f = self.run_model_fittings()
         self.run_model_fittings()
-
         print("Model Fittings complete!")
 
-        # if self.run_param_optimization_:
-        #     print("Ploting precision-recall curves from Parameter Optimization...")
-        #     self.plot_param_opt_precision_recall_curves()
-        #
-        # print("Ploting precision-recall curves from Final Model Building...")
-        # self.plot_final_model_precision_recall_curves()
-        # self.plot_final_model_top_precision_recall_curves()
-        # print("Curve plotting complete!")
-        #
-        # if self.run_param_optimization_:
-        #     print("Plotting box plots from Parameter Optimization...")
-        #     self.plot_param_opt_model_box_plots()
-        #
-        # print("Plotting box plots from Final Model Building...")
-        # self.plot_final_model_box_plots_per_param_val()
-        # self.plot_final_model_box_plots_per_metric()
-        # print("Box plotting complete!")
-        #
-        # print("PROCESS FINISHED")
-        # #return ## End constructor
+        # TODO: apply final model(s) to external dataset (can it be embedded separately?)
+
+
+        if self.run_param_optimization_:
+            print("Ploting precision-recall curves from Parameter Optimization...")
+            self.plot_param_opt_precision_recall_curves()
+
+        print("Ploting precision-recall curves from Final Model Building...")
+        self.plot_final_model_precision_recall_curves()
+        self.plot_final_model_top_precision_recall_curves()
+        if self.apply_final_models_to_external_dataset_:
+            print("Ploting precision-recall curves from Final Model Building evaluated on External Dataset...")
+            self.plot_final_model_precision_recall_curves_on_ext_dataset()
+            self.plot_final_model_top_precision_recall_curves_on_ext_dataset()
+        print("Curve plotting complete!")
+
+        if self.run_param_optimization_:
+            print("Plotting box plots from Parameter Optimization...")
+            self.plot_param_opt_model_box_plots()
+
+        print("Plotting box plots from Final Model Building...")
+        self.plot_final_model_box_plots_per_param_val()
+        self.plot_final_model_box_plots_per_metric()
+        if self.apply_final_models_to_external_dataset_:
+            print("Plotting box plots from Final Model Building evaluated on External Dataset...")
+            #self.plot_final_model_box_plots_per_metric_on_ext_dataset()
+            self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
+        print("Box plotting complete!")
+
+        print("PROCESS FINISHED")
+        return ## End constructor
 
     def plot_thresholds(self, df_, figure_label_, output_dir__='', savefig=True):
         fig, ax = plt.subplots()
@@ -555,19 +598,98 @@ class DataRepresentationBuilder:
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png')
 
-    def load_in_existing_process_datasets(self):
+    def find_existing_processed_datasets(self):
+        '''
+        Find correct dataset directory name (matching input parameters) for pre-processed (enbedded and split) data
+        :return: name of directory holding suitable pre-processed data OR "" if no pre-processed data exist with given parameters
+        '''
+        # Create string row to use to search processed_dataset_parameters_index_file for an existing pre-processed dataset to load in
+        query_data_split_info_dict = {
+            ##'all_data_split_dir':self.all_data_split_dir,
+            'num_rerurun_model_building': self.num_rerurun_model_building,  # times to rerun building models using INDEPENDENT 80:10:10 datasets
+            'run_round_num': self.run_round_num,  # NOTE: for running additional looping beyond num_rerurun_model_building currently not used
+            'screen_type_ls': self.screen_type_ls,  # NOTE: DualGlo will not have flanking regions
+            'species_ls': self.species_ls,
+            'chemical_scaffold_ls': self.chemical_scaffold_ls,
+            'chemical_scaffold_lab': self.chemical_scaffold_lab,
+            'normalized_': self.normalized_,
+            'effco_': self.effco_,
+            'ineffco_': self.ineffco_,
+            'remove_undefined_': self.remove_undefined_,
+            'region_': self.region_,
+            'includes_targ_region_': self.includes_targ_region_,
+            'parameter_to_optimize': self.parameter_to_optimize,
+            'test_set_size_pcnt_': self.test_set_size_pcnt_,
+            'paramopt_set_size_pcnt_': self.paramopt_set_size_pcnt_,
+            'split_set_size_pcnt_': self.split_set_size_pcnt_,
+            'allowed_classification_prop_deviation_pcnt_': self.allowed_classification_prop_deviation_pcnt_,  # percentage of data allowed to be off for classification proportions
+            'kmer_size_': self.kmer_size_,
+            'flank_len_': self.flank_len_,  # length on each side (e.g. 50 --> 120nt total length: 50mer 5' flank +20mer target region + 50mer 3' flank)
+            'window_size_': self.window_size_,
+            'word_freq_cutoff_': self.word_freq_cutoff_,  # Number of times a word must occur in the Bag-of-words Corpus --> when word_freq_cutoff' : self.1 only include words that occur more than once
+            'output_dimmension_': self.output_dimmension_,  # output dimmensino of ANN embedding
+            'expr_key': self.expr_key,
+            'feature_encoding_ls': self.feature_encoding_ls,
+            'param_values_to_loop_': self.param_values_to_loop_,
+            'apply_final_models_to_external_dataset_': self.apply_final_models_to_external_dataset_,
+
+        }
+        query_row_string_ = ''
+        for k in query_data_split_info_dict.keys():
+            if type(query_data_split_info_dict[k]) == list:
+                query_row_string_ += (str(';'.join(query_data_split_info_dict[k])) + ',')
+            else:
+                query_row_string_ += (str(query_data_split_info_dict[k]) + ',')
+
+        # Read processed_dataset_parameters_index_file to identify pre-processed dataset(s) (if any) that match current parameters
+        if not os.path.exists(processed_dataset_parameters_index_file):
+            # If processed_dataset_parameters_index_file file does not already exist then can't load in data
+            print("WARNING: processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + ") file containing information to index pre-processed data does not exist, so cannot load in pre-processed dataset ")
+            return  "" # call create processed datasets since cannot find info to load any existing datasets
+
+        else:
+            with open(processed_dataset_parameters_index_file, 'r') as f:
+                lines_ = f.readlines()[1:]
+            f.close()
+
+            row_strings_ls = []
+            for l, indx_ in zip(lines_, range(len(lines_))):
+                row_strings_ls.append(str(indx_) + '~~~' + ','.join(l.split('***BREAK***')[0].split(',')[1:]))
+
+            # Identify any values in row_strings_ls that match row_strings_ls
+            matching_rows_ls = [x for x in row_strings_ls if x.split('~~~')[-1] == query_row_string_]
+            if len(matching_rows_ls) == 0:
+                print("WARNING: no data with parameters matching this run found in processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + "), cannot load in pre-processed dataset ")
+                print('\n\nquery_row_string_:')
+                print(query_row_string_)
+                print('\n\n 1st in row_strings_ls:')
+                print(row_strings_ls[0].split('~~~')[-1])
+                print('\n\n')
+                return "" # call create processed datasets since cannot find info to load any existing datasets
+            else:
+                # Select directory name based off of matching_rows_ls to return
+                print("Found", len(matching_rows_ls), "indicies with data parameters matching those for this run")
+                if len(matching_rows_ls) > 1:
+                    print("Selecting first occurrence") # TODO: update to pick randomly?
+                # If more than one match, picks first occurrence
+                indx_match_ = int(matching_rows_ls[0].split('~~~')[0])
+                match_dir_ = lines_[indx_match_].split(',')[0]
+                print("Pre-processed data directory selected:\n\t\t",match_dir_,'\n')
+                return match_dir_
+
+    def load_in_existing_process_datasets(preproc_data_dir, self):
         '''
         Loads in existing pre-processed (embedded and split) data
         Also updates all class variables/parameters that are set/defined when calling create_processed_datasets()
-
         Only supported for supervised model building
         '''
 
-        # TODO: Finish writing code to manage utilizing existing dataset:
-        #  1) find correct dataset file name (matching input parameters)
-        #  2) load in unlabeled data on the fly (since cannot store it)
+        # TODO: Finish writing code to load in and manage utilizing existing dataset:
+
 
         raise Exception("TODO: Finish writing code to load in existing pre-processed datasets")
+
+
 
         # TODO: Set parameters normally set when calling create_processed_datasets()
 
@@ -585,20 +707,51 @@ class DataRepresentationBuilder:
 
 
     def create_processed_datasets(self):
+
         print("Creating processed datasets...")
-        # Get date - for labeling and saving files
-        self.date_ = calendar.month_abbr[datetime.now().month].upper() + '-' + str(datetime.now().day) + '-' + str(
-            datetime.now().year)
-        print("Date set successfully!",str(self.date_))
+
         # Read in Data
-        try:
-            print("Trying to read in xlsx data")
-            self.df = pd.read_excel(input_data_dir + input_data_file)
-            print("Successfully read in xlsx data")
-        except:
-            print("Trying to read in .csv data")
-            self.df = pd.read_csv(input_data_dir + input_data_file)
-            print("Successfully read in .csv data")
+        # Not using additional external dataset to evaluate final models
+        if not self.apply_final_models_to_external_dataset_:
+            try:
+                print("Trying to read in xlsx data")
+                self.df = pd.read_excel(input_data_dir + input_data_file)
+                print("Successfully read in xlsx data")
+            except:
+                print("Trying to read in .csv data")
+                self.df = pd.read_csv(input_data_dir + input_data_file)
+                print("Successfully read in .csv data")
+
+        else:# Using additional external dataset to evaluate final models
+            print("IMPORTANT: apply_final_models_to_external_dataset_ set to ("+str(self.apply_final_models_to_external_dataset_)+") so using additional external dataset to evaluate final models")
+            print("Loading in external_data_file ("+str(external_data_file)+") along with input_data_file ...")
+            try:
+                print("Trying to read in xlsx data")
+                self.df = pd.read_excel(input_data_dir + input_data_file)
+                print("Successfully read in xlsx data (input dataset) - "+str(len(self.df))+' siRNAs')
+            except:
+                print("Trying to read in .csv data")
+                self.df = pd.read_csv(input_data_dir + input_data_file)
+                print("Successfully read in .csv data (input dataset) - "+str(len(self.df))+' siRNAs')
+
+            try:
+                print("Trying to read in xlsx data (external dataset)")
+                df_ext = pd.read_excel(input_data_dir + external_data_file)
+                print("Successfully read in xlsx data (external dataset) - "+str(len(df_ext))+' siRNAs')
+            except:
+                print("Trying to read in .csv data (external dataset)")
+                df_ext = pd.read_csv(input_data_dir + external_data_file)
+                print("Successfully read in .csv data (external dataset) - "+str(len(df_ext))+' siRNAs')
+
+            # add additional column to keep track of if external data or original data
+            self.df['from_external_test_dataset'] = [False] * len(self.df)
+            df_ext['from_external_test_dataset'] = [True] * len(df_ext)
+
+            # append external dataset dataframe to original dataset dataframe
+            self.df = pd.concat([self.df, df_ext], axis=0)
+            self.df.reset_index(inplace=True, drop=True)
+            self.df.sort_values(by='from_external_test_dataset', ascending=True, inplace=True)
+            print('Successfully concatenated input and external datasets')
 
         self.df.drop(columns=['expression_replicate_1', 'expression_replicate_2', 'expression_replicate_3', 'ntc_replicate_1', 'ntc_replicate_2', 'ntc_replicate_3', 'untreated_cells_replicate_1', 'untreated_cells_replicate_2', 'untreated_cells_replicate_3'], inplace=True)
 
@@ -658,7 +811,7 @@ class DataRepresentationBuilder:
                 raise Exception("ERROR: some target sequences' surrounding regions are too short to extract longest flanking region")
 
             if self.parameter_to_optimize != 'flank-length':
-                self.longest_flank_len = max(self.param_values_to_loop_)
+                self.longest_flank_len = self.flank_len_
                 if 'target' in self.region_:
                     self.flank_seq_working_key += '_target'
                     print("***********")
@@ -787,11 +940,24 @@ class DataRepresentationBuilder:
             self.df_unlab['numeric_class'] = [-1] * len(self.df_unlab)
             for c in ['experiment_name', 'expression_percent_normalized_by_max_min', 'expression_percent_normalized_by_z_score', 'standard_deviation_normalized_by_subtracting_mean', 'cleaned_bdna_p2p3p5_human-mouse']:
                 self.df_unlab[c] = np.nan
+
+            if self.apply_final_models_to_external_dataset_:
+                self.df_unlab['from_external_test_dataset'] = [False] * len(self.df_unlab)
+
             self.df_unlab = self.df_unlab[list(self.df.columns)] # reorder columns to match labelled self.df
             # Combine unlabelled and labelled data into a single dataframe
             #self.df_before_adding_u = self.df.copy() # make a backup of self.df
-            self.indxs_labeled_data = list(self.df.index)
-            self.indxs_mid_undefined = list(self.df[self.df['numeric_class'] == -1].index)
+
+            if self.apply_final_models_to_external_dataset_:
+                # only include data from initial dataset in indxs_mid_undefined  and indxs_labeled_data
+                self.indxs_labeled_data = list(self.df[~self.df['from_external_test_dataset']].index)
+                self.indxs_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (~self.df['from_external_test_dataset'])].index)
+                self.indxs_ext_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (self.df['from_external_test_dataset'])].index)
+
+            else:
+                self.indxs_labeled_data = list(self.df.index)
+                self.indxs_mid_undefined = list(self.df[ self.df['numeric_class'] == -1 ].index)
+
             self.df = pd.concat(
                 [self.df, self.df_unlab],  # NOTE: ORDER HERE MATTERS self.df MUST COME FIRST (code below uses indicies)
                 axis=0,
@@ -805,8 +971,15 @@ class DataRepresentationBuilder:
             )
         else:
             print(self.model_type_, "Does not use unlabeled data")
-            self.indxs_mid_undefined = list(self.df[self.df['numeric_class'] == -1].index)
-            self.indxs_labeled_data = list(self.df.index)
+            if self.apply_final_models_to_external_dataset_:
+                # only include data from initial dataset in indxs_mid_undefined  and indxs_labeled_data
+                self.indxs_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (~self.df['from_external_test_dataset'])].index)
+                self.indxs_labeled_data = list(self.df[~self.df['from_external_test_dataset']].index)
+                self.indxs_ext_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (self.df['from_external_test_dataset'])].index)
+
+            else:
+                self.indxs_mid_undefined = list(self.df[self.df['numeric_class'] == -1].index)
+                self.indxs_labeled_data = list(self.df.index)
 
 
 
@@ -925,16 +1098,102 @@ class DataRepresentationBuilder:
             raise Exception(
                 'ERROR: directory with name ' + self.all_data_split_dir + ' exists. Check that self.datasplit_id_ is being randomized correctly')
 
+        # TODO: Append processed dataset parameter information to processed_dataset_parameters_index_file to enable loading in processed data later
+        # information to include:
+        # directory name for the data splitting: self.all_data_split_dir
+        # Information that would make that dataset applicable for a given run's parameters
+
+        data_split_info_dict = {
+            'all_data_split_dir':self.all_data_split_dir,
+            'num_rerurun_model_building': self.num_rerurun_model_building,  # times to rerun building models using INDEPENDENT 80:10:10 datasets
+            'run_round_num': self.run_round_num,  # NOTE: for running additional looping beyond num_rerurun_model_building currently not used
+            'screen_type_ls': self.screen_type_ls,  # NOTE: DualGlo will not have flanking regions
+            'species_ls': self.species_ls,
+            'chemical_scaffold_ls': self.chemical_scaffold_ls,
+            'chemical_scaffold_lab': self.chemical_scaffold_lab,
+            'normalized_': self.normalized_,
+            'effco_': self.effco_,
+            'ineffco_': self.ineffco_,
+            'remove_undefined_': self.remove_undefined_,
+            'region_': self.region_,
+            'includes_targ_region_': self.includes_targ_region_,
+            'parameter_to_optimize': self.parameter_to_optimize,
+            'test_set_size_pcnt_': self.test_set_size_pcnt_,
+            'paramopt_set_size_pcnt_': self.paramopt_set_size_pcnt_,
+            'split_set_size_pcnt_': self.split_set_size_pcnt_,
+            'allowed_classification_prop_deviation_pcnt_': self.allowed_classification_prop_deviation_pcnt_,  # percentage of data allowed to be off for classification proportions
+            'kmer_size_': self.kmer_size_,
+            'flank_len_': self.flank_len_,  # length on each side (e.g. 50 --> 120nt total length: 50mer 5' flank +20mer target region + 50mer 3' flank)
+            'window_size_': self.window_size_,
+            'word_freq_cutoff_': self.word_freq_cutoff_,  # Number of times a word must occur in the Bag-of-words Corpus --> when word_freq_cutoff' : self.1 only include words that occur more than once
+            'output_dimmension_': self.output_dimmension_,  # output dimmensino of ANN embedding
+            'expr_key': self.expr_key,
+            'feature_encoding_ls': self.feature_encoding_ls,
+            'param_values_to_loop_': self.param_values_to_loop_,
+            'apply_final_models_to_external_dataset_' : self.apply_final_models_to_external_dataset_,
+            #self.apply_final_models_to_external_dataset_ = apply_final_models_to_external_dataset__ # whether or not to use external_data_file to evaluate final models
+
+
+            'BREAK_PLACEHOLDER_': '***BREAK***',
+            # Below parameters do not need to match with parameters for loading in pre-processed data in the future
+            'model_type_': self.model_type_,  # NOTE: cannot load pre-processed data for semi-supervised models
+            'date_': self.date_,
+            'all_data_label_str_': self.all_data_label_str_,
+            'abbrev_all_data_label_str_': self.abbrev_all_data_label_str_,
+        }
+        row_string_ = ''
+        for k in data_split_info_dict.keys():
+            if type(data_split_info_dict[k]) == list:
+                row_string_ += (str(';'.join(data_split_info_dict[k])) + ',')
+            else:
+                row_string_ += (str(data_split_info_dict[k]) + ',')
+        # if processed_dataset_parameters_index_file file does not already exist, make a new one and label the columns
+        if not os.path.exists(processed_dataset_parameters_index_file ):
+            header_string_ = ','.join(list(data_split_info_dict.keys()))
+            with open(processed_dataset_parameters_index_file, 'w') as f:
+                f.write(header_string_ + '\n')
+            f.close()
+            print("Created file for storing data processing parameter data for this and future runs: \n\t",processed_dataset_parameters_index_file)
+
+        # Append run parameter info to processed_dataset_parameters_index_file
+        with open(processed_dataset_parameters_index_file,'a') as f:
+            f.write(row_string_+'\n')
+        f.close()
+
+        print("Data processing parameter data appeneded to: \n\t", processed_dataset_parameters_index_file)
         # Name and Plot Entire Dataset (excluding unlabelled data used for semi-supervised)
         all_data_label = "All siRNA Data"
         self.plot_thresholds(self.df.iloc[self.indxs_labeled_data], all_data_label, self.all_data_split_dir + 'figures/')
+
+        if self.apply_final_models_to_external_dataset_:
+            # Name and Plot External Dataset
+            ext_data_label = "External Test siRNA Data"
+            self.plot_thresholds(self.df[self.df['from_external_test_dataset']] , ext_data_label, self.all_data_split_dir + 'figures/')
 
         # Undefined dataset holds all middle values (class = 'undefined' | numeric_class = -1 )
         self.mid_undef_df = self.df.iloc[self.indxs_mid_undefined].copy()
 
         # Remove undefined data
-        self.df_noundef = self.df[self.df['numeric_class'] != -1].copy()
-        self.df_noundef.reset_index(inplace=True, drop=False)
+        # Exclude external undefined data (if added)
+        if self.apply_final_models_to_external_dataset_:
+            self.df_noundef = self.df[ (self.df['numeric_class'] != -1) & (~self.df['from_external_test_dataset']) ].copy()
+            self.df_noundef.reset_index(inplace=True, drop=False)
+
+            # Save external noundefined dataset
+            self.ext_df_noundef = self.df[ (self.df['numeric_class'] != -1) & (self.df['from_external_test_dataset']) ].copy()
+            self.ext_noundef_df_fnm = all_output_dir + self.all_data_split_dir + 'labeled_data_from_external_test_dataset' + '_partition.csv'
+            self.ext_df_noundef.to_csv(self.ext_noundef_df_fnm, index=False)
+            print("External Labeled (i.e. no middle/undefined data) Dataset saved to:\n\t", self.ext_noundef_df_fnm)
+
+            # Save external undefined (middle) dataset
+            self.ext_mid_undef_df = self.df.iloc[self.indxs_ext_mid_undefined].copy()
+            self.ext_mid_undef_df_fnm = all_output_dir + self.all_data_split_dir + 'undefined_data_from_external_test_dataset' + '_partition.csv'
+            self.ext_mid_undef_df.to_csv(self.ext_mid_undef_df_fnm, index=False)
+            print("External Undefined Dataset saved to:\n\t", self.ext_mid_undef_df_fnm)
+
+        else:
+            self.df_noundef = self.df[self.df['numeric_class'] != -1].copy()
+            self.df_noundef.reset_index(inplace=True, drop=False)
 
         # Name and Plot Undefined (excluded) Dataset
         undefined_label = "Undefined Data"
@@ -1705,87 +1964,95 @@ class DataRepresentationBuilder:
         * If self.run_param_optimization_ == False:
             * Will run separate final model building method
         '''
+
+        # Create a unique self.modeltrain_id_
+        from random import randint
+        # self.modeltrain_id_ = 'SUPk'+str(randint(10000, 99999) ) # ID used to find output data filie
+        self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
+        # be sure modeltrain_id_ doesn't exist already
+        while self.modeltrain_id_ in [x[0:9] for x in os.listdir(all_output_dir)]:
+            self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
+            # print("self.modeltrain_id_ already exists, generating new ID...")
+            # print("NEW self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
+        print("self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
+        self.all_output_dir_param_opt_round_ = 'popt-' + str(self.modeltrain_id_) + '_' + self.parameter_to_optimize + '_total-' + str(self.run_round_num) + '-rounds/'
+        if not os.path.exists(all_output_dir + self.all_output_dir_param_opt_round_):
+            os.makedirs(all_output_dir + self.all_output_dir_param_opt_round_)
+            print("Output for all " + str(self.run_round_num) + " Rounds stored in:\n" + os.getcwd() + '/'+ all_output_dir + self.all_output_dir_param_opt_round_)
+
+        self.output_directory = 'output_' + model_type_dict[self.model_type_] + '_run_' + str(self.modeltrain_id_) + '_' + self.date_
+        self.output_directory += '/'
+        self.output_directory = all_output_dir + self.all_output_dir_param_opt_round_ + self.output_directory
+
+        if not os.path.exists(self.output_directory):
+            os.makedirs(self.output_directory)
+            print("Output data stored in:\n" + os.getcwd() + self.output_directory)
+            if not os.path.exists(self.output_directory + 'figures/'):
+                os.makedirs(self.output_directory + 'figures/')
+            if not os.path.exists(self.output_directory + 'figures/svg_figs/'):
+                os.makedirs(self.output_directory + 'figures/svg_figs/')
+            if not os.path.exists(self.output_directory + 'models/'):
+                os.makedirs(self.output_directory + 'models/')
+            if not os.path.exists(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/'):
+                os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/')
+            if not os.path.exists(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/'):
+                os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/')
+        else:
+            raise Exception(
+                'ERROR: folder with name "' + self.output_directory.replace(all_output_dir + self.all_output_dir_param_opt_round_,
+                                                                            '') + '" already exists in ' + os.getcwd() + all_output_dir + self.all_output_dir_param_opt_round_ +
+                '\n - To re-run and build models with same conditions rename existing output folder' + '\n\n' +
+                'If continue will OVERWRITE data in this folder')
+
+        ## File info string used so can label figures from parameter optimization with all appropriate IDs even before parameters have been optimized
+        ##    NOTE: comment out parameter(s) to be optimized and replace value with 'PARAMOPT':
+        self.datasplit_id_ = 'XXXTEMPXXX' # TODO: delete line used only for testing
+
+        self.output_run_file_info_string_ = (
+                'data-' + str(self.datasplit_id_) + '_popt-' + str(self.modeltrain_id_) +
+
+                '_' + '-'.join(self.species_ls) +
+                '_' + self.chemical_scaffold_lab +
+                '_' + '-'.join(self.screen_type_ls) +
+
+                '_' + str(param_norm_label_dict[self.normalized_]) +
+                '_effco-' + str(self.effco_) +
+                '|ineffco-' + str(self.ineffco_) + '-' + str(remove_undefined_label_dict[self.remove_undefined_]) +
+                '_PARAMOPT-'+str(self.parameter_to_optimize).replace('_', '-').replace(' ','-') +
+
+                '_' + self.region_.replace('_', '-') +
+                '_flank-len-' + str(self.flank_len_) +
+                '_kmer-size-' + str(self.kmer_size_) +
+                '_model-'+self.model_type_.replace('_', '-').replace(' ','-') +
+                '_' + '-'.join([x.replace('_', '-').replace(' ','-') for x in self.feature_encoding_ls]) +
+
+                '_window-size-' + str(self.window_size_) +
+                '_word-freq-cutoff-' + str(self.word_freq_cutoff_) +
+
+                '_n-rounds-' + str(self.num_rerurun_model_building) +
+                '_hldout-' + str(self.test_set_size_pcnt_) +
+
+                '_' + self.unlabelled_data_ +
+                '_paramopt_pcnt_sz-' + str(self.paramopt_set_size_pcnt_) +
+                '_' + self.date_
+        )
+
+
         if self.run_param_optimization_:
             print("Running model fittings for both Parameter Optimization and after Final Model Building..")
+            # Perform Parameter Optimization first
+            self.parameter_optimization()
+            # Build Final Models
+            self.build_final_models()
+            return
+
         else:
             print("Running model fittings ONLY for final models (no parameter optimization)")
-
-
-        # # Create a unique self.modeltrain_id_
-        # from random import randint
-        # # self.modeltrain_id_ = 'SUPk'+str(randint(10000, 99999) ) # ID used to find output data filie
-        # self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
-        # # be sure modeltrain_id_ doesn't exist already
-        # while self.modeltrain_id_ in [x[0:9] for x in os.listdir(all_output_dir)]:
-        #     self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
-        #     # print("self.modeltrain_id_ already exists, generating new ID...")
-        #     # print("NEW self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
-        # print("self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
-        # self.all_output_dir_param_opt_round_ = 'popt-' + str(self.modeltrain_id_) + '_' + self.parameter_to_optimize + '_total-' + str(self.run_round_num) + '-rounds/'
-        # if not os.path.exists(all_output_dir + self.all_output_dir_param_opt_round_):
-        #     os.makedirs(all_output_dir + self.all_output_dir_param_opt_round_)
-        #     print("Output for all " + str(self.run_round_num) + " Parameter Optimization Rounds stored in:\n" + os.getcwd() + all_output_dir + self.all_output_dir_param_opt_round_)
-        #
-        # self.output_directory = 'output_' + model_type_dict[self.model_type_] + '_run_' + str(self.modeltrain_id_) + '_' + self.date_
-        # self.output_directory += '/'
-        # self.output_directory = all_output_dir + self.all_output_dir_param_opt_round_ + self.output_directory
-        #
-        # if not os.path.exists(self.output_directory):
-        #     os.makedirs(self.output_directory)
-        #     print("Output data stored in:\n" + os.getcwd() + self.output_directory)
-        #     if not os.path.exists(self.output_directory + 'figures/'):
-        #         os.makedirs(self.output_directory + 'figures/')
-        #     if not os.path.exists(self.output_directory + 'figures/svg_figs/'):
-        #         os.makedirs(self.output_directory + 'figures/svg_figs/')
-        #     if not os.path.exists(self.output_directory + 'models/'):
-        #         os.makedirs(self.output_directory + 'models/')
-        #     if not os.path.exists(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/'):
-        #         os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/')
-        #     if not os.path.exists(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/'):
-        #         os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/')
-        # else:
-        #     raise Exception(
-        #         'ERROR: folder with name "' + self.output_directory.replace(all_output_dir + self.all_output_dir_param_opt_round_,
-        #                                                                     '') + '" already exists in ' + os.getcwd() + all_output_dir + self.all_output_dir_param_opt_round_ +
-        #         '\n - To re-run and build models with same conditions rename existing output folder' + '\n\n' +
-        #         'If continue will OVERWRITE data in this folder')
-        #
-        # ## File info string used so can label figures from parameter optimization with all appropriate IDs even before parameters have been optimized
-        # ##    NOTE: comment out parameter(s) to be optimized and replace value with 'PARAMOPT':
-        #
-        # self.output_run_file_info_string_ = (
-        #         'data-' + str(self.datasplit_id_) + '_popt-' + str(self.modeltrain_id_) +
-        #         '_' + '-'.join(self.species_ls) +
-        #         '_' + self.chemical_scaffold_lab +
-        #         '_' + '-'.join(self.screen_type_ls) +
-        #
-        #         '_' + str(param_norm_label_dict[self.normalized_]) +
-        #         '_effco-' + str(self.effco_) +
-        #         '|ineffco-' + str(self.ineffco_) + '-' + str(remove_undefined_label_dict[self.remove_undefined_]) +
-        #         '_PARAMOPT-'+str(self.parameter_to_optimize).replace('_', '-').replace(' ','-') +
-        #
-        #         '_' + self.region_.replace('_', '-') +
-        #         '_flank-len-' + str(self.flank_len_) +
-        #         '_kmer-size-' + str(self.kmer_size_) +
-        #         '_model-'+self.model_type_.replace('_', '-').replace(' ','-') +
-        #         '_' + '-'.join([x.replace('_', '-').replace(' ','-') for x in self.feature_encoding_ls]) +
-        #
-        #         '_window-size-' + str(self.window_size_) +
-        #         '_word-freq-cutoff-' + str(self.word_freq_cutoff_) +
-        #
-        #         '_n-rounds-' + str(self.num_rerurun_model_building) +
-        #         '_hldout-' + str(self.test_set_size_pcnt_) +
-        #
-        #         '_' + self.unlabelled_data_ +
-        #         '_paramopt_pcnt_sz-' + str(self.paramopt_set_size_pcnt_) +
-        #         '_' + self.date_
-        # )
-        # # Perform Parameter Optimization first
-        # self.parameter_optimization()
-        # # Build Final Models
-        # self.build_final_models()
-        #
-        # return #(self.paramop_performance_curves_encodings_dict, self.paramop_key_ls,self.final_performance_curves_encodings_dict, self.final_performance_metrics_encodings_dict, self.final_key_ls)
+            self.output_run_file_info_string_ = self.output_run_file_info_string_.split('_PARAMOPT')[0] + '_FINAL-MODELS-ONLY_' + '_'.join(self.output_run_file_info_string_.split('_PARAMOPT')[-1].split('_')[1:])
+            print('output_run_file_info_string = ',self.output_run_file_info_string_)
+            # Build Final Models
+            self.build_final_models()
+            return
 
 
 
@@ -2026,13 +2293,25 @@ class DataRepresentationBuilder:
         self.final_performance_metrics_encodings_dict = {}
         self.final_detailed_performance_metrics_encodings_dict = {}
         self.final_performance_curves_encodings_dict = {}
+
+        if self.apply_final_models_to_external_dataset_:
+            self.ext_final_performance_metrics_encodings_dict = {}
+            self.ext_final_detailed_performance_metrics_encodings_dict = {}
+            self.ext_final_performance_curves_encodings_dict = {}
+
         self.final_key_ls = []
         self.final_model_params_ls = []
 
+        self.flank_seq_working_key = 'seq_flank-20nts_target' # TODO: delete line (used only for testing)
+        self.all_data_split_dir = 'data-TEST-rfF26194_h_p3_bDNA_oh-bowcv_norm_25-60-rm-u/' # TODO: delete line (used only for testing)
 
         # TODO: flank-seq-working key might not work for cases where don't have targeting region or just have target region alone
         for n_ in range(self.num_rerurun_model_building):
-            param_val_ = self.top_param_val_per_round_dict[n_]
+            if not self.run_param_optimization_:
+                param_val_ = 'noParamVal'
+            else:
+                param_val_ = self.top_param_val_per_round_dict[n_]
+
             if self.parameter_to_optimize == 'kmer-size':
                 kmer_size___ = param_val_
             else:
@@ -2059,6 +2338,12 @@ class DataRepresentationBuilder:
             # Load in Training and Testing Datasets
             self.df_train = pd.read_csv(train_data_fnm_)
             self.df_test = pd.read_csv(test_data_fnm_)
+            if self.apply_final_models_to_external_dataset_:
+                ext_data_fnm_ = self.ext_noundef_df_fnm
+                print("Including additional evaluation on external dataset:", ext_data_fnm_)
+                # TODO: include undefined data in external test dataset evaluation
+                df_ext = pd.read_csv(ext_data_fnm_)
+
             for e in self.feature_encoding_ls:
                 # Train Final  Models
                 clf_final = model_dict[model_type___]
@@ -2082,10 +2367,28 @@ class DataRepresentationBuilder:
                     X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
 
                 Y_test_ = np.array(self.df_test['numeric_class'])
+
+                if self.apply_final_models_to_external_dataset_:
+                    if e == 'one-hot' or e == 'bow-gensim':
+                        X_ext_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in df_ext[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___)]]
+                    else:
+                        X_ext_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in df_ext[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___)]]
+
+                    Y_ext_ = np.array(df_ext['numeric_class'])
+
+                #print("Fitting model "+str(n_ + 1)+' / '+str(self.num_rerurun_model_building)+'...')
                 clf_final.fit(X_train_, Y_train_)
+                #print("\tfitting complete!")
+
 
                 preds_final = clf_final.predict_proba(X_test_)[:, 1]
                 preds_binary_final = clf_final.predict(X_test_)
+
+                if self.apply_final_models_to_external_dataset_:
+                    ext_preds_final = clf_final.predict_proba(X_ext_)[:, 1]
+                    ext_preds_binary_final = clf_final.predict(X_ext_)
+
+                #print("Evaluating performance of model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
 
                 ## Evaluate Parameter Optimization Model Performance
                 from sklearn.metrics import precision_recall_curve
@@ -2109,6 +2412,7 @@ class DataRepresentationBuilder:
 
                 mcc_final_ = matthews_corrcoef(Y_test_, preds_binary_final)
 
+                #print("Constructing precision-recall curves for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
                 # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
                 if not (((model_type___ == 'semi-sup-label-propagation') or (model_type___ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
                     # Compute Unacheiveable Region
@@ -2159,12 +2463,81 @@ class DataRepresentationBuilder:
                 #     - If parameter to optimize is Kmer will just contain integer kmer sizes ex: [3, 9, 12]
                 self.final_model_params_ls.append(param_val_)
 
-                # Pickle final models (per round, per embedding)
-                fnm_ = self.output_directory + 'models/' + 'final_'+model_type_dict[model_type___]+'_model_rnd-' + str(n_+1) + '_'+feature_encodings_dict[e]+'.pickle'
-                pickle.dump(clf_final,fnm_)
-                print('Final model '+str(n_+1)+' with encoding '+str(e)+' saved to:', fnm_.replace(self.output_directory, '~/'))
-                ##clf__ = pickle.load(pickle_file)
+                if self.apply_final_models_to_external_dataset_:
 
+                    print("Evaluating performance on external dataset for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
+
+                    ## Evaluate Parameter Optimization Model Performance
+                    # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                    if not (((model_type___ == 'semi-sup-label-propagation') or (model_type___ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
+                        ext_p_final_, ext_r_final_, ext_ts_final_ = precision_recall_curve(Y_ext_, ext_preds_final)
+                        ext_aucpr_final_ = metrics.auc(ext_r_final_, ext_p_final_)
+
+                    ext_fscore_final_ = f1_score(Y_ext_, ext_preds_binary_final)  # , average=None)
+
+                    ext_fbetascore_final_ = fbeta_score(Y_ext_, ext_preds_binary_final, beta=self.f_beta_)  # , average=None)
+                    print("Computing Final fbeta_score with beta =", self.f_beta_)
+
+                    ext_accuracy_final_ = accuracy_score(Y_ext_, ext_preds_binary_final)
+
+                    ext_mcc_final_ = matthews_corrcoef(Y_ext_, ext_preds_binary_final)
+                    # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                    if not (((model_type___ == 'semi-sup-label-propagation') or (model_type___ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
+                        # Compute Unacheiveable Region
+                        ext_class_dist_final = ext_p_final_[0]  # class distribution (Pr=1)
+                        ext_unach_recalls_final = list(ext_r_final_)[::-1]
+                        # compute y (precision) values from the x (recall) values
+                        ext_unach_precs_final = []
+                        for x in ext_unach_recalls_final:
+                            ext_y = (ext_class_dist_final * x) / ((1 - ext_class_dist_final) + (ext_class_dist_final * x))
+                            ext_unach_precs_final.append(ext_y)
+                        ext_unach_p_r_final_ = [ext_unach_precs_final, ext_unach_recalls_final]
+                        ext_auc_unach_adj_final_ = metrics.auc(ext_r_final_, ext_p_final_) - metrics.auc(ext_unach_recalls_final, ext_unach_precs_final)
+
+                        ext_final_performance_curves_dict_ = {
+                            'Precision_Recall_Curve': [ext_p_final_, ext_r_final_, ext_ts_final_],
+                            'Unacheivable_Region_Curve': [ext_unach_precs_final, ext_unach_recalls_final],
+                        }
+                        ext_aucpr_adj_final_ = ext_aucpr_final_ - ext_p_final_[0]
+                    else:
+                        print("WARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model')
+                        ext_paramop_performance_curves_dict_ = {
+                            'Precision_Recall_Curve': [[], [], []],
+                            'Unacheivable_Region_Curve': [[], []],
+                        }
+                        ext_aucpr_final_ = 0
+                        ext_aucpr_adj_final_ = 0
+                        ext_auc_unach_adj_final_ = 0
+
+                    ext_final_performance_metrics_dict_ = {
+                        'AUCPR': ext_aucpr_final_,
+                        'AUCPR-adj': ext_aucpr_adj_final_,
+                        'AUCPR-unach-adj': ext_auc_unach_adj_final_,
+                        'F-Score': ext_fscore_final_,
+                        'Fbeta-Score': ext_fbetascore_final_,
+                        'Accuracy': ext_accuracy_final_,
+                        'MCC': ext_mcc_final_,
+                    }
+
+                    self.ext_final_performance_metrics_encodings_dict[key__] = ext_final_performance_metrics_dict_
+                    self.ext_final_detailed_performance_metrics_encodings_dict[key2__] = ext_final_performance_metrics_dict_
+                    self.ext_final_performance_curves_encodings_dict[key__] = ext_final_performance_curves_dict_
+
+
+
+                # Pickle final models (per round, per embedding)
+                #print("Pickling model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
+                fnm_ = self.output_directory + 'models/' + 'final_'+model_type_dict[model_type___]+'_model_rnd-' + str(n_+1) + '_'+feature_encodings_dict[e]+'.pickle'
+
+                with open(fnm_, 'wb') as pickle_file:
+                    pickle.dump(clf_final, pickle_file)
+                pickle_file.close()
+
+                print('Final model '+str(n_+1)+' with encoding '+str(e)+' saved to:', fnm_.replace(self.output_directory, '~/'))
+
+                # with open(fnm_, 'wb') as pickle_file:
+                #     clf__ = pickle.load(pickle_file)
+                # pickle_file.close()
 
 
 
@@ -2479,10 +2852,11 @@ class DataRepresentationBuilder:
         pr_curves_keys_ = self.final_key_ls
 
         import seaborn as sns
+
+        # Create dictionary of parameter colors based on parameter
         param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
         greys_col_ls = list(sns.color_palette("Greys", len(self.param_values_to_loop_)).as_hex())
 
-        # Create dictionary of parameter colors based on parameter
         param_col_ls_dict = {}
         for i in range(len(self.param_values_to_loop_)):
             param_col_ls_dict[self.param_values_to_loop_[i]] = param_col_ls[i]
@@ -2505,11 +2879,14 @@ class DataRepresentationBuilder:
             axs[col_].set_title(str(e))
             for n in range(self.num_rerurun_model_building):  # loop through rounds
 
-
-
                 # Get p-r curves per round for given embedding and round
                 key__ = str(e) + '_' + str(n)
                 p = self.final_model_params_ls[n]
+
+                try: # get color for parameter optimization looping
+                    color_ = param_col_ls_dict[p]
+                except: # if not looping through parameters select color from list
+                    color_ = '#5784db'
                 # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
                 if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
                         ('label' in self.model_type_) and (e == 'one-hot'))):
@@ -2523,14 +2900,14 @@ class DataRepresentationBuilder:
                         rcurve__,  # r_OH,# x
                         pcurve__,  # p_OH,# y
                         lw=1,
-                        color=param_col_ls_dict[p],
+                        color= color_,
                     )
 
                     # axs[col_].plot(
                     #     rcurve__,  # r_OH,# x
                     #     unach_rcurve__,  # p_OH,# y
                     #     lw=1,
-                    #     color=param_col_ls_dict[p],
+                    #     color=color_,
                     #     linestyle='dashed',
                     # )
 
@@ -2553,9 +2930,13 @@ class DataRepresentationBuilder:
         from matplotlib.lines import Line2D
         legend_elements = []
         for val__, i in zip(list(set(self.final_model_params_ls)), range(len(list(set(self.final_model_params_ls))))):
+            try:  # get color for parameter optimization looping
+                color_ = param_col_ls_dict[val__]
+            except:  # if not looping through parameters select color from list
+                color_ = '#5784db'
         #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
             legend_elements.append(Line2D([0], [0],
-                                          color=param_col_ls_dict[val__],  # embd_color_dict[embd_][val__],
+                                          color=color_,  # embd_color_dict[embd_][val__],
                                           lw=4, label=str(val__)))
         axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
         axs[-1].axis('off')
@@ -2634,6 +3015,10 @@ class DataRepresentationBuilder:
                 # Get p-r curves per round for given embedding and round
                 key__ = str(e) + '_' + str(n)
                 p = self.final_model_params_ls[n]
+                try:  # get color for parameter optimization looping
+                    color_ = param_col_ls_dict[p]
+                except:  # if not looping through parameters select color from list
+                    color_ = '#5784db'
                 # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
                 if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
                         ('label' in self.model_type_) and (e == 'one-hot'))):
@@ -2645,14 +3030,14 @@ class DataRepresentationBuilder:
                         rcurve__,  # r_OH,# x
                         pcurve__,  # p_OH,# y
                         lw=1,
-                        color=param_col_ls_dict[p],
+                        color=color_,
                     )
 
                     # axs[col_].plot(
                     #     rcurve__,  # r_OH,# x
                     #     unach_rcurve__,  # p_OH,# y
                     #     lw=1,
-                    #     color=param_col_ls_dict[p],
+                    #     color=color_,
                     #     linestyle='dashed',
                     # )
 
@@ -2676,8 +3061,12 @@ class DataRepresentationBuilder:
         legend_elements = []
         for val__, i in zip(list(set(self.final_model_params_ls)), range(len(list(set(self.final_model_params_ls))))):
         #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
+            try:  # get color for parameter optimization looping
+                color_ = param_col_ls_dict[val__]
+            except:  # if not looping through parameters select color from list
+                color_ = '#5784db'
             legend_elements.append(Line2D([0], [0],
-                                          color=param_col_ls_dict[val__],  # embd_color_dict[embd_][val__],
+                                          color=color_,  # embd_color_dict[embd_][val__],
                                           lw=4, label=str(val__)))
         axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
         axs[-1].axis('off')
@@ -2772,7 +3161,7 @@ class DataRepresentationBuilder:
                             cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
 
                     data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
-                    print(data_)
+                    #print(data_)
                     # Multiple Rows
                     try:
                         bplot1 = axs[j,i].boxplot(
@@ -2905,6 +3294,409 @@ class DataRepresentationBuilder:
         # fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
         # print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
         return
+
+    def plot_final_model_precision_recall_curves_on_ext_dataset(self):
+        print("Plotting precision-recall curves for final models evaluated on external dataset...")
+        if self.apply_final_models_to_external_dataset_:
+            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            return
+
+        ## Plot Final Model Precision-Recall curves as a single figure
+        sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
+                             self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
+
+        pr_curves_dict_ = self.ext_final_performance_curves_encodings_dict
+        pr_curves_keys_ = self.final_key_ls
+
+        import seaborn as sns
+
+        # Create dictionary of parameter colors based on parameter
+        param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
+        greys_col_ls = list(sns.color_palette("Greys", len(self.param_values_to_loop_)).as_hex())
+
+        param_col_ls_dict = {}
+        for i in range(len(self.param_values_to_loop_)):
+            param_col_ls_dict[self.param_values_to_loop_[i]] = param_col_ls[i]
+
+        greys_col_ls_dict = {}
+        for i in range(len(self.param_values_to_loop_)):
+            greys_col_ls_dict[self.param_values_to_loop_[i]] = greys_col_ls[i]
+
+        embd_color_dict = {}
+        for e in self.feature_encoding_ls:
+            embd_color_dict[e] = param_col_ls_dict
+
+
+        # Plot a single PLOT for each embedding type
+        fig, axs = plt.subplots(1,len(self.feature_encoding_ls )+ 1)
+        fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
+
+
+        for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
+            axs[col_].set_title(str(e))
+            for n in range(self.num_rerurun_model_building):  # loop through rounds
+
+                # Get p-r curves per round for given embedding and round
+                key__ = str(e) + '_' + str(n)
+                p = self.final_model_params_ls[n]
+
+                try: # get color for parameter optimization looping
+                    color_ = param_col_ls_dict[p]
+                except: # if not looping through parameters select color from list
+                    color_ = '#5784db'
+                # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
+                        ('label' in self.model_type_) and (e == 'one-hot'))):
+
+                    pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                    rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    unach_pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
+                    unach_rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
+
+                    axs[col_].plot(
+                        rcurve__,  # r_OH,# x
+                        pcurve__,  # p_OH,# y
+                        lw=1,
+                        color= color_,
+                    )
+
+                    # axs[col_].plot(
+                    #     rcurve__,  # r_OH,# x
+                    #     unach_rcurve__,  # p_OH,# y
+                    #     lw=1,
+                    #     color=color_,
+                    #     linestyle='dashed',
+                    # )
+
+            # Format Axes
+            axs[col_].set_xlim(0, 1)
+            axs[col_].set_ylim(0, 1.1)
+            axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
+            axs[col_].tick_params(direction='in', which='both', length=3, width=1)
+
+            if col_ == 0:
+                axs[col_].set_xlabel('Recall')
+                axs[col_].set_ylabel('Precision')
+                axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
+
+            else:
+                axs[col_].set_xticklabels([])
+                axs[col_].set_yticklabels([])
+
+        # Add legend for parameter values
+        from matplotlib.lines import Line2D
+        legend_elements = []
+        for val__, i in zip(list(set(self.final_model_params_ls)), range(len(list(set(self.final_model_params_ls))))):
+            try:  # get color for parameter optimization looping
+                color_ = param_col_ls_dict[val__]
+            except:  # if not looping through parameters select color from list
+                color_ = '#5784db'
+        #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
+            legend_elements.append(Line2D([0], [0],
+                                          color=color_,  # embd_color_dict[embd_][val__],
+                                          lw=4, label=str(val__)))
+        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
+        axs[-1].axis('off')
+
+        fig.suptitle('Compiled Precision-Recall Curves Final Models Evaluated on External Dataset - Per Embedding ' + str(self.num_rerurun_model_building) +
+                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+        fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
+        # ** SAVE FIGURE **
+        plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+        fnm_ = (self.output_directory + 'figures/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
+        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
+        fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+        fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        return
+
+    def plot_final_model_top_precision_recall_curves_on_ext_dataset(self):
+        print("Plotting top precision recall curves from final models evaluated on external dataset...")
+        if self.apply_final_models_to_external_dataset_:
+            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            return
+
+        ## Plot Top 5 Final Model Precision-Recall curves as a single figure
+        sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
+                             self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
+
+        pr_curves_dict_ = self.ext_final_performance_curves_encodings_dict
+        pr_curves_keys_ = self.final_key_ls
+
+        import seaborn as sns
+        param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
+        greys_col_ls = list(sns.color_palette("Greys", len(self.param_values_to_loop_)).as_hex())
+
+        # Create dictionary of parameter colors based on parameter
+        param_col_ls_dict = {}
+        for i in range(len(self.param_values_to_loop_)):
+            param_col_ls_dict[self.param_values_to_loop_[i]] = param_col_ls[i]
+
+        greys_col_ls_dict = {}
+        for i in range(len(self.param_values_to_loop_)):
+            greys_col_ls_dict[self.param_values_to_loop_[i]] = greys_col_ls[i]
+
+        embd_color_dict = {}
+        for e in self.feature_encoding_ls:
+            embd_color_dict[e] = param_col_ls_dict
+
+
+        # Plot a single PLOT for each embedding type
+        fig, axs = plt.subplots(1,len(self.feature_encoding_ls )+ 1)
+        fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
+
+
+        for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
+            axs[col_].set_title(str(e))
+            aucpr_by_round_dict = {}
+            # First Loop through rounds to get top 5 curves by AUCPR (for a given embedding
+            for n in range(self.num_rerurun_model_building):  # loop through rounds
+
+                # Get p-r curves per round for given embedding and round
+                key__ = str(e) + '_' + str(n)
+                p = self.final_model_params_ls[n]
+                # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
+                        ('label' in self.model_type_) and (e == 'one-hot'))):
+
+                    pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                    rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    unach_pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
+                    unach_rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
+                    aucpr_ = metrics.auc(rcurve__, pcurve__)
+                    aucpr_by_round_dict[n] = aucpr_
+
+            # Sort aucpr_by_round_dict by values from largest aucpr to smallest
+            aucpr_by_round_dict = {k: v for k, v in sorted(aucpr_by_round_dict.items(), key=lambda item: item[1])[::-1]}
+            # get rounds (dictkeys) of top 5 performing models
+            top_5_rnds_for_emb_ = list( aucpr_by_round_dict.keys())[:5]
+
+            # Then plot just the top 5 curves
+            for n in top_5_rnds_for_emb_:  # loop through rounds
+                # Get p-r curves per round for given embedding and round
+                key__ = str(e) + '_' + str(n)
+                p = self.final_model_params_ls[n]
+                try:  # get color for parameter optimization looping
+                    color_ = param_col_ls_dict[p]
+                except:  # if not looping through parameters select color from list
+                    color_ = '#5784db'
+                # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
+                        ('label' in self.model_type_) and (e == 'one-hot'))):
+                    pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                    rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    unach_pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
+                    unach_rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
+                    axs[col_].plot(
+                        rcurve__,  # r_OH,# x
+                        pcurve__,  # p_OH,# y
+                        lw=1,
+                        color=color_,
+                    )
+
+                    # axs[col_].plot(
+                    #     rcurve__,  # r_OH,# x
+                    #     unach_rcurve__,  # p_OH,# y
+                    #     lw=1,
+                    #     color=color_,
+                    #     linestyle='dashed',
+                    # )
+
+            # Format Axes
+            axs[col_].set_xlim(0, 1)
+            axs[col_].set_ylim(0, 1.1)
+            axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
+            axs[col_].tick_params(direction='in', which='both', length=3, width=1)
+
+            if col_ == 0:
+                axs[col_].set_xlabel('Recall')
+                axs[col_].set_ylabel('Precision')
+                axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
+
+            else:
+                axs[col_].set_xticklabels([])
+                axs[col_].set_yticklabels([])
+
+        # Add legend for parameter values
+        from matplotlib.lines import Line2D
+        legend_elements = []
+        for val__, i in zip(list(set(self.final_model_params_ls)), range(len(list(set(self.final_model_params_ls))))):
+        #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
+            try:  # get color for parameter optimization looping
+                color_ = param_col_ls_dict[val__]
+            except:  # if not looping through parameters select color from list
+                color_ = '#5784db'
+            legend_elements.append(Line2D([0], [0],
+                                          color=color_,  # embd_color_dict[embd_][val__],
+                                          lw=4, label=str(val__)))
+        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
+        axs[-1].axis('off')
+
+        fig.suptitle('Top 5 Precision-Recall Curves Final Models Evaluated on External Dataset - Per Embedding ' + str(self.num_rerurun_model_building) +
+                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+        fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
+        # ** SAVE FIGURE **
+        plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+        fnm_ = (self.output_directory + 'figures/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final_ext-data-eval')
+        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final_ext-data-eval')
+        fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+        fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        # return
+
+
+    def plot_final_model_box_plots_per_param_val_on_ext_dataset(self):
+        print("Plotting box plots for final models evaluated on external dataset per parameter value...")
+        if self.apply_final_models_to_external_dataset_:
+            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            return
+
+        ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
+
+        # Each column of final_detailed_metric_df contains a single round for a single embedding type
+        final_detailed_metric_df = pd.DataFrame(self.ext_final_detailed_performance_metrics_encodings_dict)
+        fnm_ = (self.output_directory + 'figures/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval.csv')
+        final_detailed_metric_df.to_csv(fnm_,index=True)
+        print("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t",fnm_)
+
+        flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
+        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+        medianprops__1 = dict(linewidth=2, color='goldenrod')
+        medianprops__2 = dict(linewidth=2, color='#2c8799')
+        medianprops__3 = dict(linewidth=2, color='firebrick')
+
+        # one axis per performance metric
+        # one box per embedding per axis
+        # fig, axs = plt.subplots( len(self.feature_encoding_ls), len(final_detailed_metric_df))
+        # fig.set_size_inches(w=14, h=3*len(self.feature_encoding_ls))
+        # Update: Make plots in sets of two or fewer (so not too large)
+        num_plots_ =  int(int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)%2))
+        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 2] for i in range(0, len(self.feature_encoding_ls), 2)]
+
+        for plotn_ in list(range(num_plots_)):
+            fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
+            fig.set_size_inches(w=14, h=3 * len(paired_feature_encoding_ls[plotn_]))
+
+
+            # Split Evaluation Metric Data per parameter value
+            # Loop through all embeddings used
+            #for embedding_type_final_eval_, j in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):
+            for embedding_type_final_eval_, j in zip(paired_feature_encoding_ls[plotn_], list(range(len(paired_feature_encoding_ls[plotn_])))):
+
+                # From final_detailed_metric_df get just columns for a single selected embedding type
+                # Get just columns with selected embedding metric (embedding_type_final_eval_)
+                cols_with_embd_ = [x for x in list(final_detailed_metric_df.columns) if embedding_type_final_eval_ in x]
+                print("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
+                      str(embedding_type_final_eval_)+" - ",len(cols_with_embd_),'out of',len(list(final_detailed_metric_df.columns)))
+
+                # Get just columns with selected embedding metric (embedding_type_final_eval_)
+                final_detailed_metric_one_embd_df = final_detailed_metric_df[cols_with_embd_]
+
+                # Get parameter VALUES only for each selected embedding
+                param_vals_one_embd_ = list(set([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)]))
+
+                # If Parameter values are integers, order them from smallest to larget
+                try:
+                    int_param_vals_one_embd_ = [int(x) for x in param_vals_one_embd_]
+                    int_param_vals_one_embd_.sort()
+                    param_vals_one_embd_ = [str(x) for x in int_param_vals_one_embd_]
+                except:
+                    pass
+
+                metrics_ls = list(final_detailed_metric_one_embd_df.index)
+
+                final_model_ct_per_param_val_dict = {} # holds counts of each parameter value used to build a final model
+                for v__ in self.param_values_to_loop_:
+                    ct_v__ = len([x for x in self.final_model_params_ls if str(x) == str(v__)])
+                    final_model_ct_per_param_val_dict[str(v__)] = ct_v__
+
+                for i in range(len(metrics_ls)):
+                    metric_ = metrics_ls[i]
+                    # Plot by parameter value
+                    # data_ = [list(final_detailed_metric_one_embd_df[
+                    #                   [embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ + '_round_' + str(i) for i in
+                    #                    list(range(final_model_ct_per_param_val_dict[str(param_val_)]))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    # get columns for single parameter value and metric
+
+                    cols_to_select_ = []
+                    for param_val_ in param_vals_one_embd_:
+                        # Get rounds for given parameter value and embedding
+                        rounds_per_one_param_val_ = [int(x.split('_round_')[-1]) for x in list(final_detailed_metric_one_embd_df.columns) if embedding_type_final_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' in x]
+                        for rnd__ in rounds_per_one_param_val_:
+                            cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
+
+                    data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    #print(data_)
+                    # Multiple Rows
+                    try:
+                        bplot1 = axs[j,i].boxplot(
+                            data_,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
+
+                        )  # will be used to label x-ticks
+                        axs[j,i].set_title(metric_)
+                        if i == 3:
+                            #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                            if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                            else:
+                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+
+                        # update x-axis labels
+                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize))
+
+                        if metric_ == 'MCC':
+                            axs[j,i].set_ylim(-1, 1)
+                        else:
+                            axs[j,i].set_ylim(0, 1)
+                    # Single Row
+                    except:
+                        bplot1 = axs[i].boxplot(
+                            data_,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
+
+                        )  # will be used to label x-ticks
+                        axs[i].set_title(metric_)
+                        if i == 3:
+                            # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                            if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                            else:
+                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_))  # ,fontweight='bold')
+
+                        # update x-axis labels
+                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize))
+
+                        if metric_ == 'MCC':
+                            axs[i].set_ylim(-1, 1)
+                        else:
+                            axs[i].set_ylim(0, 1)
+
+            fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models Evaluated on External Dataset - Per Parameter Value ' + str(self.num_rerurun_model_building) +
+                         ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+            fig.tight_layout()
+
+            # ** SAVE FIGURE **
+            plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+            fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_'+str(plotn_+1))+'_ext-data-eval'
+            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_'+str(plotn_+1))+'_ext-data-eval'
+            fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+            fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        return
+
 
 
 
