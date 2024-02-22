@@ -2151,10 +2151,11 @@ class DataRepresentationBuilder:
                             else:
                                 clf_po = model_dict[m_]
 
-                            if e == 'one-hot' or e == 'bow-gensim':
-                                X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
-                            else:
-                                X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
+                            # if  e == 'bow-gensim':
+                            # #if e == 'one-hot' or e == 'bow-gensim':
+                            #     X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
+                            # else:
+                            X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
                             Y_train_ = list(self.df_train['numeric_class'])
 
                             if 'semi-sup' in self.model_type_:
@@ -2164,10 +2165,11 @@ class DataRepresentationBuilder:
                                 X_train_ = X_train_u_ + X_train_
                                 Y_train_ = np.array(Y_train_u_ + Y_train_)
 
-                            if e == 'one-hot' or e == 'bow-gensim':
-                                X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
-                            else:
-                                X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
+                            # if e == 'bow-gensim':
+                            # # if e == 'one-hot' or e == 'bow-gensim':
+                            #     X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
+                            # else:
+                            X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
                             
                             Y_paramopt_ = np.array(self.df_paramopt['numeric_class'])
                             print("Training paramopt model...")
@@ -2370,10 +2372,11 @@ class DataRepresentationBuilder:
                 # Train Final  Models
                 clf_final = model_dict[model_type___]
 
-                if e == 'one-hot' or e == 'bow-gensim':
-                    X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
-                else:
-                    X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
+                # if e == 'bow-gensim':
+                # # if e == 'one-hot' or e == 'bow-gensim':
+                #     X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
+                # else:
+                X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
                 Y_train_ = list(self.df_train['numeric_class'])
 
                 if 'semi-sup' in model_type___:
@@ -2383,18 +2386,20 @@ class DataRepresentationBuilder:
                     X_train_ = X_train_u_ + X_train_
                     Y_train_ = np.array(Y_train_u_ + Y_train_)
 
-                if e == 'one-hot' or e == 'bow-gensim':
-                    X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
-                else:
-                    X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
+                # if e == 'bow-gensim':
+                # # if e == 'one-hot' or e == 'bow-gensim':
+                #     X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
+                # else:
+                X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
 
                 Y_test_ = np.array(self.df_test['numeric_class'])
 
                 if self.apply_final_models_to_external_dataset_:
-                    if e == 'one-hot' or e == 'bow-gensim':
-                        X_ext_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in df_ext[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___)]]
-                    else:
-                        X_ext_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in df_ext[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___)]]
+                    # if e == 'bow-gensim':
+                    # # if e == 'one-hot' or e == 'bow-gensim':
+                    #     X_ext_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in df_ext[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___)]]
+                    # else:
+                    X_ext_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in df_ext[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___)]]
 
                     Y_ext_ = np.array(df_ext['numeric_class'])
 
