@@ -219,6 +219,7 @@ class DataRepresentationBuilder:
                  run_param_optimization__ = True,
                  use_existing_processed_dataset__ = False,
                  apply_final_models_to_external_dataset__ = False, # whether or not to use external_data_file to evaluate final models
+                 ext_species_ls__=['human'], ext_chemical_scaffold_ls__=['P3'],
                  ):
         '''
         #########################################################################################################################################
@@ -318,6 +319,8 @@ class DataRepresentationBuilder:
         self.run_param_optimization_ = run_param_optimization__
         self.use_existing_processed_dataset_ = use_existing_processed_dataset__
         self.apply_final_models_to_external_dataset_ = apply_final_models_to_external_dataset__ # whether or not to use external_data_file to evaluate final models
+        self.ext_species_ls = ext_species_ls__ # TODO: include this information in data saving parameters and labels
+        self.ext_chemical_scaffold_ls = ext_chemical_scaffold_ls__ # TODO: include this information in data saving parameters and labels
 
         # Splits for Train:Parameter Opt:Test
         self.test_set_size_pcnt_ = 15
@@ -711,48 +714,18 @@ class DataRepresentationBuilder:
         print("Creating processed datasets...")
 
         # Read in Data
-        # Not using additional external dataset to evaluate final models
-        if not self.apply_final_models_to_external_dataset_:
-            try:
-                print("Trying to read in xlsx data")
-                self.df = pd.read_excel(input_data_dir + input_data_file)
-                print("Successfully read in xlsx data")
-            except:
-                print("Trying to read in .csv data")
-                self.df = pd.read_csv(input_data_dir + input_data_file)
-                print("Successfully read in .csv data")
+        try:
+            print("Trying to read in xlsx data")
+            self.df = pd.read_excel(input_data_dir + input_data_file)
+            print("Successfully read in xlsx data")
+        except:
+            print("Trying to read in .csv data")
+            self.df = pd.read_csv(input_data_dir + input_data_file)
+            print("Successfully read in .csv data")
 
-        else:# Using additional external dataset to evaluate final models
-            print("IMPORTANT: apply_final_models_to_external_dataset_ set to ("+str(self.apply_final_models_to_external_dataset_)+") so using additional external dataset to evaluate final models")
-            print("Loading in external_data_file ("+str(external_data_file)+") along with input_data_file ...")
-            try:
-                print("Trying to read in xlsx data")
-                self.df = pd.read_excel(input_data_dir + input_data_file)
-                print("Successfully read in xlsx data (input dataset) - "+str(len(self.df))+' siRNAs')
-            except:
-                print("Trying to read in .csv data")
-                self.df = pd.read_csv(input_data_dir + input_data_file)
-                print("Successfully read in .csv data (input dataset) - "+str(len(self.df))+' siRNAs')
-
-            try:
-                print("Trying to read in xlsx data (external dataset)")
-                df_ext = pd.read_excel(input_data_dir + external_data_file)
-                print("Successfully read in xlsx data (external dataset) - "+str(len(df_ext))+' siRNAs')
-            except:
-                print("Trying to read in .csv data (external dataset)")
-                df_ext = pd.read_csv(input_data_dir + external_data_file)
-                print("Successfully read in .csv data (external dataset) - "+str(len(df_ext))+' siRNAs')
-
-            # add additional column to keep track of if external data or original data
-            self.df['from_external_test_dataset'] = [False] * len(self.df)
-            df_ext['from_external_test_dataset'] = [True] * len(df_ext)
-
-            # append external dataset dataframe to original dataset dataframe
-            self.df = pd.concat([self.df, df_ext], axis=0)
-            self.df.reset_index(inplace=True, drop=True)
-            self.df.sort_values(by='from_external_test_dataset', ascending=True, inplace=True)
-            print('Successfully concatenated input and external datasets')
-
+        ########################################################################
+        ##                     ~*~ Select Data ~*~                       ##
+        ########################################################################
         self.df.drop(columns=['expression_replicate_1', 'expression_replicate_2', 'expression_replicate_3', 'ntc_replicate_1', 'ntc_replicate_2', 'ntc_replicate_3', 'untreated_cells_replicate_1', 'untreated_cells_replicate_2', 'untreated_cells_replicate_3'], inplace=True)
 
         print(self.df['chemical_scaffold'].value_counts())
@@ -768,8 +741,59 @@ class DataRepresentationBuilder:
         print("Selecting data with chemical scaffold:\n", self.chemical_scaffold_ls)
         self.df = self.df[self.df['chemical_scaffold'].isin(self.chemical_scaffold_ls)]
 
+        # If Using additional external dataset to evaluate final models Load in
+        if self.apply_final_models_to_external_dataset_:
+            print("IMPORTANT: apply_final_models_to_external_dataset_ set to ("+str(self.apply_final_models_to_external_dataset_)+") so using additional external dataset to evaluate final models")
+            print("Loading in external_data_file ("+str(external_data_file)+") along with input_data_file ...")
+
+            try:
+                print("Trying to read in xlsx data (external dataset)")
+                #df_ext = pd.read_excel(input_data_dir + external_data_file)
+                df_ext = pd.read_excel(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
+
+                print("Successfully read in xlsx data (external dataset) - "+str(len(df_ext))+' siRNAs')
+            except:
+                print("Trying to read in .csv data (external dataset)")
+                #df_ext = pd.read_csv(input_data_dir + external_data_file)
+                df_ext = pd.read_csv(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
+
+                print("Successfully read in .csv data (external dataset) - "+str(len(df_ext))+' siRNAs')
+
+            ########################################################################
+            ##                 ~*~ Select External Data ~*~                       ##
+            ########################################################################
+            df_ext.drop(columns=['expression_replicate_1', 'expression_replicate_2', 'expression_replicate_3', 'ntc_replicate_1', 'ntc_replicate_2', 'ntc_replicate_3', 'untreated_cells_replicate_1', 'untreated_cells_replicate_2', 'untreated_cells_replicate_3'], inplace=True)
+
+            # print(df_ext['chemical_scaffold'].value_counts())
+            # print()
+            # print(df_ext['screen_type'].value_counts())
+            # print()
+            # print(df_ext['species'].value_counts())
+
+            print("Selecting external data with screen type:\n", self.screen_type_ls)
+            df_ext = df_ext[df_ext['screen_type'].isin(self.screen_type_ls)]
+            print("Selecting external data with species:\n", self.ext_species_ls)
+            df_ext = df_ext[df_ext['species'].isin(self.ext_species_ls)]
+            print("Selecting external data with chemical scaffold:\n", self.ext_chemical_scaffold_ls)
+            df_ext = df_ext[df_ext['chemical_scaffold'].isin(self.ext_chemical_scaffold_ls)]
+
+            # Randomize expression data
+            print("WARNING: Randomizing external dataset expression data")
+            df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
+
+            # Add additional column to both df and df_ext to keep track of if external data or original data
+            self.df['from_external_test_dataset'] = [False] * len(self.df)
+            df_ext['from_external_test_dataset'] = [True] * len(df_ext)
+
+            # append external dataset dataframe to original dataset dataframe
+            self.df = pd.concat([self.df, df_ext], axis=0)
+            self.df.reset_index(inplace=True, drop=True)
+            self.df.sort_values(by='from_external_test_dataset', ascending=True, inplace=True)
+            print('Successfully concatenated input and external datasets')
+
+
         ########################################################################
-        ##                     ~*~ Select & Clean Data ~*~                    ##
+        ##                         ~*~  Clean Data ~*~                        ##
         ########################################################################
 
         print('region_ =', self.region_)
@@ -2006,8 +2030,6 @@ class DataRepresentationBuilder:
 
         ## File info string used so can label figures from parameter optimization with all appropriate IDs even before parameters have been optimized
         ##    NOTE: comment out parameter(s) to be optimized and replace value with 'PARAMOPT':
-        self.datasplit_id_ = 'XXXTEMPXXX' # TODO: delete line used only for testing
-
         self.output_run_file_info_string_ = (
                 'data-' + str(self.datasplit_id_) + '_popt-' + str(self.modeltrain_id_) +
 
