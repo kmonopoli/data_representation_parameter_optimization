@@ -2302,8 +2302,8 @@ class DataRepresentationBuilder:
         self.final_key_ls = []
         self.final_model_params_ls = []
 
-        self.flank_seq_working_key = 'seq_flank-20nts_target' # TODO: delete line (used only for testing)
-        self.all_data_split_dir = 'data-TEST-rfF26194_h_p3_bDNA_oh-bowcv_norm_25-60-rm-u/' # TODO: delete line (used only for testing)
+        #self.flank_seq_working_key = 'seq_flank-20nts_target' # TODO: delete line (used only for testing)
+        #self.all_data_split_dir = 'data-TEST-rfF26194_h_p3_bDNA_oh-bowcv_norm_25-60-rm-u/' # TODO: delete line (used only for testing)
 
         # TODO: flank-seq-working key might not work for cases where don't have targeting region or just have target region alone
         for n_ in range(self.num_rerurun_model_building):
@@ -3297,7 +3297,7 @@ class DataRepresentationBuilder:
 
     def plot_final_model_precision_recall_curves_on_ext_dataset(self):
         print("Plotting precision-recall curves for final models evaluated on external dataset...")
-        if self.apply_final_models_to_external_dataset_:
+        if not self.apply_final_models_to_external_dataset_:
             print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
 
@@ -3412,7 +3412,7 @@ class DataRepresentationBuilder:
 
     def plot_final_model_top_precision_recall_curves_on_ext_dataset(self):
         print("Plotting top precision recall curves from final models evaluated on external dataset...")
-        if self.apply_final_models_to_external_dataset_:
+        if not self.apply_final_models_to_external_dataset_:
             print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
 
@@ -3547,7 +3547,7 @@ class DataRepresentationBuilder:
 
     def plot_final_model_box_plots_per_param_val_on_ext_dataset(self):
         print("Plotting box plots for final models evaluated on external dataset per parameter value...")
-        if self.apply_final_models_to_external_dataset_:
+        if not self.apply_final_models_to_external_dataset_:
             print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
 
