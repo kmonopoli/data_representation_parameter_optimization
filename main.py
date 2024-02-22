@@ -778,8 +778,8 @@ class DataRepresentationBuilder:
             df_ext = df_ext[df_ext['chemical_scaffold'].isin(self.ext_chemical_scaffold_ls)]
 
             # Randomize expression data
-            print("WARNING: Randomizing external dataset expression data")
-            df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
+            #print("WARNING: Randomizing external dataset expression data")
+            #df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
 
             # Add additional column to both df and df_ext to keep track of if external data or original data
             self.df['from_external_test_dataset'] = [False] * len(self.df)
@@ -3109,6 +3109,16 @@ class DataRepresentationBuilder:
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
         print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
         # return
+
+    def autolabel(rects): # TODO: add text label to box and whisker plots
+        """Attach a text label above each bar in *rects*, displaying its height."""
+        for rect in rects:
+            height = rect.get_height()
+            ax.annotate('{}'.format(height),
+                        xy=(rect.get_x() + rect.get_width() / 2, height),
+                        xytext=(0, 3),  # 3 points vertical offset
+                        textcoords="offset points",
+                        ha='center', va='bottom')
 
 
     def plot_final_model_box_plots_per_param_val(self):
