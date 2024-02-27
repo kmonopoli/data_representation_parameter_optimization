@@ -220,6 +220,7 @@ class DataRepresentationBuilder:
                  use_existing_processed_dataset__ = False,
                  apply_final_models_to_external_dataset__ = False, # whether or not to use external_data_file to evaluate final models
                  ext_species_ls__=['human'], ext_chemical_scaffold_ls__=['P3'],
+                 randomize_ext_data__ = False,
                  ):
         '''
         #########################################################################################################################################
@@ -321,6 +322,8 @@ class DataRepresentationBuilder:
         self.apply_final_models_to_external_dataset_ = apply_final_models_to_external_dataset__ # whether or not to use external_data_file to evaluate final models
         self.ext_species_ls = ext_species_ls__ # TODO: include this information in data saving parameters and labels
         self.ext_chemical_scaffold_ls = ext_chemical_scaffold_ls__ # TODO: include this information in data saving parameters and labels
+        self.randomize_ext_data_ = randomize_ext_data__
+
 
         # Splits for Train:Parameter Opt:Test
         self.test_set_size_pcnt_ = 15
@@ -458,11 +461,11 @@ class DataRepresentationBuilder:
 
         print("Ploting precision-recall curves from Final Model Building...")
         self.plot_final_model_precision_recall_curves()
-        self.plot_final_model_top_precision_recall_curves()
+        #self.plot_final_model_top_precision_recall_curves() # TODO: uncomment to plot precision-recall curves of top 5 models
         if self.apply_final_models_to_external_dataset_:
             print("Ploting precision-recall curves from Final Model Building evaluated on External Dataset...")
             self.plot_final_model_precision_recall_curves_on_ext_dataset()
-            self.plot_final_model_top_precision_recall_curves_on_ext_dataset()
+            #self.plot_final_model_top_precision_recall_curves_on_ext_dataset() # TODO: uncomment to plot precision-recall curves of top 5 models
         print("Curve plotting complete!")
 
         if self.run_param_optimization_:
@@ -480,6 +483,17 @@ class DataRepresentationBuilder:
 
         print("PROCESS FINISHED")
         return ## End constructor
+
+
+
+
+
+
+
+
+
+
+
 
     def plot_thresholds(self, df_, figure_label_, output_dir__='', savefig=True):
         fig, ax = plt.subplots()
@@ -748,14 +762,14 @@ class DataRepresentationBuilder:
 
             try:
                 print("Trying to read in xlsx data (external dataset)")
-                #df_ext = pd.read_excel(input_data_dir + external_data_file)
-                df_ext = pd.read_excel(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
+                df_ext = pd.read_excel(input_data_dir + external_data_file)
+                #df_ext = pd.read_excel(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
 
                 print("Successfully read in xlsx data (external dataset) - "+str(len(df_ext))+' siRNAs')
             except:
                 print("Trying to read in .csv data (external dataset)")
-                #df_ext = pd.read_csv(input_data_dir + external_data_file)
-                df_ext = pd.read_csv(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
+                df_ext = pd.read_csv(input_data_dir + external_data_file)
+                #df_ext = pd.read_csv(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
 
                 print("Successfully read in .csv data (external dataset) - "+str(len(df_ext))+' siRNAs')
 
@@ -778,8 +792,9 @@ class DataRepresentationBuilder:
             df_ext = df_ext[df_ext['chemical_scaffold'].isin(self.ext_chemical_scaffold_ls)]
 
             # Randomize expression data
-            #print("WARNING: Randomizing external dataset expression data")
-            #df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
+            if self.randomize_ext_data_:
+                print("WARNING: Randomizing external dataset expression data")
+                df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
 
             # Add additional column to both df and df_ext to keep track of if external data or original data
             self.df['from_external_test_dataset'] = [False] * len(self.df)
@@ -2821,8 +2836,10 @@ class DataRepresentationBuilder:
                         axs[j,i].set_xlabel(str(self.parameter_to_optimize))
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
+                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
                         else:
-                            axs[j,i].set_ylim(0,1)
+                            axs[j,i].set_ylim(0, 1)
+                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
 
                     # One row
                     except:
@@ -2849,8 +2866,10 @@ class DataRepresentationBuilder:
                         axs[i].set_xlabel(str(self.parameter_to_optimize))
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
+                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
                         else:
                             axs[i].set_ylim(0, 1)
+                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
 
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
@@ -3110,16 +3129,17 @@ class DataRepresentationBuilder:
         print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
         # return
 
-    def autolabel(rects): # TODO: add text label to box and whisker plots
-        """Attach a text label above each bar in *rects*, displaying its height."""
-        for rect in rects:
-            height = rect.get_height()
-            ax.annotate('{}'.format(height),
-                        xy=(rect.get_x() + rect.get_width() / 2, height),
-                        xytext=(0, 3),  # 3 points vertical offset
-                        textcoords="offset points",
-                        ha='center', va='bottom')
-
+    def autolabel_boxplot(self, medians, ax_, label_color = 'black'):
+        '''to run: autolabel_boxplot(bplot1['medians']) '''
+        for m_ in medians:
+            height = m_.get_ydata()[0]
+            right_coord = m_.get_xdata()[-1]
+            ax_.annotate('{}'.format(np.round(height, 3)),
+                        xy=(right_coord, height),
+                        xytext=(3, 0), textcoords="offset points",  # 3 points horizontal offset
+                        ha='left', va='center',
+                        fontsize=7, color=label_color,
+                        )
 
     def plot_final_model_box_plots_per_param_val(self):
         print("Plotting box plots for final models per parameter value...")
@@ -3142,10 +3162,17 @@ class DataRepresentationBuilder:
         # fig, axs = plt.subplots( len(self.feature_encoding_ls), len(final_detailed_metric_df))
         # fig.set_size_inches(w=14, h=3*len(self.feature_encoding_ls))
         # Update: Make plots in sets of two or fewer (so not too large)
-        num_plots_ =  int(int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)%2))
+        # TODO: Add +1 to num_plots_ for an extra plot with all embeddings overlayed (in different colors)
+        num_plots_ =  int(int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)%2))# + 1
         paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 2] for i in range(0, len(self.feature_encoding_ls), 2)]
 
+
         for plotn_ in list(range(num_plots_)):
+
+            # if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row
+            #     fig, axs = plt.subplots(1, len(final_detailed_metric_df))
+            #     fig.set_size_inches(w=14, h=3 )
+            # else:
             fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
             fig.set_size_inches(w=14, h=3 * len(paired_feature_encoding_ls[plotn_]))
 
@@ -3223,10 +3250,13 @@ class DataRepresentationBuilder:
                         axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
                         axs[j,i].set_xlabel(str(self.parameter_to_optimize))
 
+
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
+                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
                         else:
                             axs[j,i].set_ylim(0, 1)
+                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                     # Single Row
                     except:
                         bplot1 = axs[i].boxplot(
@@ -3251,10 +3281,22 @@ class DataRepresentationBuilder:
                         axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
                         axs[i].set_xlabel(str(self.parameter_to_optimize))
 
+                        # label metric score values next to each box
+                        self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
+
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
+                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
                         else:
                             axs[i].set_ylim(0, 1)
+                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                    try:
+                        # label metric score values next to each box
+                        self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
+                    except:
+                        pass # already labeled above
+
+            #if plotn_ == num_plots_ - 1:  # TODO: last plot needs a legend (to identify each embedding as a different color)
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
@@ -3315,8 +3357,10 @@ class DataRepresentationBuilder:
         #
         #     if metric_ == 'MCC':
         #         axs[i].set_ylim(-1, 1)
+        #         axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
         #     else:
         #         axs[i].set_ylim(0, 1)
+        #         axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
         #
         # fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
         #              ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
@@ -3690,8 +3734,11 @@ class DataRepresentationBuilder:
 
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
+                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
                         else:
                             axs[j,i].set_ylim(0, 1)
+                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+
                     # Single Row
                     except:
                         bplot1 = axs[i].boxplot(
@@ -3716,10 +3763,22 @@ class DataRepresentationBuilder:
                         axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
                         axs[i].set_xlabel(str(self.parameter_to_optimize))
 
+                        # label metric score values next to each box
+                        self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
+
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
+                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
                         else:
                             axs[i].set_ylim(0, 1)
+                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+
+                    try:
+                        # label metric score values next to each box
+                        self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
+
+                    except:
+                        pass # already labeled above
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models Evaluated on External Dataset - Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
