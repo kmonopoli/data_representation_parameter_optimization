@@ -14,12 +14,12 @@ from datetime import datetime
 import calendar
 import openpyxl
 
-# from embedding_methods.embedding_methods import embed_sequences_with_ann
-# from embedding_methods.embedding_methods import embed_sequences_with_gensim
-# from embedding_methods.embedding_methods import one_hot_encode_sequences
+# from embedding_methods import embed_sequences_with_ann
+# from embedding_methods import embed_sequences_with_gensim
+# from embedding_methods import one_hot_encode_sequences
 
-from embedding_methods.sirna_model_building_helper_methods import classify
-from embedding_methods.sirna_model_building_helper_methods import get_flanking_sequence
+from sirna_model_building_helper_methods import classify
+from sirna_model_building_helper_methods import get_flanking_sequence
 
 
 import matplotlib.pylab as pylab
@@ -43,8 +43,9 @@ pylab.rcParams.update(params)
 all_output_dir = 'output_model_fitting/'
 
 # For storing parameter info from data processing to access pre-processed datasets
-processed_dataset_parameters_index_file = 'processed-data-param-index.csv'
-
+processed_dataset_parameters_index_file = all_output_dir+'data-processing-param-index.csv'
+# For storing parameter info from model fitting
+model_fitting_parameters_index_file = all_output_dir+'model-fitting-param-index.csv'
 
 # Directory path to and file holding siRNA data
 input_data_dir = 'new_input_data/'
@@ -53,7 +54,11 @@ input_data_file = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sir
 #input_data_file = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_(4392sirnas-bdna|75-genes)_JAN-29-2024.csv'
 
 # Holds additional siRNA data for evaluating final models
-external_data_file = 'newly_added_sirna_screen_data_777-sirnas|-bdna_FEB-22-2024.csv'
+
+external_data_file_dict = {
+    True: 'randomized_sirna_screen_data_777-sirnas_p3-bdna_FEB-28-2024.csv', # randomize_ext_data__ = True
+    False: 'newly_added_sirna_screen_data_777-sirnas|-bdna_FEB-22-2024.csv'  # randomize_ext_data__ = False
+}
 
 # Dictionaries used for labelling
 remove_undefined_label_dict = {True: 'removed undefined siRNAs', False: 'retained undefined siRNAs'}
@@ -150,6 +155,11 @@ feature_encodings_dict = {
     'one-hot':'oh',
     'bow-countvect':'bowcv',
     'bow-gensim':'bowgen',
+    'bow-gensim-weights-times-values':'bowgenwtv',
+    'bow-gensim-weights-times-values-adjusted':'bowgenwtva',
+    'bow-gensim-weights':'bowgenw',
+    'bow-gensim-values':'bowgenv',
+    'bow-gensim-values-adjusted':'bowgenva',
     'ann-keras':'annk',
     'ann-word2vec-gensim':'w2v'
 }
@@ -159,6 +169,11 @@ feature_encodings_titles_dict = {
     'one-hot':'One-Hot',
     'bow-countvect':'BOW cv',
     'bow-gensim':'BOW g',
+    'bow-gensim-weights-times-values': 'BOW g wxv',
+    'bow-gensim-weights-times-values-adjusted':  'BOW g wxv adj',
+    'bow-gensim-weights':  'BOW g w',
+    'bow-gensim-values':  'BOW g v',
+    'bow-gensim-values-adjusted': 'BOW g v adj',
     'ann-keras':'ANN',
     'ann-word2vec-gensim':'Word2Vec',
 }
@@ -320,6 +335,7 @@ class DataRepresentationBuilder:
         self.run_param_optimization_ = run_param_optimization__
         self.use_existing_processed_dataset_ = use_existing_processed_dataset__
         self.apply_final_models_to_external_dataset_ = apply_final_models_to_external_dataset__ # whether or not to use external_data_file to evaluate final models
+        self.external_data_file_ = external_data_file_dict[randomize_ext_data__]
         self.ext_species_ls = ext_species_ls__ # TODO: include this information in data saving parameters and labels
         self.ext_chemical_scaffold_ls = ext_chemical_scaffold_ls__ # TODO: include this information in data saving parameters and labels
         self.randomize_ext_data_ = randomize_ext_data__
@@ -477,7 +493,7 @@ class DataRepresentationBuilder:
         self.plot_final_model_box_plots_per_metric()
         if self.apply_final_models_to_external_dataset_:
             print("Plotting box plots from Final Model Building evaluated on External Dataset...")
-            #self.plot_final_model_box_plots_per_metric_on_ext_dataset()
+            self.plot_final_model_box_plots_per_metric_on_ext_dataset()
             self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
         print("Box plotting complete!")
 
@@ -758,17 +774,17 @@ class DataRepresentationBuilder:
         # If Using additional external dataset to evaluate final models Load in
         if self.apply_final_models_to_external_dataset_:
             print("IMPORTANT: apply_final_models_to_external_dataset_ set to ("+str(self.apply_final_models_to_external_dataset_)+") so using additional external dataset to evaluate final models")
-            print("Loading in external_data_file ("+str(external_data_file)+") along with input_data_file ...")
+            print("Loading in external_data_file_ ("+str(self.external_data_file_)+") along with input_data_file ...")
 
             try:
                 print("Trying to read in xlsx data (external dataset)")
-                df_ext = pd.read_excel(input_data_dir + external_data_file)
+                df_ext = pd.read_excel(input_data_dir + self.external_data_file_)
                 #df_ext = pd.read_excel(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
 
                 print("Successfully read in xlsx data (external dataset) - "+str(len(df_ext))+' siRNAs')
             except:
                 print("Trying to read in .csv data (external dataset)")
-                df_ext = pd.read_csv(input_data_dir + external_data_file)
+                df_ext = pd.read_csv(input_data_dir + self.external_data_file_)
                 #df_ext = pd.read_csv(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
 
                 print("Successfully read in .csv data (external dataset) - "+str(len(df_ext))+' siRNAs')
@@ -1031,11 +1047,11 @@ class DataRepresentationBuilder:
         # TODO: update to work for semisupervised? ~ seem to be having a problem when running semi-sup encoding data
 
 
-        from embedding_methods.embedding_methods import one_hot_encode_sequences
-        from embedding_methods.embedding_methods import embed_sequences_with_bow_countvect
-        from embedding_methods.embedding_methods import embed_sequences_with_gensim_doc2bow
-        from embedding_methods.embedding_methods import embed_sequences_with_keras
-        from embedding_methods.embedding_methods import embed_sequences_with_gensim_word2vec
+        from embedding_methods import one_hot_encode_sequences
+        from embedding_methods import embed_sequences_with_bow_countvect
+        from embedding_methods import embed_sequences_with_gensim_doc2bow
+        from embedding_methods import embed_sequences_with_keras
+        from embedding_methods import embed_sequences_with_gensim_word2vec
 
         #['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
 
@@ -1058,15 +1074,43 @@ class DataRepresentationBuilder:
                     if encoding_ == 'one-hot': ### One-Hot Encoding ###
                         self.df['one-hot_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = one_hot_encode_sequences(
                             list(self.df[flank_seq_working_key__]))
+
                     elif encoding_ == 'bow-countvect':### Bag-of-Words Embedding with Sklearn CountVectorizer###
                         self.df['bow-countvect_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_bow_countvect(
                             list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_)  # , output_directory = output_directory)
+
+
+
                     elif encoding_ == 'bow-gensim':### Bag-of-Words Embedding with Gensim Doc2bow ###
                         self.df['bow-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_)  # , output_directory = output_directory)
+                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_ )  # , output_directory = output_directory)
+
+                    elif encoding_ == 'bow-gensim-weights-times-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                        self.df['bow-gensim-weights-times-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
+                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='weights-times-values')  # , output_directory = output_directory)
+
+                    elif encoding_ == 'bow-gensim-weights':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                        self.df['bow-gensim-weights_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
+                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='weights')  # , output_directory = output_directory)
+
+                    elif encoding_ == 'bow-gensim-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                        self.df['bow-gensim-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
+                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='values')  # , output_directory = output_directory)
+
+                    elif encoding_ == 'bow-gensim-weights-times-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                        self.df['bow-gensim-weights-times-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
+                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='weights-times-values-adjusted')  # , output_directory = output_directory)
+
+                    elif encoding_ == 'bow-gensim-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                        self.df['bow-gensim-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
+                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='values-adjusted')  # , output_directory = output_directory)
+
+
+
                     elif encoding_ == 'ann-keras': ### Deep Embedding with ANN - Keras ###
                         self.df['ann-keras_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_keras(
                             list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,output_dimmension_=self.output_dimmension_)  # , output_directory = output_directory)
+
                     elif encoding_ == 'ann-word2vec-gensim':### Deep Embedding with Word2Vec - Gensim ###
                         self.df['ann-word2vec-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_word2vec(
                             list(self.df[flank_seq_working_key__]), kmer_size_=kmer_,window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_)  # , output_directory = output_directory)
@@ -1137,7 +1181,7 @@ class DataRepresentationBuilder:
             raise Exception(
                 'ERROR: directory with name ' + self.all_data_split_dir + ' exists. Check that self.datasplit_id_ is being randomized correctly')
 
-        # TODO: Append processed dataset parameter information to processed_dataset_parameters_index_file to enable loading in processed data later
+        # Append processed dataset parameter information to processed_dataset_parameters_index_file to enable loading in processed data later
         # information to include:
         # directory name for the data splitting: self.all_data_split_dir
         # Information that would make that dataset applicable for a given run's parameters
@@ -1169,9 +1213,12 @@ class DataRepresentationBuilder:
             'expr_key': self.expr_key,
             'feature_encoding_ls': self.feature_encoding_ls,
             'param_values_to_loop_': self.param_values_to_loop_,
-            'apply_final_models_to_external_dataset_' : self.apply_final_models_to_external_dataset_,
-            #self.apply_final_models_to_external_dataset_ = apply_final_models_to_external_dataset__ # whether or not to use external_data_file to evaluate final models
 
+            'apply_final_models_to_external_dataset_' : self.apply_final_models_to_external_dataset_,
+            'randomize_ext_data_': self.randomize_ext_data_,
+            'external_data_file_':self.external_data_file_,
+            'ext_species_ls_': self.ext_species_ls,
+            'ext_chemical_scaffold_ls_': self.ext_chemical_scaffold_ls,
 
             'BREAK_PLACEHOLDER_': '***BREAK***',
             # Below parameters do not need to match with parameters for loading in pre-processed data in the future
@@ -1198,8 +1245,9 @@ class DataRepresentationBuilder:
         with open(processed_dataset_parameters_index_file,'a') as f:
             f.write(row_string_+'\n')
         f.close()
-
         print("Data processing parameter data appeneded to: \n\t", processed_dataset_parameters_index_file)
+
+
         # Name and Plot Entire Dataset (excluding unlabelled data used for semi-supervised)
         all_data_label = "All siRNA Data"
         self.plot_thresholds(self.df.iloc[self.indxs_labeled_data], all_data_label, self.all_data_split_dir + 'figures/')
@@ -2014,14 +2062,15 @@ class DataRepresentationBuilder:
             # print("self.modeltrain_id_ already exists, generating new ID...")
             # print("NEW self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
         print("self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
-        self.all_output_dir_param_opt_round_ = 'popt-' + str(self.modeltrain_id_) + '_' + self.parameter_to_optimize + '_total-' + str(self.run_round_num) + '-rounds/'
-        if not os.path.exists(all_output_dir + self.all_output_dir_param_opt_round_):
-            os.makedirs(all_output_dir + self.all_output_dir_param_opt_round_)
-            print("Output for all " + str(self.run_round_num) + " Rounds stored in:\n" + os.getcwd() + '/'+ all_output_dir + self.all_output_dir_param_opt_round_)
+        self.output_directory = 'popt-' + str(self.modeltrain_id_) + '_' + model_type_dict[self.model_type_] +'_'+ self.parameter_to_optimize + '_' + str(self.num_rerurun_model_building) + '-rounds_'+self.date_+'/'
 
-        self.output_directory = 'output_' + model_type_dict[self.model_type_] + '_run_' + str(self.modeltrain_id_) + '_' + self.date_
-        self.output_directory += '/'
-        self.output_directory = all_output_dir + self.all_output_dir_param_opt_round_ + self.output_directory
+        # if not os.path.exists(all_output_dir + self.output_directory):
+        #     os.makedirs(all_output_dir + self.output_directory)
+        #     print("Output for all " + str(self.run_round_num) + " Rounds stored in:\n" + os.getcwd() + '/'+ all_output_dir + self.output_directory)
+
+        #self.output_directory = 'output_' + model_type_dict[self.model_type_] + '_run_' + str(self.modeltrain_id_) + '_' + self.date_
+        #self.output_directory += '/'
+        self.output_directory = all_output_dir + self.output_directory# + self.output_directory
 
         if not os.path.exists(self.output_directory):
             os.makedirs(self.output_directory)
@@ -2036,10 +2085,17 @@ class DataRepresentationBuilder:
                 os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/')
             if not os.path.exists(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/'):
                 os.makedirs(self.output_directory + 'paramopt_' + self.parameter_to_optimize + '/svg_figs/')
+            if not os.path.exists(self.output_directory + 'data/'):
+                os.makedirs(self.output_directory + 'data/')
+            if self.apply_final_models_to_external_dataset_:
+                if not os.path.exists(self.output_directory + 'figures/ext_data/'):
+                    os.makedirs(self.output_directory + 'figures/ext_data/')
+                if not os.path.exists(self.output_directory + 'figures/ext_data/svg_figs/'):
+                    os.makedirs(self.output_directory + 'figures/ext_data/svg_figs/')
         else:
             raise Exception(
-                'ERROR: folder with name "' + self.output_directory.replace(all_output_dir + self.all_output_dir_param_opt_round_,
-                                                                            '') + '" already exists in ' + os.getcwd() + all_output_dir + self.all_output_dir_param_opt_round_ +
+                'ERROR: folder with name "' + self.output_directory.replace(self.all_output_dir,
+                                                                            '') + '" already exists in ' + os.getcwd() + self.output_directory +
                 '\n - To re-run and build models with same conditions rename existing output folder' + '\n\n' +
                 'If continue will OVERWRITE data in this folder')
 
@@ -2073,7 +2129,68 @@ class DataRepresentationBuilder:
                 '_paramopt_pcnt_sz-' + str(self.paramopt_set_size_pcnt_) +
                 '_' + self.date_
         )
+        ######################################
+        # Append model fitting parameter information to model_fitting_parameters_index_file to enable loading in processed data later
+        # information to include:
+        # directory name for the data splitting: self.all_data_split_dir
+        # Information that would make that dataset applicable for a given run's parameters
 
+        model_training_info_dict = {
+            'paramopt_dir': self.output_directory.replace(all_output_dir,''),
+
+            'use_existing_processed_dataset_': self.use_existing_processed_dataset_,
+            'data_dir': self.all_data_split_dir,
+
+            'num_rerurun_model_building': self.num_rerurun_model_building,  # times to rerun building models using INDEPENDENT 80:10:10 datasets
+            'run_round_num': self.run_round_num,
+
+            'test_set_size_pcnt_': self.test_set_size_pcnt_,
+            'paramopt_set_size_pcnt_': self.paramopt_set_size_pcnt_,
+
+            'run_param_optimization':self.run_param_optimization_,
+            'paramopt': self.parameter_to_optimize,
+            'param_values_to_loop_': self.param_values_to_loop_,
+
+            'kmer_size_': self.kmer_size_,
+            'flank_len_': self.flank_len_,  # length on each side (e.g. 50 --> 120nt total length: 50mer 5' flank +20mer target region + 50mer 3' flank)
+            'window_size_': self.window_size_,
+            'word_freq_cutoff_': self.word_freq_cutoff_,  # Number of times a word must occur in the Bag-of-words Corpus --> when word_freq_cutoff' : self.1 only include words that occur more than once
+            'ann_output_dimmension_': self.output_dimmension_,  # output dimmensino of ANN embedding
+            'feature_encoding_ls': self.feature_encoding_ls,
+
+            'apply_final_models_to_external_dataset_': self.apply_final_models_to_external_dataset_,
+            'randomize_external_dataset':self.randomize_ext_data_,
+            'external_data_file_':self.external_data_file_,
+            'ext_species_ls_':self.ext_species_ls,
+            'ext_chemical_scaffold_ls_':self.ext_chemical_scaffold_ls,
+
+            #'BREAK_PLACEHOLDER_': '***BREAK***',
+            'model_type_': self.model_type_,
+            'date_': self.date_,
+            'output_run_file_info_string_': self.output_run_file_info_string_,
+            #'abbrev_all_data_label_str_': self.abbrev_all_data_label_str_,
+        }
+        row_string_ = ''
+        for k in model_training_info_dict.keys():
+            if type(model_training_info_dict[k]) == list:
+                row_string_ += (str(';'.join(model_training_info_dict[k])) + ',')
+            else:
+                row_string_ += (str(model_training_info_dict[k]) + ',')
+        # if model_fitting_parameters_index_file file does not already exist, make a new one and label the columns
+        if not os.path.exists(model_fitting_parameters_index_file):
+            header_string_ = ','.join(list(model_training_info_dict.keys()))
+            with open(model_fitting_parameters_index_file, 'w') as f:
+                f.write(header_string_ + '\n')
+            f.close()
+            print("Created file for storing model fitting parameter data for this and future runs: \n\t", model_fitting_parameters_index_file)
+
+        # Append run parameter info to model_fitting_parameters_index_file
+        with open(model_fitting_parameters_index_file, 'a') as f:
+            f.write(row_string_ + '\n')
+        f.close()
+        print("Model fitting parameter data appeneded to: \n\t", model_fitting_parameters_index_file)
+
+        ######################################
 
         if self.run_param_optimization_:
             print("Running model fittings for both Parameter Optimization and after Final Model Building..")
@@ -2315,7 +2432,7 @@ class DataRepresentationBuilder:
             #     self.model_type_ = param_val_
 
         # Export top parameters for each round of parameter optimization
-        fnm_ = self.output_directory + 'figures/' + 'best_param_per_' + str(self.num_rerurun_model_building) + '-rnds_paramop.csv'
+        fnm_ = self.output_directory + 'data/' + 'best_param_per_' + str(self.num_rerurun_model_building) + '-rnds_paramop.csv'
         with open(fnm_,'w+') as f:
             f.write('round, '+str(self.parameter_to_optimize) + ',\n')
             for n_ in self.num_rerurun_model_building:
@@ -2754,7 +2871,7 @@ class DataRepresentationBuilder:
         ## Plot Compiled Multimetrics Model Performance - Parameter Optimization Models
         # Each column of paramop_detailed_metric_df contains a single round for a single embedding type
         paramop_detailed_metric_df = pd.DataFrame(self.paramop_performance_metrics_encodings_dict)
-        fnm_ = (self.output_directory + 'figures/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_paramopt.csv')
+        fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_paramopt.csv')
         paramop_detailed_metric_df.to_csv(fnm_,index=True)
         print("Parameter Optimization Models Performance Metrics Dataframe saved to:\n\t",fnm_)
 
@@ -3141,13 +3258,27 @@ class DataRepresentationBuilder:
                         fontsize=7, color=label_color,
                         )
 
+    def autolabel_boxplot_below(self, caps, ax_, label_color = 'black'):
+        '''to run: autolabel_boxplot_below(bplot1['caps'][::2], ax) '''
+        for m_ in caps:
+            height = m_.get_ydata()[0]
+            right_coord = m_.get_xdata()[-1]
+            left_coord = m_.get_xdata()[0]
+            ax_.annotate(str(np.round(height, 2))[1:],
+                         # xy = (left_coord+((left_coord-right_coord)/2) , height),
+                         xy=(left_coord, height),
+                         xytext=(-3, -3), textcoords="offset points",  # 3 points vertical and horizontal offset
+                         ha='left', va='top',
+                         fontsize=4, color=label_color,
+                         )
+
     def plot_final_model_box_plots_per_param_val(self):
         print("Plotting box plots for final models per parameter value...")
         ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
 
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
         final_detailed_metric_df = pd.DataFrame(self.final_detailed_performance_metrics_encodings_dict)
-        fnm_ = (self.output_directory + 'figures/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final.csv')
+        fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final.csv')
         final_detailed_metric_df.to_csv(fnm_,index=True)
         print("Final Models Performance Metrics Dataframe saved to:\n\t",fnm_)
 
@@ -3169,9 +3300,10 @@ class DataRepresentationBuilder:
 
         for plotn_ in list(range(num_plots_)):
 
-            # if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row
+            # if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row since is a combined plot with all embeddings
             #     fig, axs = plt.subplots(1, len(final_detailed_metric_df))
             #     fig.set_size_inches(w=14, h=3 )
+
             # else:
             fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
             fig.set_size_inches(w=14, h=3 * len(paired_feature_encoding_ls[plotn_]))
@@ -3304,8 +3436,8 @@ class DataRepresentationBuilder:
 
             # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-            fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_'+str(plotn_+1))
-            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_'+str(plotn_+1))
+            fnm_ = (self.output_directory + 'figures/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
+            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -3313,67 +3445,67 @@ class DataRepresentationBuilder:
 
 
     def plot_final_model_box_plots_per_metric(self):
-        # TODO: finish this method!
         print("Plotting box plots -- per performance metric -- for final models...")
         ## Plot Compiled Multimetrics Model Performance - Final Models per metric
-        ##  - TODO: makes different figure for each different perameter value selected
-        # final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
-        #
-        # metrics_ls = list(final_metric_df.index)
-        # enc_ls_ = self.feature_encoding_ls
-        #
-        # flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
-        # boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
-        # medianprops__1 = dict(linewidth=2, color='goldenrod')
-        # medianprops__2 = dict(linewidth=2, color='#2c8799')
-        # medianprops__3 = dict(linewidth=2, color='firebrick')
-        #
-        # # one axis per performance metric
-        # # one box per embedding per axis
-        # fig, axs = plt.subplots(1, len(final_metric_df))
-        # fig.set_size_inches(w=12, h=3)
-        #
-        # for i in range(len(metrics_ls)):
-        #     metric_ = metrics_ls[i]
-        #
-        #     data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in
-        #              enc_ls_]
-        #     bplot1 = axs[i].boxplot(
-        #         data_,
-        #         vert=True,  # vertical box alignment
-        #         patch_artist=True,  # fill with color
-        #         labels=enc_ls_,
-        #         flierprops=flierprops__, boxprops=boxprops__,
-        #         capprops=dict(color='black'),
-        #         whiskerprops=dict(color='black'),
-        #
-        #     )  # will be used to label x-ticks
-        #     axs[i].set_title(metric_)
-        #     if i ==2:
-        #         axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
-        #
-        #     # update x-axis labels
-        #     axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], rotation=90)
-        #
-        #     if metric_ == 'MCC':
-        #         axs[i].set_ylim(-1, 1)
-        #         axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
-        #     else:
-        #         axs[i].set_ylim(0, 1)
-        #         axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-        #
-        # fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
-        #              ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
-        # fig.tight_layout()
-        #
-        #
-        # # ** SAVE FIGURE **
-        # plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
-        # fnm_ =     (self.output_directory+ 'figures/'+           'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
-        # fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
-        # fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
-        # fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
-        # print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
+        final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
+
+        metrics_ls = list(final_metric_df.index)
+        enc_ls_ = self.feature_encoding_ls
+
+        flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
+        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+        medianprops__1 = dict(linewidth=2, color='goldenrod')
+        medianprops__2 = dict(linewidth=2, color='#2c8799')
+        medianprops__3 = dict(linewidth=2, color='firebrick')
+
+        # one axis per performance metric
+        # one box per embedding per axis
+        fig, axs = plt.subplots(1, len(final_metric_df))
+        fig.set_size_inches(w=12, h=3)
+        fntsz_ = 7
+        for i in range(len(metrics_ls)):
+            metric_ = metrics_ls[i]
+
+            data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in
+                     enc_ls_]
+            bplot1 = axs[i].boxplot(
+                data_,
+                vert=True,  # vertical box alignment
+                patch_artist=True,  # fill with color
+                labels=enc_ls_,
+                flierprops=flierprops__, boxprops=boxprops__,
+                capprops=dict(color='black'),
+                whiskerprops=dict(color='black'),
+
+            )  # will be used to label x-ticks
+            axs[i].set_title(metric_)
+            if i ==2:
+                axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize= fntsz_)  # ,fontweight='bold')
+
+            # update x-axis labels
+            axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], fontsize = fntsz_, rotation=90)
+
+            if metric_ == 'MCC':
+                axs[i].set_ylim(-1, 1)
+                axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0],fontsize=fntsz_)
+            else:
+                axs[i].set_ylim(0, 1)
+                axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0],fontsize=fntsz_)
+
+            self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
+
+        fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
+                     ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
+        fig.tight_layout()
+
+
+        # ** SAVE FIGURE **
+        plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
+        fnm_ =     (self.output_directory+ 'figures/'+           'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
+        fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
+        fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
+        fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
+        print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
         return
 
     def plot_final_model_precision_recall_curves_on_ext_dataset(self):
@@ -3479,13 +3611,16 @@ class DataRepresentationBuilder:
         axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
         axs[-1].axis('off')
 
-        fig.suptitle('Compiled Precision-Recall Curves Final Models Evaluated on External Dataset - Per Embedding ' + str(self.num_rerurun_model_building) +
+        random_flag_ = ''
+        if self.randomize_ext_data_:
+            random_flag_ = '(Randomized) '
+        fig.suptitle('Compiled Precision-Recall Curves Final Models Evaluated on External Dataset '+random_flag_+'- Per Embedding ' + str(self.num_rerurun_model_building) +
                      ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
         fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
         # ** SAVE FIGURE **
         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-        fnm_ = (self.output_directory + 'figures/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
-        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
+        fnm_ = (self.output_directory + 'figures/ext_data/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
+        fnm_svg_ = (self.output_directory + 'figures/ext_data/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
         print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -3613,13 +3748,17 @@ class DataRepresentationBuilder:
         axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
         axs[-1].axis('off')
 
-        fig.suptitle('Top 5 Precision-Recall Curves Final Models Evaluated on External Dataset - Per Embedding ' + str(self.num_rerurun_model_building) +
+        random_flag_ = ''
+        if self.randomize_ext_data_:
+            random_flag_ = '(Randomized) '
+
+        fig.suptitle('Top 5 Precision-Recall Curves Final Models Evaluated on External Dataset '+random_flag_+'- Per Embedding ' + str(self.num_rerurun_model_building) +
                      ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
         fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
         # ** SAVE FIGURE **
         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-        fnm_ = (self.output_directory + 'figures/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final_ext-data-eval')
-        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final_ext-data-eval')
+        fnm_ = (self.output_directory + 'figures/ext_data/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final_ext-data-eval')
+        fnm_svg_ = (self.output_directory + 'figures/ext_data/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final_ext-data-eval')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
         print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -3636,7 +3775,7 @@ class DataRepresentationBuilder:
 
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
         final_detailed_metric_df = pd.DataFrame(self.ext_final_detailed_performance_metrics_encodings_dict)
-        fnm_ = (self.output_directory + 'figures/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval.csv')
+        fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval.csv')
         final_detailed_metric_df.to_csv(fnm_,index=True)
         print("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t",fnm_)
 
@@ -3780,20 +3919,93 @@ class DataRepresentationBuilder:
                     except:
                         pass # already labeled above
 
-            fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models Evaluated on External Dataset - Per Parameter Value ' + str(self.num_rerurun_model_building) +
+            random_flag_ = ''
+            if self.randomize_ext_data_:
+                random_flag_ = '(Randomized) '
+
+            fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models Evaluated on External Dataset '+random_flag_+'- Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
             fig.tight_layout()
 
             # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-            fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_'+str(plotn_+1))+'_ext-data-eval'
-            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_'+str(plotn_+1))+'_ext-data-eval'
+            fnm_ = (self.output_directory + 'figures/ext_data/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
+            fnm_svg_ = (self.output_directory + 'figures/ext_data/' + 'svg_figs/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
         return
 
+    def plot_final_model_box_plots_per_metric_on_ext_dataset(self):
+        print("Plotting box plots -- per performance metric -- for final models evaluated on external dataset per parameter value...")
+        if not self.apply_final_models_to_external_dataset_:
+            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            return
+        ## Plot Compiled Multimetrics Model Performance - Final Models per metric
+        final_metric_df = pd.DataFrame(self.ext_final_performance_metrics_encodings_dict)
 
+        metrics_ls = list(final_metric_df.index)
+        enc_ls_ = self.feature_encoding_ls
+
+        flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
+        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+        medianprops__1 = dict(linewidth=2, color='goldenrod')
+        medianprops__2 = dict(linewidth=2, color='#2c8799')
+        medianprops__3 = dict(linewidth=2, color='firebrick')
+
+        # one axis per performance metric
+        # one box per embedding per axis
+        fig, axs = plt.subplots(1, len(final_metric_df))
+        fig.set_size_inches(w=12, h=3)
+        fntsz_ = 7
+        for i in range(len(metrics_ls)):
+            metric_ = metrics_ls[i]
+
+            data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in
+                     enc_ls_]
+            bplot1 = axs[i].boxplot(
+                data_,
+                vert=True,  # vertical box alignment
+                patch_artist=True,  # fill with color
+                labels=enc_ls_,
+                flierprops=flierprops__, boxprops=boxprops__,
+                capprops=dict(color='black'),
+                whiskerprops=dict(color='black'),
+
+            )  # will be used to label x-ticks
+            axs[i].set_title(metric_)
+            if i ==2:
+                axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize = fntsz_)  # ,fontweight='bold')
+
+            # update x-axis labels
+            axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], rotation=90, fontsize = fntsz_)
+
+            if metric_ == 'MCC':
+                axs[i].set_ylim(-1, 1)
+                axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0],fontsize=fntsz_)
+            else:
+                axs[i].set_ylim(0, 1)
+                axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0],fontsize=fntsz_)
+
+            self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
+
+        random_flag_ = ''
+        if self.randomize_ext_data_:
+            random_flag_ = '(Randomized) '
+
+        fig.suptitle('Compiled Multiple Metrics Final Models Evaluated on External Dataset '+random_flag_+str(self.num_rerurun_model_building)+
+                     ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
+        fig.tight_layout()
+
+
+        # ** SAVE FIGURE **
+        plt.rcParams['svg.fonttype'] = 'none' # exports text as strings rather than vector paths (images)
+        fnm_ =     (self.output_directory+ 'figures/ext_data/'+           'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final_ext-data-eval')
+        fnm_svg_ = (self.output_directory+'figures/ext_data/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final_ext-data-eval')
+        fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
+        fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
+        print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
+        return
 
 
 

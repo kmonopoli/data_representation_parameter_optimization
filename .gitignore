@@ -2,9 +2,18 @@
 __pycache__/
 *.py[cod]
 *$py.class
-output_model_fitting/
 
+
+output_model_fitting/
+output_model_fitting_0/
+output_model_fitting*/
+output_model_fitting*
 new_input_data/
+
+*.png
+*.svg
+*.pickle
+
 *.csv
 *.xlsx
 
