@@ -129,7 +129,7 @@ drb = DataRepresentationBuilder(
     custom_parameter_values_to_loop__ = [],
     run_param_optimization__ = False,
 
-    num_rerurun_model_building__=10,
+    num_rerurun_model_building__=2,
     kmer_size__=9,
     flank_len__=20,
     #window_size__= 5,

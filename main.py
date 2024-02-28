@@ -3478,7 +3478,7 @@ class DataRepresentationBuilder:
                 whiskerprops=dict(color='black'),
 
             )  # will be used to label x-ticks
-            axs[i].set_title(metric_)
+            axs[i].set_title(metric_,fontsize = fntsz_)
             if i ==2:
                 axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize= fntsz_)  # ,fontweight='bold')
 
@@ -3973,7 +3973,7 @@ class DataRepresentationBuilder:
                 whiskerprops=dict(color='black'),
 
             )  # will be used to label x-ticks
-            axs[i].set_title(metric_)
+            axs[i].set_title(metric_, fontsize = fntsz_)
             if i ==2:
                 axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize = fntsz_)  # ,fontweight='bold')
 
