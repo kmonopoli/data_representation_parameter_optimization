@@ -128,8 +128,8 @@ param_id_dict = {  # Dictionary containing all possible parameters to optmize ma
     'kmer-size':'k',
     'flank-length':'l',
     'model':'m',
-    'window_size':'w',
-    'word_frequency_cutoff':'q',
+    'window-size':'w',
+    'word-frequency-cutoff':'q',
     'ANN_output_dimmension':'d',
     'unlabeled_data_type':'u',
     'unlabeled_data_size':'z',
@@ -192,8 +192,8 @@ default_params_to_loop_dict = {
     'kmer-size': [2, 3, 5, 7, 9, 12, 15, 17, 20],
     'flank-length': [0, 5, 10,20, 25, 50, 75, 100],
     'model': supported_model_types,
-    'window_size': [1, 2, 3, 4, 5, 7, 10, 15, 20],
-    'word_frequency_cutoff': [1, 2, 3, 4, 5, 10],
+    'window-size': [1, 2, 3, 4, 5, 7, 10, 15, 20],
+    'word-frequency-cutoff': [1, 2, 3, 4, 5, 10],
     'ANN_output_dimmension': [4, 10, 20, 50, 100, 200, 500, 1000],
     'unlabeled_data_type': unlabelled_data_types,
     'unlabeled_data_size': [0.00, 0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 1.00],  # decimal proportion of whole unlabelled dataset to take (0.50 = 50%, 1.00 = 100%)
@@ -376,9 +376,9 @@ class DataRepresentationBuilder:
             self.flank_len_ = 'PARAMOPT' 
         elif self.parameter_to_optimize == 'model':
             self.model_type_ = 'PARAMOPT' 
-        elif self.parameter_to_optimize == 'window_size':
+        elif self.parameter_to_optimize == 'window-size':
             self.window_size_ = 'PARAMOPT' 
-        elif self.parameter_to_optimize == 'word_frequency_cutoff':
+        elif self.parameter_to_optimize == 'word-frequency-cutoff':
             self.word_freq_cutoff_ = 'PARAMOPT' 
         elif self.parameter_to_optimize == 'ANN_output_dimmension':
             self.output_dimmension_ = 'PARAMOPT' 
@@ -1070,52 +1070,74 @@ class DataRepresentationBuilder:
             for flank_seq_working_key__ in flank_seq_working_key__ls:
                 print('flank_seq_working_key:',flank_seq_working_key__)
                 for encoding_ in self.feature_encoding_ls:
-                    print('encoding:', encoding_)
-                    if encoding_ == 'one-hot': ### One-Hot Encoding ###
-                        self.df['one-hot_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = one_hot_encode_sequences(
-                            list(self.df[flank_seq_working_key__]))
+                    if (self.parameter_to_optimize == 'window-size'):
+                        print('PARAMOPT - encoding:',encoding_,self.parameter_to_optimize)
+                        window_size_ls_ = self.param_values_to_loop_
+                        word_freq_cutoff_ls_ = [self.word_freq_cutoff_]
 
-                    elif encoding_ == 'bow-countvect':### Bag-of-Words Embedding with Sklearn CountVectorizer###
-                        self.df['bow-countvect_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_bow_countvect(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_)  # , output_directory = output_directory)
+                    elif (self.parameter_to_optimize == 'word-frequency-cutoff'):
+                        print('PARAMOPT - encoding:', encoding_, self.parameter_to_optimize)
 
+                        window_size_ls_ = [self.window_size_]
+                        word_freq_cutoff_ls_ = self.param_values_to_loop_
 
-
-                    elif encoding_ == 'bow-gensim':### Bag-of-Words Embedding with Gensim Doc2bow ###
-                        self.df['bow-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_ )  # , output_directory = output_directory)
-
-                    elif encoding_ == 'bow-gensim-weights-times-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                        self.df['bow-gensim-weights-times-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='weights-times-values')  # , output_directory = output_directory)
-
-                    elif encoding_ == 'bow-gensim-weights':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                        self.df['bow-gensim-weights_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='weights')  # , output_directory = output_directory)
-
-                    elif encoding_ == 'bow-gensim-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                        self.df['bow-gensim-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='values')  # , output_directory = output_directory)
-
-                    elif encoding_ == 'bow-gensim-weights-times-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                        self.df['bow-gensim-weights-times-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='weights-times-values-adjusted')  # , output_directory = output_directory)
-
-                    elif encoding_ == 'bow-gensim-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                        self.df['bow-gensim-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_doc2bow(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_, word_freq_cutoff_=self.word_freq_cutoff_, vector_output_='values-adjusted')  # , output_directory = output_directory)
-
-
-
-                    elif encoding_ == 'ann-keras': ### Deep Embedding with ANN - Keras ###
-                        self.df['ann-keras_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_keras(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=self.window_size_,output_dimmension_=self.output_dimmension_)  # , output_directory = output_directory)
-
-                    elif encoding_ == 'ann-word2vec-gensim':### Deep Embedding with Word2Vec - Gensim ###
-                        self.df['ann-word2vec-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)] = embed_sequences_with_gensim_word2vec(
-                            list(self.df[flank_seq_working_key__]), kmer_size_=kmer_,window_size_=self.window_size_,word_freq_cutoff_=self.word_freq_cutoff_)  # , output_directory = output_directory)
                     else:
-                        raise ValueError('ERROR: encoding '+str(encoding_)+' is not supported')
+                        print('encoding:', encoding_)
+                        window_size_ls_ = [self.window_size_]
+                        word_freq_cutoff_ls_ = [self.word_freq_cutoff_]
+
+                    for wndwsz_ in window_size_ls_:
+                        print('window_size_ = ', wndwsz_)
+                        if wndwsz_ > kmer_:
+                            raise Exception("ERROR: window_size ("+str(wndwsz_)+") cannot exceed kmer_size ("+str(kmer_)+") ")
+                        for wfco_ in word_freq_cutoff_ls_:
+                            print('word_freq_cutoff_ = ', wfco_)
+
+                            if encoding_ == 'one-hot': ### One-Hot Encoding ###
+                                self.df['one-hot_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)+ '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = one_hot_encode_sequences(
+                                    list(self.df[flank_seq_working_key__]))
+
+                            elif encoding_ == 'bow-countvect':### Bag-of-Words Embedding with Sklearn CountVectorizer###
+                                self.df['bow-countvect_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_bow_countvect(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_,word_freq_cutoff_=wfco_)  # , output_directory = output_directory)
+
+
+
+                            elif encoding_ == 'bow-gensim':### Bag-of-Words Embedding with Gensim Doc2bow ###
+                                self.df['bow-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)+ '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_,word_freq_cutoff_=wfco_ )  # , output_directory = output_directory)
+
+                            elif encoding_ == 'bow-gensim-weights-times-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                                self.df['bow-gensim-weights-times-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)+ '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='weights-times-values')  # , output_directory = output_directory)
+
+                            elif encoding_ == 'bow-gensim-weights':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                                self.df['bow-gensim-weights_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)]= embed_sequences_with_gensim_doc2bow(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='weights')  # , output_directory = output_directory)
+
+                            elif encoding_ == 'bow-gensim-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                                self.df['bow-gensim-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='values')  # , output_directory = output_directory)
+
+                            elif encoding_ == 'bow-gensim-weights-times-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                                self.df['bow-gensim-weights-times-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='weights-times-values-adjusted')  # , output_directory = output_directory)
+
+                            elif encoding_ == 'bow-gensim-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                                self.df['bow-gensim-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)]= embed_sequences_with_gensim_doc2bow(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='values-adjusted')  # , output_directory = output_directory)
+
+
+
+                            elif encoding_ == 'ann-keras': ### Deep Embedding with ANN - Keras ###
+                                self.df['ann-keras_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_keras(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_,output_dimmension_=self.output_dimmension_)  # , output_directory = output_directory)
+
+                            elif encoding_ == 'ann-word2vec-gensim':### Deep Embedding with Word2Vec - Gensim ###
+                                self.df['ann-word2vec-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_word2vec(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_,window_size_=wndwsz_,word_freq_cutoff_=wfco_)  # , output_directory = output_directory)
+                            else:
+                                raise ValueError('ERROR: encoding '+str(encoding_)+' is not supported')
 
         ## Print out Encoded Vector Lengths
         print_vector_lens_start_ls = []
@@ -1123,14 +1145,16 @@ class DataRepresentationBuilder:
         for kmer_ in kmer_sizes_ls:
             for flank_seq_working_key__ in flank_seq_working_key__ls:
                 for encoding_ in self.feature_encoding_ls:
-                    v_len_start_ = len(self.df.iloc[0][encoding_ + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)])
-                    v_len_end_ = len(self.df.iloc[-1][encoding_+'_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)])
-                    if encoding_ == 'one-hot':
-                        print_vector_lens_start_ls.append(str(v_len_start_) + ' \t')
-                        print_vector_lens_end_ls.append(str(v_len_end_)+' \t')
-                    else:
-                        print_vector_lens_start_ls.append(str(v_len_start_) + ' \t\t')
-                        print_vector_lens_end_ls.append(str(v_len_end_) + ' \t\t')
+                    for wndwsz_ in window_size_ls_:
+                        for wfco_ in word_freq_cutoff_ls_:
+                            v_len_start_ = len(self.df.iloc[0][encoding_ + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)])
+                            v_len_end_ = len(self.df.iloc[-1][encoding_+'_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)])
+                            if encoding_ == 'one-hot':
+                                print_vector_lens_start_ls.append(str(v_len_start_) + ' \t')
+                                print_vector_lens_end_ls.append(str(v_len_end_)+' \t')
+                            else:
+                                print_vector_lens_start_ls.append(str(v_len_start_) + ' \t\t')
+                                print_vector_lens_end_ls.append(str(v_len_end_) + ' \t\t')
         print('\n\nEncoded vector lengths:\n\n')
         print('\t '.join(encodings_ls))
         print(' '.join(print_vector_lens_start_ls))
@@ -1230,7 +1254,7 @@ class DataRepresentationBuilder:
         row_string_ = ''
         for k in data_split_info_dict.keys():
             if type(data_split_info_dict[k]) == list:
-                row_string_ += (str(';'.join(data_split_info_dict[k])) + ',')
+                row_string_ += (str(';'.join([str(x) for x in data_split_info_dict[k]])) + ',')
             else:
                 row_string_ += (str(data_split_info_dict[k]) + ',')
         # if processed_dataset_parameters_index_file file does not already exist, make a new one and label the columns
@@ -2173,7 +2197,7 @@ class DataRepresentationBuilder:
         row_string_ = ''
         for k in model_training_info_dict.keys():
             if type(model_training_info_dict[k]) == list:
-                row_string_ += (str(';'.join(model_training_info_dict[k])) + ',')
+                row_string_ += (str(';'.join([str(x) for x in model_training_info_dict[k]])) + ',')
             else:
                 row_string_ += (str(model_training_info_dict[k]) + ',')
         # if model_fitting_parameters_index_file file does not already exist, make a new one and label the columns
@@ -2236,7 +2260,7 @@ class DataRepresentationBuilder:
             print("Parameter optimization data loaded successfully")
 
             ## Loop through Parameter Optimization
-            # ['kmer-size', 'flank-length', 'model', 'window_size', 'word_frequency_cutoff', 'ANN_output_dimmension',
+            # ['kmer-size', 'flank-length', 'model', 'window-size', 'word-frequency-cutoff', 'ANN_output_dimmension',
             # 'unlabeled_data_type', 'unlabeled_data_size', 'feature_encoding', None]
 
             if self.parameter_to_optimize == 'kmer-size':
@@ -2254,6 +2278,16 @@ class DataRepresentationBuilder:
             else:
                 model_type_ls = [self.model_type_]
 
+            if self.parameter_to_optimize == 'window-size':
+                window_size_ls_ = self.param_values_to_loop_
+            else:
+                window_size_ls_ = [self.window_size_]
+
+            if self.parameter_to_optimize == 'word-frequency-cutoff':
+                word_freq_cutoff_ls = self.param_values_to_loop_
+            else:
+                word_freq_cutoff_ls = [self.word_freq_cutoff_]
+
             param_ = 'X'
             for kmer_ in kmer_sizes_ls:
                 for flank_seq_working_key__ in flank_seq_working_key__ls:
@@ -2263,129 +2297,139 @@ class DataRepresentationBuilder:
                         flank_len__ = flank_seq_working_key__.split('-')[-1].split('nts')[0]
                     for e in self.feature_encoding_ls: # ['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
                         print('\tLoop Embedding:', e) # TODO: delete this line
-                        for m_ in model_type_ls:
-                            # Train Parameter Optimization Models
-                            if self.parameter_to_optimize == 'kmer-size':
-                                print('  ** Parameter Optimization -- '+str(self.parameter_to_optimize)+' :', kmer_, '**  ')
-                                param_ = kmer_
-                            if self.parameter_to_optimize == 'flank-length':
-                                print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', flank_len__, '**  ')
-                                param_ = flank_len__
-                            if self.parameter_to_optimize == 'feature_encoding':
-                                print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', e, '**  ')
-                                param_ = e
-                            if self.parameter_to_optimize == 'model':
-                                print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', m_, '**  ')
-                                param_ = m_
+                        for wndwsz_ in window_size_ls_:
+                            for wfco_ in word_freq_cutoff_ls:
+                                for m_ in model_type_ls:
+                                    # Train Parameter Optimization Models
+                                    if self.parameter_to_optimize == 'kmer-size':
+                                        print('  ** Parameter Optimization -- '+str(self.parameter_to_optimize)+' :', kmer_, '**  ')
+                                        param_ = kmer_
+                                    if self.parameter_to_optimize == 'flank-length':
+                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', flank_len__, '**  ')
+                                        param_ = flank_len__
+                                    if self.parameter_to_optimize == 'feature_encoding':
+                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', e, '**  ')
+                                        param_ = e
+                                    if self.parameter_to_optimize == 'model':
+                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', m_, '**  ')
+                                        param_ = m_
+                                    if self.parameter_to_optimize == 'window-size':
+                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', wndwsz_, '**  ')
+                                        param_ = wndwsz_
+                                    if self.parameter_to_optimize == 'word-frequency-cutoff':
+                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', wfco_, '**  ')
+                                        param_ = wfco_
 
-                            if m_ == 'PARAMOPT':
-                                clf_po = model_dict['random-forest']
-                            else:
-                                clf_po = model_dict[m_]
+                                    if m_ == 'PARAMOPT':
+                                        clf_po = model_dict['random-forest']
+                                    else:
+                                        clf_po = model_dict[m_]
 
-                            # if  e == 'bow-gensim':
-                            # #if e == 'one-hot' or e == 'bow-gensim':
-                            #     X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
-                            # else:
-                            X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
-                            Y_train_ = list(self.df_train['numeric_class'])
-
-                            if 'semi-sup' in self.model_type_:
-                                # Add undefined data
-                                X_train_u_ = [list(x) for x in list(self.df.loc[(self.indxs_labeled_data[-1]+1):][e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)])]
-                                Y_train_u_ = list(self.df.loc[(self.indxs_labeled_data[-1]+1):]['numeric_class'])
-                                X_train_ = X_train_u_ + X_train_
-                                Y_train_ = np.array(Y_train_u_ + Y_train_)
-
-                            # if e == 'bow-gensim':
-                            # # if e == 'one-hot' or e == 'bow-gensim':
-                            #     X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
-                            # else:
-                            X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
-                            
-                            Y_paramopt_ = np.array(self.df_paramopt['numeric_class'])
-                            print("Training paramopt model...")
-                            clf_po.fit(X_train_, Y_train_)
-                            print("Predicting with paramopt model...")
-                            preds_po = clf_po.predict_proba(X_paramopt_)[:, 1]
-                            preds_binary_po = clf_po.predict(X_paramopt_)
-
-                            ## Evaluate Parameter Optimization Model Performance
-                            print("Evaluating model performance of paramopt model...")
-                            print("\tModel type:",m_)
-                            print('\tEmbedding:',e)
-                            from sklearn.metrics import precision_recall_curve
-                            print('\n\n\npreds_po :',set(preds_po),'\n\n\n')
-
-                            ## In cases where is LabelSpreading or LabelPropagation model and One-Hot Encoding,
-                            #     will have an NaN when trying to compute precision-recall
-                            # TODO: fix for final model p-r curve making too
-                            if not (((m_ == 'semi-sup-label-propagation') or (m_ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
-                                p_po_, r_po_, ts_po_ = precision_recall_curve(Y_paramopt_, preds_po)
-                                aucpr_po_ = metrics.auc(r_po_, p_po_)
-
-                            from sklearn.metrics import f1_score
-                            fscore_po_ = f1_score(Y_paramopt_, preds_binary_po)  # , average=None)
-
-                            from sklearn.metrics import fbeta_score
-                            fbetascore_po_ = fbeta_score(Y_paramopt_, preds_binary_po, beta=self.f_beta_)  # , average=None)
-                            print("Computing fbeta_score with beta =",self.f_beta_)
-
-                            from sklearn.metrics import accuracy_score
-                            accuracy_po_ = accuracy_score(Y_paramopt_, preds_binary_po)
-
-                            from sklearn.metrics import matthews_corrcoef
-                            mcc_po_ = matthews_corrcoef(Y_paramopt_, preds_binary_po)
-
-                            ## In cases where is LabelSpreading or LabelPropagation model and One-Hot Encoding,
-                            #     will have an NaN when trying to compute precision-recall
-                            # TODO: fix for final model p-r curve making too
-                            if not(((m_ == 'semi-sup-label-propagation' ) or (m_ == 'semi-sup-label-spreading')) and (e == 'one-hot')) :
-                                p_po_, r_po_, ts_po_ = precision_recall_curve(Y_paramopt_, preds_po)
-                                aucpr_po_ = metrics.auc(r_po_, p_po_)
-
-                                # Compute Unacheiveable Region
-                                class_dist_po = p_po_[0]  # class distribution (Pr=1)
-                                unach_recalls_po = list(r_po_)[::-1]
-                                # compute y (precision) values from the x (recall) values
-                                unach_precs_po = []
-                                for x in unach_recalls_po:
-                                    y = (class_dist_po * x) / ((1 - class_dist_po) + (class_dist_po * x))
-                                    unach_precs_po.append(y)
-                                unach_p_r_po_ = [unach_precs_po, unach_recalls_po]
-                                auc_unach_adj_po_ = metrics.auc(r_po_, p_po_) - metrics.auc(unach_recalls_po, unach_precs_po)
-
-                                paramop_performance_curves_dict_ = {
-                                    'Precision_Recall_Curve': [p_po_, r_po_, ts_po_],
-                                    'Unacheivable_Region_Curve': [unach_precs_po, unach_recalls_po],
-                                }
-                                aucpr_po_adj_ = aucpr_po_ - p_po_[0]
+                                    # if  e == 'bow-gensim':
+                                    # #if e == 'one-hot' or e == 'bow-gensim':
+                                    #     X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
+                                    # else:
 
 
-                            else:
-                                print("WARNING: because model-type is "+str(m_)+' and encoding type is '+str(e)+' Precision-Recall curves cannot be created for this model')
-                                paramop_performance_curves_dict_ = {
-                                    'Precision_Recall_Curve': [[], [], []],
-                                    'Unacheivable_Region_Curve': [[], []],
-                                }
-                                aucpr_po_ = 0
-                                aucpr_po_adj_ = 0
-                                auc_unach_adj_po_ = 0
+                                    X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)  + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_) ]]
+                                    Y_train_ = list(self.df_train['numeric_class'])
 
-                            paramop_performance_metrics_dict_ = {
-                                'AUCPR': aucpr_po_,
-                                'AUCPR-adj': aucpr_po_adj_,
-                                'AUCPR-unach-adj': auc_unach_adj_po_,
-                                'F-Score': fscore_po_,
-                                'Fbeta-Score':fbetascore_po_,
-                                'Accuracy': accuracy_po_,
-                                'MCC': mcc_po_,
-                            }
-                            key__ = str(e) + '-' + self.parameter_to_optimize + '-' + str(param_)+'_round_' + str(n_) #str(kmer_) +'-'+ str(flank_len__)+'-' + m_ +'_' + str(n_)
-                            self.paramop_models_encodings_dict[key__] = clf_po
-                            self.paramop_performance_metrics_encodings_dict[ key__] = paramop_performance_metrics_dict_
-                            self.paramop_performance_curves_encodings_dict[  key__] = paramop_performance_curves_dict_
-                            self.paramop_key_ls.append( key__)
+                                    if 'semi-sup' in self.model_type_:
+                                        # Add undefined data
+                                        X_train_u_ = [list(x) for x in list(self.df.loc[(self.indxs_labeled_data[-1]+1):][e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_) ])]
+                                        Y_train_u_ = list(self.df.loc[(self.indxs_labeled_data[-1]+1):]['numeric_class'])
+                                        X_train_ = X_train_u_ + X_train_
+                                        Y_train_ = np.array(Y_train_u_ + Y_train_)
+
+                                    # if e == 'bow-gensim':
+                                    # # if e == 'one-hot' or e == 'bow-gensim':
+                                    #     X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)]]
+                                    # else:
+                                    X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_) ]]
+
+                                    Y_paramopt_ = np.array(self.df_paramopt['numeric_class'])
+                                    print("Training paramopt model...")
+                                    clf_po.fit(X_train_, Y_train_)
+                                    print("Predicting with paramopt model...")
+                                    preds_po = clf_po.predict_proba(X_paramopt_)[:, 1]
+                                    preds_binary_po = clf_po.predict(X_paramopt_)
+
+                                    ## Evaluate Parameter Optimization Model Performance
+                                    print("Evaluating model performance of paramopt model...")
+                                    print("\tModel type:",m_)
+                                    print('\tEmbedding:',e)
+                                    from sklearn.metrics import precision_recall_curve
+                                    print('\n\n\npreds_po :',set(preds_po),'\n\n\n')
+
+                                    ## In cases where is LabelSpreading or LabelPropagation model and One-Hot Encoding,
+                                    #     will have an NaN when trying to compute precision-recall
+                                    # TODO: fix for final model p-r curve making too
+                                    if not (((m_ == 'semi-sup-label-propagation') or (m_ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
+                                        p_po_, r_po_, ts_po_ = precision_recall_curve(Y_paramopt_, preds_po)
+                                        aucpr_po_ = metrics.auc(r_po_, p_po_)
+
+                                    from sklearn.metrics import f1_score
+                                    fscore_po_ = f1_score(Y_paramopt_, preds_binary_po)  # , average=None)
+
+                                    from sklearn.metrics import fbeta_score
+                                    fbetascore_po_ = fbeta_score(Y_paramopt_, preds_binary_po, beta=self.f_beta_)  # , average=None)
+                                    print("Computing fbeta_score with beta =",self.f_beta_)
+
+                                    from sklearn.metrics import accuracy_score
+                                    accuracy_po_ = accuracy_score(Y_paramopt_, preds_binary_po)
+
+                                    from sklearn.metrics import matthews_corrcoef
+                                    mcc_po_ = matthews_corrcoef(Y_paramopt_, preds_binary_po)
+
+                                    ## In cases where is LabelSpreading or LabelPropagation model and One-Hot Encoding,
+                                    #     will have an NaN when trying to compute precision-recall
+                                    # TODO: fix for final model p-r curve making too
+                                    if not(((m_ == 'semi-sup-label-propagation' ) or (m_ == 'semi-sup-label-spreading')) and (e == 'one-hot')) :
+                                        p_po_, r_po_, ts_po_ = precision_recall_curve(Y_paramopt_, preds_po)
+                                        aucpr_po_ = metrics.auc(r_po_, p_po_)
+
+                                        # Compute Unacheiveable Region
+                                        class_dist_po = p_po_[0]  # class distribution (Pr=1)
+                                        unach_recalls_po = list(r_po_)[::-1]
+                                        # compute y (precision) values from the x (recall) values
+                                        unach_precs_po = []
+                                        for x in unach_recalls_po:
+                                            y = (class_dist_po * x) / ((1 - class_dist_po) + (class_dist_po * x))
+                                            unach_precs_po.append(y)
+                                        unach_p_r_po_ = [unach_precs_po, unach_recalls_po]
+                                        auc_unach_adj_po_ = metrics.auc(r_po_, p_po_) - metrics.auc(unach_recalls_po, unach_precs_po)
+
+                                        paramop_performance_curves_dict_ = {
+                                            'Precision_Recall_Curve': [p_po_, r_po_, ts_po_],
+                                            'Unacheivable_Region_Curve': [unach_precs_po, unach_recalls_po],
+                                        }
+                                        aucpr_po_adj_ = aucpr_po_ - p_po_[0]
+
+
+                                    else:
+                                        print("WARNING: because model-type is "+str(m_)+' and encoding type is '+str(e)+' Precision-Recall curves cannot be created for this model')
+                                        paramop_performance_curves_dict_ = {
+                                            'Precision_Recall_Curve': [[], [], []],
+                                            'Unacheivable_Region_Curve': [[], []],
+                                        }
+                                        aucpr_po_ = 0
+                                        aucpr_po_adj_ = 0
+                                        auc_unach_adj_po_ = 0
+
+                                    paramop_performance_metrics_dict_ = {
+                                        'AUCPR': aucpr_po_,
+                                        'AUCPR-adj': aucpr_po_adj_,
+                                        'AUCPR-unach-adj': auc_unach_adj_po_,
+                                        'F-Score': fscore_po_,
+                                        'Fbeta-Score':fbetascore_po_,
+                                        'Accuracy': accuracy_po_,
+                                        'MCC': mcc_po_,
+                                    }
+                                    key__ = str(e) + '-' + self.parameter_to_optimize + '-' + str(param_)+'_round_' + str(n_) #str(kmer_) +'-'+ str(flank_len__)+'-' + m_ +'_' + str(n_)
+                                    self.paramop_models_encodings_dict[key__] = clf_po
+                                    self.paramop_performance_metrics_encodings_dict[ key__] = paramop_performance_metrics_dict_
+                                    self.paramop_performance_curves_encodings_dict[  key__] = paramop_performance_curves_dict_
+                                    self.paramop_key_ls.append( key__)
 
 
 
@@ -2435,7 +2479,7 @@ class DataRepresentationBuilder:
         fnm_ = self.output_directory + 'data/' + 'best_param_per_' + str(self.num_rerurun_model_building) + '-rnds_paramop.csv'
         with open(fnm_,'w+') as f:
             f.write('round, '+str(self.parameter_to_optimize) + ',\n')
-            for n_ in self.num_rerurun_model_building:
+            for n_ in range(self.num_rerurun_model_building):
                 f.write(str(n_)+', '+str(self.top_param_val_per_round_dict[n_])+',\n')
         f.close()
         print('Top parameters per round of paramopt model building saved to:\n\t',fnm_)
@@ -2486,6 +2530,16 @@ class DataRepresentationBuilder:
             else:
                 model_type___ = self.model_type_
 
+            if self.parameter_to_optimize == 'window-size':
+                window_size___ = param_val_
+            else:
+                window_size___ = self.window_size_
+
+            if self.parameter_to_optimize == 'word-frequency-cutoff':
+                word_freq_cutoff___ = param_val_
+            else:
+                word_freq_cutoff___ = self.word_freq_cutoff_
+
 
             print('Building Final ' + str(model_type___) + ' models for Round:', n_ + 1, '/', self.num_rerurun_model_building)
             train_data_fnm_ = all_output_dir + self.all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_Training_Data_' + str(100 - (self.test_set_size_pcnt_ + self.paramopt_set_size_pcnt_)) + 'pcnt_partition.csv'
@@ -2508,12 +2562,12 @@ class DataRepresentationBuilder:
                 # # if e == 'one-hot' or e == 'bow-gensim':
                 #     X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_train[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
                 # else:
-                X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
+                X_train_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_train[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )  + '_windw-'+str(window_size___)+'-wfreq-'+str(word_freq_cutoff___) ]]
                 Y_train_ = list(self.df_train['numeric_class'])
 
                 if 'semi-sup' in model_type___:
                     # Add undefined data
-                    X_train_u_ = [list(x) for x in list(self.df.loc[(self.indxs_labeled_data[-1]+1):][e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )])]
+                    X_train_u_ = [list(x) for x in list(self.df.loc[(self.indxs_labeled_data[-1]+1):][e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ ) + '_windw-'+str(window_size___)+'-wfreq-'+str(word_freq_cutoff___)  ])]
                     Y_train_u_ = list(self.df.loc[(self.indxs_labeled_data[-1]+1):]['numeric_class'])
                     X_train_ = X_train_u_ + X_train_
                     Y_train_ = np.array(Y_train_u_ + Y_train_)
@@ -2522,7 +2576,7 @@ class DataRepresentationBuilder:
                 # # if e == 'one-hot' or e == 'bow-gensim':
                 #     X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
                 # else:
-                X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )]]
+                X_test_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ )  + '_windw-'+str(window_size___)+'-wfreq-'+str(word_freq_cutoff___)  ]]
 
                 Y_test_ = np.array(self.df_test['numeric_class'])
 
@@ -2531,7 +2585,7 @@ class DataRepresentationBuilder:
                     # # if e == 'one-hot' or e == 'bow-gensim':
                     #     X_ext_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace('\n', '').split(' ') if y != ''] for x in df_ext[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___)]]
                     # else:
-                    X_ext_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in df_ext[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___)]]
+                    X_ext_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in df_ext[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___)   + '_windw-'+str(window_size___)+'-wfreq-'+str(word_freq_cutoff___) ]]
 
                     Y_ext_ = np.array(df_ext['numeric_class'])
 
@@ -2889,12 +2943,12 @@ class DataRepresentationBuilder:
         # fig, axs = plt.subplots(len(self.feature_encoding_ls), len(paramop_detailed_metric_df))
         # fig.set_size_inches(w=14, h=3 * len(self.feature_encoding_ls))
         # Update: Make plots in sets of two or fewer (so not too large)
-        num_plots_ =  int(int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)%2))
-        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i+2] for i in range(0, len(self.feature_encoding_ls), 2)]
+        num_plots_ =  int(int(len(self.feature_encoding_ls)/ 3 )+(len(self.feature_encoding_ls)% 3))
+        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i+3] for i in range(0, len(self.feature_encoding_ls), 3)]
 
         for plotn_ in list(range(num_plots_)):
             fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(paramop_detailed_metric_df))
-            fig.set_size_inches(w=14, h=3*len(paired_feature_encoding_ls[plotn_]))
+            fig.set_size_inches(w=14, h=2*len(paired_feature_encoding_ls[plotn_]))
 
             # Split Evaluation Metric Data per parameter value
             # Loop through each embedding type
@@ -2940,23 +2994,23 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_)
+                        axs[j,i].set_title(metric_, fontsize=7 )
                         if i == 3:
                             #if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n'+str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n'+str(embedding_type_paramop_eval_)+'\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
                             else:
-                                axs[j,i].set_title(str(embedding_type_paramop_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                                axs[j,i].set_title(str(embedding_type_paramop_eval_)+'\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
-                        axs[j,i].set_xlabel(str(self.parameter_to_optimize))
+                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
-                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[j,i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
                         else:
                             axs[j,i].set_ylim(0, 1)
-                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[j,i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
 
                     # One row
                     except:
@@ -2970,23 +3024,23 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_)
+                        axs[i].set_title(metric_, fontsize=7 )
                         if i == 3:
                             # if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(embedding_type_paramop_eval_) + '\n' + str(metric_))  # ,fontweight='bold')
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(embedding_type_paramop_eval_) + '\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
                             else:
-                                axs[i].set_title(str(embedding_type_paramop_eval_) + '\n' + str(metric_))  # ,fontweight='bold')
+                                axs[i].set_title(str(embedding_type_paramop_eval_) + '\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
-                        axs[i].set_xlabel(str(self.parameter_to_optimize))
+                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
-                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
                         else:
                             axs[i].set_ylim(0, 1)
-                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
 
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
@@ -2995,8 +3049,8 @@ class DataRepresentationBuilder:
 
             # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-            fnm_ = (self.output_directory + 'figures/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po_'+str(plotn_+1))
-            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po_'+str(plotn_+1))
+            fnm_ = (self.output_directory + 'figures/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po')
+            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' +str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -3294,8 +3348,8 @@ class DataRepresentationBuilder:
         # fig.set_size_inches(w=14, h=3*len(self.feature_encoding_ls))
         # Update: Make plots in sets of two or fewer (so not too large)
         # TODO: Add +1 to num_plots_ for an extra plot with all embeddings overlayed (in different colors)
-        num_plots_ =  int(int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)%2))# + 1
-        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 2] for i in range(0, len(self.feature_encoding_ls), 2)]
+        num_plots_ =  int(int(len(self.feature_encoding_ls)/3)+(len(self.feature_encoding_ls)%3))# + 1
+        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 3] for i in range(0, len(self.feature_encoding_ls), 3)]
 
 
         for plotn_ in list(range(num_plots_)):
@@ -3306,7 +3360,7 @@ class DataRepresentationBuilder:
 
             # else:
             fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
-            fig.set_size_inches(w=14, h=3 * len(paired_feature_encoding_ls[plotn_]))
+            fig.set_size_inches(w=14, h=2 * len(paired_feature_encoding_ls[plotn_]))
 
 
             # Split Evaluation Metric Data per parameter value
@@ -3370,25 +3424,25 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_)
+                        axs[j,i].set_title(metric_, fontsize=7 )
                         if i == 3:
                             #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
                             else:
-                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
-                        axs[j,i].set_xlabel(str(self.parameter_to_optimize))
+                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize),fontsize=7 )
 
 
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
-                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[j,i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
                         else:
                             axs[j,i].set_ylim(0, 1)
-                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[j,i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
                     # Single Row
                     except:
                         bplot1 = axs[i].boxplot(
@@ -3401,27 +3455,27 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_)
+                        axs[i].set_title(metric_, fontsize=7 )
                         if i == 3:
                             # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_) , fontsize=7 )  # ,fontweight='bold')
                             else:
-                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_))  # ,fontweight='bold')
+                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
-                        axs[i].set_xlabel(str(self.parameter_to_optimize))
+                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
 
                         # label metric score values next to each box
                         self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
-                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7)
                         else:
                             axs[i].set_ylim(0, 1)
-                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7)
                     try:
                         # label metric score values next to each box
                         self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
@@ -3859,24 +3913,24 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_)
+                        axs[j,i].set_title(metric_, fontsize=7 )
                         if i == 3:
                             #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
                             else:
-                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_))  # ,fontweight='bold')
+                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
-                        axs[j,i].set_xlabel(str(self.parameter_to_optimize))
+                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
 
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
-                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[j,i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
                         else:
                             axs[j,i].set_ylim(0, 1)
-                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[j,i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
 
                     # Single Row
                     except:
@@ -3890,27 +3944,27 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_)
+                        axs[i].set_title(metric_, fontsize=7 )
                         if i == 3:
                             # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_))  # ,fontweight='bold')
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_),fontsize=7 )  # ,fontweight='bold')
                             else:
-                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_))  # ,fontweight='bold')
+                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8)
-                        axs[i].set_xlabel(str(self.parameter_to_optimize))
+                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
 
                         # label metric score values next to each box
                         self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
-                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
                         else:
                             axs[i].set_ylim(0, 1)
-                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
 
                     try:
                         # label metric score values next to each box
