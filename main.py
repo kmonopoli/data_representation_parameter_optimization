@@ -3011,7 +3011,7 @@ class DataRepresentationBuilder:
                         else:
                             axs[j,i].set_ylim(0, 1)
                             axs[j,i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
-
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[j,i])
                     # One row
                     except:
                         bplot1 = axs[i].boxplot(
@@ -3041,7 +3041,7 @@ class DataRepresentationBuilder:
                         else:
                             axs[i].set_ylim(0, 1)
                             axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
-
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
@@ -3443,6 +3443,7 @@ class DataRepresentationBuilder:
                         else:
                             axs[j,i].set_ylim(0, 1)
                             axs[j,i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
+
                     # Single Row
                     except:
                         bplot1 = axs[i].boxplot(
@@ -3468,7 +3469,8 @@ class DataRepresentationBuilder:
                         axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
 
                         # label metric score values next to each box
-                        self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
+                        #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
@@ -3478,7 +3480,8 @@ class DataRepresentationBuilder:
                             axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7)
                     try:
                         # label metric score values next to each box
-                        self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
+                        #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[j, i])
                     except:
                         pass # already labeled above
 
@@ -3932,6 +3935,7 @@ class DataRepresentationBuilder:
                             axs[j,i].set_ylim(0, 1)
                             axs[j,i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
 
+
                     # Single Row
                     except:
                         bplot1 = axs[i].boxplot(
@@ -3957,7 +3961,8 @@ class DataRepresentationBuilder:
                         axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
 
                         # label metric score values next to each box
-                        self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
+                        #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
@@ -3968,8 +3973,8 @@ class DataRepresentationBuilder:
 
                     try:
                         # label metric score values next to each box
-                        self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
-
+                        #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[j,i])
                     except:
                         pass # already labeled above
 
