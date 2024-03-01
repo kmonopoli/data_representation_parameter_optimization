@@ -32,7 +32,9 @@ def embed_sequences_with_bow_countvect(seq_ls, kmer_size_, window_size_, word_fr
     #########################################################################################
     '''
     from sklearn.feature_extraction.text import CountVectorizer
-    count_vect = CountVectorizer(ngram_range=(kmer_size_,kmer_size_), analyzer = 'char_wb',min_df=5)#,max_features=100)
+    # count_vect = CountVectorizer(ngram_range=(kmer_size_,kmer_size_), analyzer = 'char_wb',min_df=word_freq_cutoff_)#,max_features=100)
+    count_vect = CountVectorizer(ngram_range=(kmer_size_,kmer_size_), analyzer = 'char',min_df=word_freq_cutoff_)#,max_features=100)
+
     count_vect.fit(seq_ls)
     bow_model = count_vect.transform(seq_ls)
     #bow_model.shape

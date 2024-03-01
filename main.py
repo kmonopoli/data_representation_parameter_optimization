@@ -1,5 +1,4 @@
 #!/opt/anaconda3/bin/python
-#print("TEST - running Main 1: before import statements")
 import pandas as pd
 import numpy as np
 import os
@@ -23,7 +22,6 @@ from sirna_model_building_helper_methods import get_flanking_sequence
 
 
 import matplotlib.pylab as pylab
-#print("TEST - running Main 2: After import statements")
 
 params = {'legend.fontsize': 12,
           'figure.figsize': (6, 4),
@@ -206,7 +204,6 @@ default_params_to_loop_dict = {
 
 
 
-#print("TEST - running Main 3: After global variables")
 
 
 
@@ -248,8 +245,8 @@ class DataRepresentationBuilder:
         pd.set_option('display.max_columns', None)
 
         if not run_param_optimization__:
-            print("IMPORTANT: run_param_optimization__ is set to ("+str(run_param_optimization__)+") so will not be running parameter optimization"+
-                  "(will only be building final models). Any mention of parameter optimization from Constructor can be ignored." )
+            print("\n\n\nIMPORTANT: run_param_optimization__ is set to ("+str(run_param_optimization__)+") so will not be running parameter optimization"+
+                  "(will only be building final models). Any mention of parameter optimization from Constructor can be ignored.\n\n\n" )
 
         if not run_param_optimization__:
             if parameter_to_optimize__ != 'None':
@@ -365,12 +362,12 @@ class DataRepresentationBuilder:
         else:
             self.param_values_to_loop_ = default_params_to_loop_dict[self.parameter_to_optimize]
             if self.param_values_to_loop_ == []:
-                print("NOTE: running without optimizing any parameters")
+                print("\n\n\nNOTE: running without optimizing any parameters\n\n\n")
             else:
                 self.param_opt_working_keys_ls = []
 
-        print("NOTE: parameter_to_optimize = ("+str(self.parameter_to_optimize)+") if this parameter was set in the input, it will be ignored!"+
-              "\t Instead will consider these parameter values: [ "+str(', '.join([str(x) for x in self.param_values_to_loop_])) + "]" )
+        print("\n\n\nNOTE: parameter_to_optimize = ("+str(self.parameter_to_optimize)+") if this parameter was set in the input, it will be ignored!"+
+              "\t Instead will consider these parameter values: [ "+str(', '.join([str(x) for x in self.param_values_to_loop_])) + "]\n\n\n" )
 
         if self.parameter_to_optimize == 'kmer-size':
             self.kmer_size_ = 'PARAMOPT' 
@@ -417,7 +414,7 @@ class DataRepresentationBuilder:
 
         existing_dataset_dir__ = ''
         if self.use_existing_processed_dataset_:
-            print("Searching for existing pre-processed data with matching parameters...")
+            print("\n\n\nSearching for existing pre-processed data with matching parameters...\n")
             # Exclude semi-supervised model building from utilizing pre-loaded data (since embeddings of unlabeled data are not stored and all data must be embedded at the same time for some embedding methods)
             if ('semi-sup-' in self.model_type_):
                 raise Exception("ERROR: cannot use existing processed datasets for model type (" + str(self.model_type_) + ") because is semi-supervised learning and embeddigs of unlabeled data are not stored")
@@ -430,14 +427,14 @@ class DataRepresentationBuilder:
 
         # Load in existing pre-processed data (only if it exists)
         if self.use_existing_processed_dataset_ and (existing_dataset_dir__ != ''):
-            print("IMPORTANT: use_existing_processed_dataset__ is set to (" + str(use_existing_processed_dataset__) + ") so will use existing processed data to build models")
+            print("\n\n\nIMPORTANT: use_existing_processed_dataset__ is set to (" + str(use_existing_processed_dataset__) + ") so will use existing processed data to build models\n\n\n")
             print("Loading in pre-processed dataset ("+str(existing_dataset_dir__)+") ...")
             self.load_in_existing_process_datasets(existing_dataset_dir__)
 
             print("Loading existing pre-processed datasets complete!")
 
         else:
-            print("Creating processed datasets...")
+            print("\nCreating processed datasets...\n")
             # General label describing siRNA data used for model building
             self.all_data_label_str_ = (
                     '-'.join(self.species_ls) +
@@ -464,42 +461,42 @@ class DataRepresentationBuilder:
             print("\t abbrev_all_data_label_str_ = " + str(self.abbrev_all_data_label_str_))
 
             self.create_processed_datasets()
-            print("Creating processed datasets complete!")
+            print("Creating processed datasets complete!\n\n\n")
 
-        print("Running model fittings...")
+        print("\nRunning model fittings...")
         self.run_model_fittings()
-        print("Model Fittings complete!")
+        print("Model Fittings complete!\n")
 
         # TODO: apply final model(s) to external dataset (can it be embedded separately?)
 
 
         if self.run_param_optimization_:
-            print("Ploting precision-recall curves from Parameter Optimization...")
+            print("\nPloting precision-recall curves from Parameter Optimization...")
             self.plot_param_opt_precision_recall_curves()
 
-        print("Ploting precision-recall curves from Final Model Building...")
+        print("\nPloting precision-recall curves from Final Model Building...")
         self.plot_final_model_precision_recall_curves()
         #self.plot_final_model_top_precision_recall_curves() # TODO: uncomment to plot precision-recall curves of top 5 models
         if self.apply_final_models_to_external_dataset_:
-            print("Ploting precision-recall curves from Final Model Building evaluated on External Dataset...")
+            print("\nPloting precision-recall curves from Final Model Building evaluated on External Dataset...")
             self.plot_final_model_precision_recall_curves_on_ext_dataset()
             #self.plot_final_model_top_precision_recall_curves_on_ext_dataset() # TODO: uncomment to plot precision-recall curves of top 5 models
-        print("Curve plotting complete!")
+        print("\nCurve plotting complete!")
 
         if self.run_param_optimization_:
-            print("Plotting box plots from Parameter Optimization...")
+            print("\nPlotting box plots from Parameter Optimization...")
             self.plot_param_opt_model_box_plots()
 
-        print("Plotting box plots from Final Model Building...")
+        print("\nPlotting box plots from Final Model Building...")
         self.plot_final_model_box_plots_per_param_val()
         self.plot_final_model_box_plots_per_metric()
         if self.apply_final_models_to_external_dataset_:
-            print("Plotting box plots from Final Model Building evaluated on External Dataset...")
+            print("\nPlotting box plots from Final Model Building evaluated on External Dataset...")
             self.plot_final_model_box_plots_per_metric_on_ext_dataset()
             self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
-        print("Box plotting complete!")
+        print("\nBox plotting complete!")
 
-        print("PROCESS FINISHED")
+        print("\n\n\nPROCESS FINISHED\n\n\n")
         return ## End constructor
 
 
@@ -537,7 +534,10 @@ class DataRepresentationBuilder:
         connector, (caplines,), (vertical_lines,) = container2.lines
         connector.set_alpha(0)
         caplines.set_solid_capstyle('butt')
-        #caplines.set_marker(None)
+        try:
+            caplines.set_marker(None)
+        except:
+            pass
         vertical_lines.set_linewidth(1.0)  # 0.5)
 
         ax.set_ylim(0, max(df_[self.expr_key]) + 0.2 * max(df_[self.expr_key]))
@@ -575,7 +575,6 @@ class DataRepresentationBuilder:
                 '%', 'pcnt') + '_partition')
 
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
-            # print('Figure saved to:',fnm_svg_+'.svg')
 
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png')
@@ -628,7 +627,6 @@ class DataRepresentationBuilder:
                 '%', 'pcnt') + '_partition')
 
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
-            # print('Figure saved to:',fnm_svg_+'.svg')
 
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png')
@@ -679,7 +677,7 @@ class DataRepresentationBuilder:
         # Read processed_dataset_parameters_index_file to identify pre-processed dataset(s) (if any) that match current parameters
         if not os.path.exists(processed_dataset_parameters_index_file):
             # If processed_dataset_parameters_index_file file does not already exist then can't load in data
-            print("WARNING: processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + ") file containing information to index pre-processed data does not exist, so cannot load in pre-processed dataset ")
+            print("\n\n\nWARNING: processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + ") file containing information to index pre-processed data does not exist, so cannot load in pre-processed dataset \n\n\n")
             return  "" # call create processed datasets since cannot find info to load any existing datasets
 
         else:
@@ -694,7 +692,7 @@ class DataRepresentationBuilder:
             # Identify any values in row_strings_ls that match row_strings_ls
             matching_rows_ls = [x for x in row_strings_ls if x.split('~~~')[-1] == query_row_string_]
             if len(matching_rows_ls) == 0:
-                print("WARNING: no data with parameters matching this run found in processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + "), cannot load in pre-processed dataset ")
+                print("\n\n\nWARNING: no data with parameters matching this run found in processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + "), cannot load in pre-processed dataset \n\n\n")
                 print('\n\nquery_row_string_:')
                 print(query_row_string_)
                 print('\n\n 1st in row_strings_ls:')
@@ -703,13 +701,13 @@ class DataRepresentationBuilder:
                 return "" # call create processed datasets since cannot find info to load any existing datasets
             else:
                 # Select directory name based off of matching_rows_ls to return
-                print("Found", len(matching_rows_ls), "indicies with data parameters matching those for this run")
+                print("\n\nFound", len(matching_rows_ls), "indicies with data parameters matching those for this run")
                 if len(matching_rows_ls) > 1:
                     print("Selecting first occurrence") # TODO: update to pick randomly?
                 # If more than one match, picks first occurrence
                 indx_match_ = int(matching_rows_ls[0].split('~~~')[0])
                 match_dir_ = lines_[indx_match_].split(',')[0]
-                print("Pre-processed data directory selected:\n\t\t",match_dir_,'\n')
+                print("\nPre-processed data directory selected:\n\t\t",match_dir_,'\n')
                 return match_dir_
 
     def load_in_existing_process_datasets(preproc_data_dir, self):
@@ -747,14 +745,12 @@ class DataRepresentationBuilder:
 
         # Read in Data
         try:
-            print("Trying to read in xlsx data")
             self.df = pd.read_excel(input_data_dir + input_data_file)
-            print("Successfully read in xlsx data")
         except:
-            print("Trying to read in .csv data")
             self.df = pd.read_csv(input_data_dir + input_data_file)
             print("Successfully read in .csv data")
 
+        print("\n\n\nSuccessfully read in - " + str(len(df)) + ' siRNAs')
         ########################################################################
         ##                     ~*~ Select Data ~*~                       ##
         ########################################################################
@@ -775,32 +771,24 @@ class DataRepresentationBuilder:
 
         # If Using additional external dataset to evaluate final models Load in
         if self.apply_final_models_to_external_dataset_:
-            print("IMPORTANT: apply_final_models_to_external_dataset_ set to ("+str(self.apply_final_models_to_external_dataset_)+") so using additional external dataset to evaluate final models")
-            print("Loading in external_data_file_ ("+str(self.external_data_file_)+") along with input_data_file ...")
+            print("\n\n\nIMPORTANT: apply_final_models_to_external_dataset_ set to ("+str(self.apply_final_models_to_external_dataset_)+") so using additional external dataset to evaluate final models\n\n\n")
+            print("\n\n\nLoading in external_data_file_ ("+str(self.external_data_file_)+") along with input_data_file ...\n\n\n")
 
             try:
-                print("Trying to read in xlsx data (external dataset)")
                 df_ext = pd.read_excel(input_data_dir + self.external_data_file_)
                 #df_ext = pd.read_excel(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
 
-                print("Successfully read in xlsx data (external dataset) - "+str(len(df_ext))+' siRNAs')
             except:
-                print("Trying to read in .csv data (external dataset)")
                 df_ext = pd.read_csv(input_data_dir + self.external_data_file_)
                 #df_ext = pd.read_csv(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
 
-                print("Successfully read in .csv data (external dataset) - "+str(len(df_ext))+' siRNAs')
+            print("Successfully read in external dataset - "+str(len(df_ext))+' siRNAs')
 
             ########################################################################
             ##                 ~*~ Select External Data ~*~                       ##
             ########################################################################
             df_ext.drop(columns=['expression_replicate_1', 'expression_replicate_2', 'expression_replicate_3', 'ntc_replicate_1', 'ntc_replicate_2', 'ntc_replicate_3', 'untreated_cells_replicate_1', 'untreated_cells_replicate_2', 'untreated_cells_replicate_3'], inplace=True)
 
-            # print(df_ext['chemical_scaffold'].value_counts())
-            # print()
-            # print(df_ext['screen_type'].value_counts())
-            # print()
-            # print(df_ext['species'].value_counts())
 
             print("Selecting external data with screen type:\n", self.screen_type_ls)
             df_ext = df_ext[df_ext['screen_type'].isin(self.screen_type_ls)]
@@ -811,7 +799,7 @@ class DataRepresentationBuilder:
 
             # Randomize expression data
             if self.randomize_ext_data_:
-                print("WARNING: Randomizing external dataset expression data")
+                print("\n\n\nWARNING: Randomizing external dataset expression data\n\n\n")
                 df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
 
             # Add additional column to both df and df_ext to keep track of if external data or original data
@@ -822,7 +810,7 @@ class DataRepresentationBuilder:
             self.df = pd.concat([self.df, df_ext], axis=0)
             self.df.reset_index(inplace=True, drop=True)
             self.df.sort_values(by='from_external_test_dataset', ascending=True, inplace=True)
-            print('Successfully concatenated input and external datasets')
+            print('Successfully concatenated input and external datasets\n')
 
 
         ########################################################################
@@ -926,7 +914,7 @@ class DataRepresentationBuilder:
 
 
     def load_in_unlab_data(self):
-        print("loading in unlabeled Data..")
+        print("\nloading in unlabeled Data..")
         ###############################################################################################################
         ###############################  (if applicable) Load in Unlabeled Data   #####################################
         ###############################################################################################################
@@ -953,7 +941,7 @@ class DataRepresentationBuilder:
                 print("Now have", len(self.df_unlab), 'siRNAs in unlabelled dataset')
             # If optimizing Flank length parameter generate sequences with different flank lengths
             if self.parameter_to_optimize == 'flank-length':
-                print("Getting flanking sequences for unlabeled data...")
+                print("\nGetting flanking sequences for unlabeled data...")
                 for flank_len_, flank_seq_working_key in zip(self.param_values_to_loop_, self.param_opt_working_keys_ls):  # if parameter_to_optimize == 'flank-len':
                     print("Flanking sequence size (per side):", flank_len_, 'nts')
                     # Get flanking sequence of desired length along with target region (drop sequences that don't have long enough flanking sequences) and create new column to store sequences
@@ -970,7 +958,7 @@ class DataRepresentationBuilder:
                     self.df_unlab.reset_index(inplace=True, drop=True)
                     print('Dropped', len_before - len(self.df_unlab), 'unlabelled siRNAs where the working (i.e. flanking) sequence could not be determined for flank_seq_working_key:', flank_seq_working_key)
             else:
-                print("Getting flanking sequences for unlabeled data...")
+                print("\nGetting flanking sequences for unlabeled data...")
                 print("Flanking sequence size (per side):", self.flank_len_, 'nts')
                 # Get flanking sequence of desired length along with target region (drop sequences that don't have long enough flanking sequences) and create new column to store sequences
                 if 'target' in self.region_:
@@ -983,13 +971,13 @@ class DataRepresentationBuilder:
                 len_before = len(self.df_unlab)
                 self.df_unlab.drop(index=self.df_unlab[self.df_unlab[self.flank_seq_working_key].isna()].index, inplace=True)
                 self.df_unlab.reset_index(inplace=True, drop=True)
-                print('Dropped', len_before - len(self.df_unlab), 'unlabelled siRNAs where the working (i.e. flanking) sequence could not be determined for flank_seq_working_key:', self.flank_seq_working_key)
+                print('\nDropped', len_before - len(self.df_unlab), 'unlabelled siRNAs where the working (i.e. flanking) sequence could not be determined for flank_seq_working_key:', self.flank_seq_working_key)
 
             print("Selecting data with species:\n", self.species_ls)
             self.df_unlab = self.df_unlab[self.df_unlab['species'].isin(self.species_ls)]
 
             # TODO: for Parameter Optimization of unlabelled data set SIZE , add option to alter dataset size - BUT DO THIS CAREFULLY SO DON'T HAVE A LOT OF DATA IN RAM
-            print('Number of unlabelled siRNAs loaded:', len(self.df_unlab))
+            print('\n\n\nNumber of unlabelled siRNAs loaded:', len(self.df_unlab))
 
             # Format Unlabelled to match Labelled Data
             # Add missing columns to self.df_unlab
@@ -1041,7 +1029,7 @@ class DataRepresentationBuilder:
 
 
     def perform_feature_embedding(self):
-        print("Performing feature embedding...")
+        print("\n\nPerforming feature embedding...")
         ###############################################################################################################
         ###############################          Perform Feature Embedding        #####################################
         ###############################################################################################################
@@ -1057,31 +1045,43 @@ class DataRepresentationBuilder:
 
         #['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
 
+
+        print_kmer_size_ = False
+        print_flank_seq_working_key_ = False
+        print_window_size_ = False
+        print_word_freq_cutoff_ = False
+
         if self.parameter_to_optimize == 'kmer-size':
             kmer_sizes_ls = self.param_values_to_loop_
+            print_kmer_size_ = True
         else:
             kmer_sizes_ls = [self.kmer_size_]
 
         if self.parameter_to_optimize == 'flank-length':
             flank_seq_working_key__ls = self.param_opt_working_keys_ls
+            print_flank_seq_working_key_ = True
         else:
             flank_seq_working_key__ls = [self.flank_seq_working_key]
 
+
         for kmer_ in kmer_sizes_ls:
-            print('kmer size:', kmer_)
+            if print_kmer_size_:
+                print('\nkmer size:', kmer_)
             for flank_seq_working_key__ in flank_seq_working_key__ls:
-                print('flank_seq_working_key:',flank_seq_working_key__)
+                if print_flank_seq_working_key_:
+                    print('\nflank_seq_working_key:',flank_seq_working_key__)
                 for encoding_ in self.feature_encoding_ls:
                     if (self.parameter_to_optimize == 'window-size'):
                         print('PARAMOPT - encoding:',encoding_,self.parameter_to_optimize)
                         window_size_ls_ = self.param_values_to_loop_
                         word_freq_cutoff_ls_ = [self.word_freq_cutoff_]
+                        print_window_size_ = True
 
                     elif (self.parameter_to_optimize == 'word-frequency-cutoff'):
                         print('PARAMOPT - encoding:', encoding_, self.parameter_to_optimize)
-
                         window_size_ls_ = [self.window_size_]
                         word_freq_cutoff_ls_ = self.param_values_to_loop_
+                        print_word_freq_cutoff_ = True
 
                     else:
                         print('encoding:', encoding_)
@@ -1089,12 +1089,13 @@ class DataRepresentationBuilder:
                         word_freq_cutoff_ls_ = [self.word_freq_cutoff_]
 
                     for wndwsz_ in window_size_ls_:
-                        print('window_size_ = ', wndwsz_)
+                        if print_window_size_:
+                            print('\nwindow_size_ = ', wndwsz_)
                         if wndwsz_ > kmer_:
                             raise Exception("ERROR: window_size ("+str(wndwsz_)+") cannot exceed kmer_size ("+str(kmer_)+") ")
                         for wfco_ in word_freq_cutoff_ls_:
-                            print('word_freq_cutoff_ = ', wfco_)
-
+                            if print_word_freq_cutoff_:
+                                print('\nword_freq_cutoff_ = ', wfco_)
                             if encoding_ == 'one-hot': ### One-Hot Encoding ###
                                 self.df['one-hot_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)+ '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = one_hot_encode_sequences(
                                     list(self.df[flank_seq_working_key__]))
@@ -1176,7 +1177,7 @@ class DataRepresentationBuilder:
 
 
     def split_train_test_paramopt(self):
-        print("Splitting Datasets into train/test/paramopt...")
+        print("\nSplitting Datasets into train/test/paramopt...")
         ##############################################################################################################
         #################################    Split Dataset into Train:Paramopt:Test    ###############################
         ##############################################################################################################
@@ -2361,7 +2362,7 @@ class DataRepresentationBuilder:
                                     print("\tModel type:",m_)
                                     print('\tEmbedding:',e)
                                     from sklearn.metrics import precision_recall_curve
-                                    print('\n\n\npreds_po :',set(preds_po),'\n\n\n')
+                                    #print('\n\n\npreds_po :',set(preds_po),'\n\n\n')
 
                                     ## In cases where is LabelSpreading or LabelPropagation model and One-Hot Encoding,
                                     #     will have an NaN when trying to compute precision-recall
@@ -2620,7 +2621,7 @@ class DataRepresentationBuilder:
 
                 from sklearn.metrics import fbeta_score
                 fbetascore_final_ = fbeta_score(Y_test_, preds_binary_final, beta=self.f_beta_)  # , average=None)
-                print("Computing Final fbeta_score with beta =", self.f_beta_)
+                print("\nComputing Final fbeta_score with beta =", self.f_beta_)
 
                 accuracy_final_ = accuracy_score(Y_test_, preds_binary_final)
                 from sklearn.metrics import matthews_corrcoef
@@ -2647,7 +2648,7 @@ class DataRepresentationBuilder:
                     }
                     aucpr_adj_final_ = aucpr_final_ - p_final_[0]
                 else:
-                    print("WARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model')
+                    print("\n\nWARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model\n\n')
                     paramop_performance_curves_dict_ = {
                         'Precision_Recall_Curve': [[], [], []],
                         'Unacheivable_Region_Curve': [[], []],
@@ -2680,7 +2681,7 @@ class DataRepresentationBuilder:
 
                 if self.apply_final_models_to_external_dataset_:
 
-                    print("Evaluating performance on external dataset for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
+                    print("\nEvaluating performance on external dataset for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...\n')
 
                     ## Evaluate Parameter Optimization Model Performance
                     # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
@@ -2691,7 +2692,7 @@ class DataRepresentationBuilder:
                     ext_fscore_final_ = f1_score(Y_ext_, ext_preds_binary_final)  # , average=None)
 
                     ext_fbetascore_final_ = fbeta_score(Y_ext_, ext_preds_binary_final, beta=self.f_beta_)  # , average=None)
-                    print("Computing Final fbeta_score with beta =", self.f_beta_)
+                    print("\nComputing Final fbeta_score with beta =", self.f_beta_)
 
                     ext_accuracy_final_ = accuracy_score(Y_ext_, ext_preds_binary_final)
 
@@ -2715,7 +2716,7 @@ class DataRepresentationBuilder:
                         }
                         ext_aucpr_adj_final_ = ext_aucpr_final_ - ext_p_final_[0]
                     else:
-                        print("WARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model')
+                        print("\n\nWARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model\n\n')
                         ext_paramop_performance_curves_dict_ = {
                             'Precision_Recall_Curve': [[], [], []],
                             'Unacheivable_Region_Curve': [[], []],
@@ -2748,7 +2749,7 @@ class DataRepresentationBuilder:
                     pickle.dump(clf_final, pickle_file)
                 pickle_file.close()
 
-                print('Final model '+str(n_+1)+' with encoding '+str(e)+' saved to:', fnm_.replace(self.output_directory, '~/'))
+                print('\n\n\nFinal model '+str(n_+1)+' with encoding '+str(e)+' saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
 
                 # with open(fnm_, 'wb') as pickle_file:
                 #     clf__ = pickle.load(pickle_file)
@@ -2758,7 +2759,7 @@ class DataRepresentationBuilder:
 
 
     def plot_param_opt_precision_recall_curves(self):
-        print("Plotting P-R curves for parameter optimization...")
+        print("\nPlotting P-R curves for parameter optimization...")
         ## Plot compiled Parameter Optimization Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
@@ -2923,7 +2924,7 @@ class DataRepresentationBuilder:
 
 
     def plot_param_opt_model_box_plots(self):
-        print("Plotting box plots for parameter optimization...")
+        print("\nPlotting box plots for parameter optimization...")
         ## Plot Compiled Multimetrics Model Performance - Parameter Optimization Models
         # Each column of paramop_detailed_metric_df contains a single round for a single embedding type
         paramop_detailed_metric_df = pd.DataFrame(self.paramop_performance_metrics_encodings_dict)
@@ -3067,7 +3068,7 @@ class DataRepresentationBuilder:
 
 
     def plot_final_model_precision_recall_curves(self):
-        print("Plotting precision-recall curves for final models...")
+        print("\nPlotting precision-recall curves for final models...")
         ## Plot Final Model Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
@@ -3178,7 +3179,7 @@ class DataRepresentationBuilder:
         return
 
     def plot_final_model_top_precision_recall_curves(self):
-        print("Plotting top precision recall curves from final models...")
+        print("\nPlotting top precision recall curves from final models...")
         ## Plot Top 5 Final Model Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
@@ -3334,7 +3335,7 @@ class DataRepresentationBuilder:
                          )
 
     def plot_final_model_box_plots_per_param_val(self):
-        print("Plotting box plots for final models per parameter value...")
+        print("\nPlotting box plots for final models per parameter value...")
         ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
 
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
@@ -3513,7 +3514,7 @@ class DataRepresentationBuilder:
 
 
     def plot_final_model_box_plots_per_metric(self):
-        print("Plotting box plots -- per performance metric -- for final models...")
+        print("\nPlotting box plots -- per performance metric -- for final models...")
         ## Plot Compiled Multimetrics Model Performance - Final Models per metric
         final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
 
@@ -3579,7 +3580,7 @@ class DataRepresentationBuilder:
         return
 
     def plot_final_model_precision_recall_curves_on_ext_dataset(self):
-        print("Plotting precision-recall curves for final models evaluated on external dataset...")
+        print("\nPlotting precision-recall curves for final models evaluated on external dataset...")
         if not self.apply_final_models_to_external_dataset_:
             print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
@@ -3697,7 +3698,7 @@ class DataRepresentationBuilder:
         return
 
     def plot_final_model_top_precision_recall_curves_on_ext_dataset(self):
-        print("Plotting top precision recall curves from final models evaluated on external dataset...")
+        print("\nPlotting top precision recall curves from final models evaluated on external dataset...")
         if not self.apply_final_models_to_external_dataset_:
             print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
@@ -3836,7 +3837,7 @@ class DataRepresentationBuilder:
 
 
     def plot_final_model_box_plots_per_param_val_on_ext_dataset(self):
-        print("Plotting box plots for final models evaluated on external dataset per parameter value...")
+        print("\nPlotting box plots for final models evaluated on external dataset per parameter value...")
         if not self.apply_final_models_to_external_dataset_:
             print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
@@ -4013,7 +4014,7 @@ class DataRepresentationBuilder:
         return
 
     def plot_final_model_box_plots_per_metric_on_ext_dataset(self):
-        print("Plotting box plots -- per performance metric -- for final models evaluated on external dataset per parameter value...")
+        print("\nPlotting box plots -- per performance metric -- for final models evaluated on external dataset per parameter value...")
         if not self.apply_final_models_to_external_dataset_:
             print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
