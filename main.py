@@ -76,17 +76,19 @@ ulabelled_data_file_dict = {
     # TODO: update Unlabelled Data files to reflect training dataset (human P3)
     # Unlabelled siRNA data Generated Randomly (i.e. as random sequences of A/U/C/G)
     #'unlab-randomized': input_data_dir + '/semisupervised_for_cluster_oct-19-2023/' + 'unlabelled_randomized_sirna_data_37050-sirnas_hm_SEP-12-2023_pog.csv',
-    'unlab-randomized': input_data_dir +'unlabelled_randomized_sirna_data_38024-sirnas_SEP-12-2023.csv',
-
+    # 'unlab-randomized': input_data_dir + 'unlabelled_randomized_sirna_data_38024-sirnas_SEP-12-2023.csv',
+    'unlab-randomized': input_data_dir + 'unlabelled_sequences-random_sirna_data_(170000-sirnas)_FEB-29-2024.csv',
 
     # Unlabelled siRNA Data Generated from Targeted Transcripts - evenly distributed throughout
-    # 'sequences-from-targeted-transcripts':None, # TODO: generate sequences-from-targeted-transcripts unlabelled dataset
+    'sequences-from-targeted-transcripts': input_data_dir + 'unlabelled_unweighted-sequences-from-targeted-transcripts_sirna_data_(131181-sirnas|human|P3|bDNA|46txs)_FEB-29-2024.csv',
 
     # Unlabelled siRNA Data Generated from Targeted Transcripts - weighted by representation
-    'weighted-sequences-from-targeted-transcripts': input_data_dir + 'unlabelled_weighted-sequences-from-targeted-transcripts_sirna_data_37928-sirnas_SEP-18-2023.csv',
+    #'weighted-sequences-from-targeted-transcripts': input_data_dir + 'unlabelled_weighted-sequences-from-targeted-transcripts_sirna_data_37928-sirnas_SEP-18-2023.csv',
+    'weighted-sequences-from-targeted-transcripts': input_data_dir + 'unlabelled_weighted-sequences-from-targeted-transcripts_sirna_data_(146977-sirnas|human|P3|bDNA|46txs)_FEB-29-2024.csv',
 
     # Unlabelled siRNA Data Generated from Transcriptome (including untargeted transcripts)
-    'sequences-from-all-transcripts': input_data_dir + 'unlabelled_sequences-from-species-transcriptomes_sirna_data_39000-sirnas_OCT-5-2023.csv',
+    # 'sequences-from-all-transcripts': input_data_dir + 'unlabelled_sequences-from-species-transcriptomes_sirna_data_39000-sirnas_OCT-5-2023.csv',
+    'sequences-from-all-transcripts': input_data_dir + 'unlabelled_sequences-from-transcriptomes_sirna_data_(170000-sirnas|human|P3|bDNA)_FEB-29-2024.csv',
 }
 
 
@@ -2888,8 +2890,8 @@ class DataRepresentationBuilder:
                     axs[row_,col_].set_xticks(ticks=np.arange(0,1.1,.5),labels=['',0.5,1.0])
 
                 else:
-                    axs[row_,col_].set_xticklabels([])
-                    axs[row_,col_].set_yticklabels([])
+                    axs[row_,col_].set_xticks([])
+                    axs[row_,col_].set_yticks([])
                 if col_ == rows_cols_compiled_po_fig-1:
                     col_ = 0
                     row_+=1
@@ -3007,10 +3009,13 @@ class DataRepresentationBuilder:
                         axs[j,i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
-                            axs[j,i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
+                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[j,i].tick_params(axis='y', labelsize=7)
                         else:
                             axs[j,i].set_ylim(0, 1)
-                            axs[j,i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
+                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[j,i].tick_params(axis='y', labelsize=7)
+
                         self.autolabel_boxplot_below(bplot1['caps'][::2], axs[j,i])
                     # One row
                     except:
@@ -3037,10 +3042,12 @@ class DataRepresentationBuilder:
                         axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
-                            axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
+                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[i].tick_params(axis='y', labelsize=7)
                         else:
                             axs[i].set_ylim(0, 1)
-                            axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
+                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[i].tick_params(axis='y', labelsize=7)
                         self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
@@ -3049,8 +3056,8 @@ class DataRepresentationBuilder:
 
             # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-            fnm_ = (self.output_directory + 'figures/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po')
-            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' +str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_po')
+            fnm_ = (self.output_directory + 'figures/' + str(plotn_+1)+'_po_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
+            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' +str(plotn_+1)+'_po_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -3140,8 +3147,8 @@ class DataRepresentationBuilder:
                 axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
 
             else:
-                axs[col_].set_xticklabels([])
-                axs[col_].set_yticklabels([])
+                axs[col_].set_xticks([])
+                axs[col_].set_yticks([])
 
         # Add legend for parameter values
         from matplotlib.lines import Line2D
@@ -3270,8 +3277,8 @@ class DataRepresentationBuilder:
                 axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
 
             else:
-                axs[col_].set_xticklabels([])
-                axs[col_].set_yticklabels([])
+                axs[col_].set_xticks([])
+                axs[col_].set_yticks([])
 
         # Add legend for parameter values
         from matplotlib.lines import Line2D
@@ -3439,10 +3446,12 @@ class DataRepresentationBuilder:
 
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
-                            axs[j,i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
+                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[j,i].tick_params(axis='y', labelsize=7)
                         else:
                             axs[j,i].set_ylim(0, 1)
-                            axs[j,i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
+                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[j,i].tick_params(axis='y', labelsize=7)
 
                     # Single Row
                     except:
@@ -3474,10 +3483,12 @@ class DataRepresentationBuilder:
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
-                            axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7)
+                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[i].tick_params(axis='y', labelsize=7)
                         else:
                             axs[i].set_ylim(0, 1)
-                            axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7)
+                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[i].tick_params(axis='y', labelsize=7)
                     try:
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
@@ -3493,8 +3504,8 @@ class DataRepresentationBuilder:
 
             # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-            fnm_ = (self.output_directory + 'figures/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
-            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final')
+            fnm_ = (self.output_directory + 'figures/' + str(plotn_+1)+'_final_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
+            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + str(plotn_+1)+'_final_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -3544,10 +3555,12 @@ class DataRepresentationBuilder:
 
             if metric_ == 'MCC':
                 axs[i].set_ylim(-1, 1)
-                axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0],fontsize=fntsz_)
+                axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                axs[i].tick_params(axis='y', labelsize=fntsz_)
             else:
                 axs[i].set_ylim(0, 1)
-                axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0],fontsize=fntsz_)
+                axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                axs[i].tick_params(axis='y', labelsize=fntsz_)
 
             self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
 
@@ -3650,8 +3663,8 @@ class DataRepresentationBuilder:
                 axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
 
             else:
-                axs[col_].set_xticklabels([])
-                axs[col_].set_yticklabels([])
+                axs[col_].set_xticks([])
+                axs[col_].set_yticks([])
 
         # Add legend for parameter values
         from matplotlib.lines import Line2D
@@ -3787,8 +3800,8 @@ class DataRepresentationBuilder:
                 axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
 
             else:
-                axs[col_].set_xticklabels([])
-                axs[col_].set_yticklabels([])
+                axs[col_].set_xticks([])
+                axs[col_].set_yticks([])
 
         # Add legend for parameter values
         from matplotlib.lines import Line2D
@@ -3930,10 +3943,12 @@ class DataRepresentationBuilder:
 
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
-                            axs[j,i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
+                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[j,i].tick_params(axis='y', labelsize=7)
                         else:
                             axs[j,i].set_ylim(0, 1)
-                            axs[j,i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
+                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[j,i].tick_params(axis='y', labelsize=7)
 
 
                     # Single Row
@@ -3966,10 +3981,12 @@ class DataRepresentationBuilder:
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
-                            axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0], fontsize=7 )
+                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[i].tick_params(axis='y', labelsize=7)
                         else:
                             axs[i].set_ylim(0, 1)
-                            axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], fontsize=7 )
+                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[i].tick_params(axis='y', labelsize=7)
 
                     try:
                         # label metric score values next to each box
@@ -3988,8 +4005,8 @@ class DataRepresentationBuilder:
 
             # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-            fnm_ = (self.output_directory + 'figures/ext_data/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
-            fnm_svg_ = (self.output_directory + 'figures/ext_data/' + 'svg_figs/' + str(plotn_+1)+'_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
+            fnm_ = (self.output_directory + 'figures/ext_data/' + str(plotn_+1)+'_ext-data-eval_final_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
+            fnm_svg_ = (self.output_directory + 'figures/ext_data/' + 'svg_figs/' + str(plotn_+1)+'_ext-data-eval_final_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
@@ -4041,10 +4058,12 @@ class DataRepresentationBuilder:
 
             if metric_ == 'MCC':
                 axs[i].set_ylim(-1, 1)
-                axs[i].set_yticklabels([-1.0, -0.5, 0.0, 0.5, 1.0],fontsize=fntsz_)
+                axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                axs[i].tick_params(axis='y', labelsize=fntsz_)
             else:
                 axs[i].set_ylim(0, 1)
-                axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1.0],fontsize=fntsz_)
+                axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                axs[i].tick_params(axis='y', labelsize=fntsz_)
 
             self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
 
