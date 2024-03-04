@@ -55,7 +55,8 @@ input_data_file = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sir
 
 external_data_file_dict = {
     True: 'randomized_sirna_screen_data_777-sirnas_p3-bdna_FEB-28-2024.csv', # randomize_ext_data__ = True
-    False: 'newly_added_sirna_screen_data_777-sirnas|-bdna_FEB-22-2024.csv'  # randomize_ext_data__ = False
+    #False: 'newly_added_sirna_screen_data_777-sirnas|-bdna_FEB-22-2024.csv'  # randomize_ext_data__ = False
+    False: 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sirnas-bdna-75-genes_JAN-29-2024.csv'  # randomize_ext_data__ = False
 }
 
 # Dictionaries used for labelling
@@ -750,7 +751,7 @@ class DataRepresentationBuilder:
             self.df = pd.read_csv(input_data_dir + input_data_file)
             print("Successfully read in .csv data")
 
-        print("\n\n\nSuccessfully read in - " + str(len(df)) + ' siRNAs')
+        print("\n\n\nSuccessfully read in - " + str(len(self.df)) + ' siRNAs')
         ########################################################################
         ##                     ~*~ Select Data ~*~                       ##
         ########################################################################
@@ -3017,7 +3018,7 @@ class DataRepresentationBuilder:
                             axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                             axs[j,i].tick_params(axis='y', labelsize=7)
 
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[j,i])
+                        self.autolabel_boxplot_below(bplot1['caps'][::2],  bplot1['medians'], axs[j,i])
                     # One row
                     except:
                         bplot1 = axs[i].boxplot(
@@ -3049,7 +3050,7 @@ class DataRepresentationBuilder:
                             axs[i].set_ylim(0, 1)
                             axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                             axs[i].tick_params(axis='y', labelsize=7)
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
@@ -3320,13 +3321,14 @@ class DataRepresentationBuilder:
                         fontsize=7, color=label_color,
                         )
 
-    def autolabel_boxplot_below(self, caps, ax_, label_color = 'black'):
-        '''to run: autolabel_boxplot_below(bplot1['caps'][::2], ax) '''
-        for m_ in caps:
-            height = m_.get_ydata()[0]
-            right_coord = m_.get_xdata()[-1]
-            left_coord = m_.get_xdata()[0]
-            ax_.annotate(str(np.round(height, 2))[1:],
+    def autolabel_boxplot_below(self, caps, medians, ax_, label_color = 'black'):
+        '''to run: autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], ax) '''
+        for c_,m_ in zip(caps,medians):
+            height = c_.get_ydata()[0]
+            height_label = m_.get_ydata()[0]
+            right_coord = c_.get_xdata()[-1]
+            left_coord = c_.get_xdata()[0]
+            ax_.annotate(str(np.round(height_label, 2))[1:],
                          # xy = (left_coord+((left_coord-right_coord)/2) , height),
                          xy=(left_coord, height),
                          xytext=(-3, -3), textcoords="offset points",  # 3 points vertical and horizontal offset
@@ -3362,13 +3364,13 @@ class DataRepresentationBuilder:
 
         for plotn_ in list(range(num_plots_)):
 
-            # if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row since is a combined plot with all embeddings
-            #     fig, axs = plt.subplots(1, len(final_detailed_metric_df))
-            #     fig.set_size_inches(w=14, h=3 )
+            if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row since is a combined plot with all embeddings
+                fig, axs = plt.subplots(1, len(final_detailed_metric_df))
+                fig.set_size_inches(w=14, h=3 )
 
-            # else:
-            fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
-            fig.set_size_inches(w=14, h=2 * len(paired_feature_encoding_ls[plotn_]))
+            else:
+                fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
+                fig.set_size_inches(w=14, h=2 * len(paired_feature_encoding_ls[plotn_]))
 
 
             # Split Evaluation Metric Data per parameter value
@@ -3480,7 +3482,7 @@ class DataRepresentationBuilder:
 
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
@@ -3493,7 +3495,7 @@ class DataRepresentationBuilder:
                     try:
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[j, i])
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j, i])
                     except:
                         pass # already labeled above
 
@@ -3563,7 +3565,7 @@ class DataRepresentationBuilder:
                 axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                 axs[i].tick_params(axis='y', labelsize=fntsz_)
 
-            self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
+            self.autolabel_boxplot_below(bplot1['caps'][::2],bplot1['medians'], axs[i])
 
         fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
                      ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
@@ -3978,7 +3980,7 @@ class DataRepresentationBuilder:
 
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
@@ -3992,7 +3994,7 @@ class DataRepresentationBuilder:
                     try:
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], axs[j,i])
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j,i])
                     except:
                         pass # already labeled above
 
@@ -4066,7 +4068,7 @@ class DataRepresentationBuilder:
                 axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                 axs[i].tick_params(axis='y', labelsize=fntsz_)
 
-            self.autolabel_boxplot_below(bplot1['caps'][::2], axs[i])
+            self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
         random_flag_ = ''
         if self.randomize_ext_data_:
