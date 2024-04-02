@@ -1,0 +1,351 @@
+shuffled-expression
+shuffled-sequences
+randomized-sequences
+original
+all-negative-labels
+randomized-expression
+figures
+all-positive-labels
+for_troubleshooting_and_testing/original_newly_added_sirna_screen_data_765-sirnas|-bdna_MAR-13-2024.csv
+
+
+
+IMPORTANT: run_param_optimization__ is set to (False) so will not be running parameter optimization(will only be building final models). Any mention of parameter optimization from Constructor can be ignored.
+
+
+
+
+
+
+NOTE: running without optimizing any parameters
+
+
+
+
+
+
+NOTE: parameter_to_optimize = (None) if this parameter was set in the input, it will be ignored!	 Instead will consider these parameter values: [ ]
+
+
+
+Date set successfully! MAR-21-2024
+
+Creating processed datasets...
+
+	 all_data_label_str_ = human_p3_bDNA_normalized_effco-25|ineffco-60-removed_undefined_siRNAs
+	 abbrev_all_data_label_str_ = h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u
+Creating processed datasets...
+Successfully read in .csv data
+
+
+
+Successfully read in - 4392 siRNAs
+chemical_scaffold
+P3               2671
+P3 Asymmetric     875
+P5                442
+P3 Blunt          190
+O-Methyl Rich     143
+P4                 71
+Name: count, dtype: int64
+
+screen_type
+bDNA    4392
+Name: count, dtype: int64
+
+species
+human    2767
+mouse    1570
+rat        55
+Name: count, dtype: int64
+Selecting data with screen type:
+ ['bDNA']
+Selecting data with species:
+ ['human']
+Selecting data with chemical scaffold:
+ ['P3']
+Training dataset size: 1264
+region_ = flanking_and_target_regions
+Dropped 0 siRNAs for missing flanking sequence data ( 1264 Remaining)
+Dropped 32 siRNAs for having mismatch 16mer
+Dropped 0 siRNAs because could not get longest flanking sequence ( 1232 Remaining)
+***********
+0       AAGAAGAAAACTCAACTCAGTGCCATTTTACGAATATATGCGTTTA...
+1       AAGGATGGATAACATTTATTTTGAATACAGCCATGCTTTCCAGGCA...
+2       TGAACAAGCTGCCAAAGTTGGGGATAAAACTGAATTATTTAAAGAC...
+3       AATTAATATGCTATATTTTAATGGCAAAGAACAAATAATATATGGG...
+4       TAGAGTATGCTACAGTCACTTAAGCATAAGCTACAGTATGTAAACT...
+                              ...                        
+1227    GTTGTTTTCAAATTTCAACCTTGTGCAATGTTGAGTTTCATAGAAA...
+1228    TTGTTTTCAAATTTCAACCTTGTGCAATGTTGAGTTTCATAGAAAT...
+1229    ATGTTGAGTTTCATAGAAATACTGCATGAGTACGCCCTTGTTTAGA...
+1230    TTGCAAAGGATGGAATTTTCTCCGATTGTCATCATCGTTGATGTTT...
+1231    TCTTCTTCCCTCCTAAAATTTTATCTAAATGATATTTATATTTGAT...
+Length: 1232, dtype: object
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+chemical_scaffold  screen_type  species
+P3                 bDNA         human      1232
+Name: count, dtype: int64
+class
+undefined      466
+efficient      451
+inefficient    315
+Name: count, dtype: int64
+
+loading in unlabeled Data..
+random-forest Does not use unlabeled data
+
+
+Performing feature embedding...
+encoding: bow-gensim-weights
+Bag-of-words corpus lengths saved to:
+	 embedding_dictionaries/2560_bow_corpus_lengths_dict_kmer-9_window-1_word-freq-co-1.csv
+Bag-of-words corpus saved to:
+	 embedding_dictionaries/2560_bow_corpus_sirna_kmer-9_window-1_word-freq-co-1.txt
+Vectors transformed to TF-IDF vector space saved to:
+	 embedding_dictionaries/2560_tfidf-vects_kmer-9_window-1_word-freq-co-1.txt
+
+
+
+
+
+*****\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/****
+
+
+
+LENGTHS: 1232 1232 
+
+
+
+Bag-of-words tf-idf dataframe saved to:
+	 embedding_dictionaries/2560_bow-tfidf-dataframe_kmer-9_window-1_word-freq-co-1.csv
+Bag-of-words tf-idf dictionary saved to:
+	 embedding_dictionaries/2560_bow-tfidf-dict_kmer-9_window-1_word-freq-co-1.txt
+BOW embedding using Gensim doc2bow complete!
+encoding: ann-fasttext-skipgram
+Read 0M words
+Number of words:  3101
+Number of labels: 0
+Progress:  11.4% words/sec/thread:   24194 lr:  0.044297 avg.loss:  2.084725 ETA:   0h 0m 0sProgress:  24.2% words/sec/thread:   25763 lr:  0.037881 avg.loss:  1.376418 ETA:   0h 0m 0sProgress:  39.5% words/sec/thread:   28100 lr:  0.030269 avg.loss:  1.012395 ETA:   0h 0m 0sProgress:  51.8% words/sec/thread:   27490 lr:  0.024091 avg.loss:  0.850621 ETA:   0h 0m 0sProgress:  61.7% words/sec/thread:   26285 lr:  0.019172 avg.loss:  0.776496 ETA:   0h 0m 0sProgress:  72.1% words/sec/thread:   25514 lr:  0.013965 avg.loss:  0.699348 ETA:   0h 0m 0sProgress:  82.8% words/sec/thread:   25200 lr:  0.008614 avg.loss:  0.649499 ETA:   0h 0m 0sProgress:  95.7% words/sec/thread:   25484 lr:  0.002162 avg.loss:  0.596383 ETA:   0h 0m 0sProgress: 100.2% words/sec/thread:   23663 lr: -0.000079 avg.loss:  0.578948 ETA:   0h 0m 0sProgress: 100.0% words/sec/thread:   23660 lr:  0.000000 avg.loss:  0.578948 ETA:   0h 0m 0s
+encoding: ann-fasttext-cbow
+Read 0M words
+Number of words:  3101
+Number of labels: 0
+Progress:  13.3% words/sec/thread:   28178 lr:  0.043368 avg.loss:  3.101603 ETA:   0h 0m 0sProgress:  26.5% words/sec/thread:   28090 lr:  0.036754 avg.loss:  2.451266 ETA:   0h 0m 0sProgress:  40.7% words/sec/thread:   28888 lr:  0.029670 avg.loss:  1.903083 ETA:   0h 0m 0sProgress:  55.1% words/sec/thread:   29237 lr:  0.022444 avg.loss:  1.574130 ETA:   0h 0m 0sProgress:  69.1% words/sec/thread:   29439 lr:  0.015460 avg.loss:  1.350030 ETA:   0h 0m 0sProgress:  79.7% words/sec/thread:   28343 lr:  0.010155 avg.loss:  1.212936 ETA:   0h 0m 0sProgress:  90.0% words/sec/thread:   27335 lr:  0.004988 avg.loss:  1.120032 ETA:   0h 0m 0sProgress: 100.1% words/sec/thread:   26547 lr: -0.000041 avg.loss:  1.040599 ETA:   0h 0m 0sProgress: 100.0% words/sec/thread:   26541 lr:  0.000000 avg.loss:  1.040599 ETA:   0h 0m 0s
+
+
+Encoded vector lengths:
+
+
+one-hot	 bow-countvect	 bow-gensim	 bow-gensim-weights	 ann-keras	 ann-word2vec-gensim	 ann-word2vec-gensim-cbow	 ann-word2vec-gensim-skipgram	 ann-fasttext-cbow	 ann-fasttext-skipgram
+54 		 100 		 100 		
+54 		 100 		 100 		
+
+Splitting Datasets into train/test/paramopt...
+self.datasplit_id_ | Randomized 8-digit ID for this Set of Rounds:	 rfN16107
+All datasets will be stored in:
+ /Users/kmonopoli/Dropbox (UMass Medical School)/data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimizationoutput_model_fitting/
+	data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/
+Data processing parameter data appeneded to: 
+	 output_model_fitting/data-processing-param-index.csv
+Figure saved to: output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/figures/all_sirna_data_partition.png
+Figure saved to: output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/figures/undefined_data_partition.png
+Undefined Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/Undefined_Data_partition.csv
+Allowed percentage classification proportiond deviation: 5% (38 siRNAs)
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Round 1 / 3 Complete! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+** Resplit 1 times
+Dataset Excluding Undefined: 766 siRNAs Total 	( 100 % ) 
+	0: 315 siRNAs 		( 41 % )  
+	1: 451 siRNAs  		( 59 % )
+
+Training: 574 siRNAs Total 			( 75 % ) 
+	0: 242 siRNAs 		( 42 % )  
+	1: 332 siRNAs  		( 58 % )
+
+Testing: 116 siRNAs Total 			( 15 % ) 
+	0: 42 siRNAs 		( 36 % )  
+	1: 74 siRNAs  		( 64 % )
+
+Parameter Optimization:: 76 siRNAs Total 	( 10 % ) 
+	0: 31 siRNAs 		( 41 % )  
+	1: 45 siRNAs  		( 59 % )
+
+split_initial Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/datasets/ROUND-1_Training_Data_75pcnt_partition.csv
+Testing Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/datasets/ROUND-1_Testing_Data_15pcnt_partition.csv
+Parameter Optimization Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/datasets/ROUND-1_Parameter_Optimization_Data_10pcnt_partition.csv
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Round 2 / 3 Complete! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+** Resplit 2 times
+Dataset Excluding Undefined: 766 siRNAs Total 	( 100 % ) 
+	0: 315 siRNAs 		( 41 % )  
+	1: 451 siRNAs  		( 59 % )
+
+Training: 574 siRNAs Total 			( 75 % ) 
+	0: 234 siRNAs 		( 41 % )  
+	1: 340 siRNAs  		( 59 % )
+
+Testing: 116 siRNAs Total 			( 15 % ) 
+	0: 49 siRNAs 		( 42 % )  
+	1: 67 siRNAs  		( 58 % )
+
+Parameter Optimization:: 76 siRNAs Total 	( 10 % ) 
+	0: 32 siRNAs 		( 42 % )  
+	1: 44 siRNAs  		( 58 % )
+
+split_initial Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/datasets/ROUND-2_Training_Data_75pcnt_partition.csv
+Testing Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/datasets/ROUND-2_Testing_Data_15pcnt_partition.csv
+Parameter Optimization Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/datasets/ROUND-2_Parameter_Optimization_Data_10pcnt_partition.csv
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Round 3 / 3 Complete! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+** Resplit 0 times
+Dataset Excluding Undefined: 766 siRNAs Total 	( 100 % ) 
+	0: 315 siRNAs 		( 41 % )  
+	1: 451 siRNAs  		( 59 % )
+
+Training: 574 siRNAs Total 			( 75 % ) 
+	0: 236 siRNAs 		( 41 % )  
+	1: 338 siRNAs  		( 59 % )
+
+Testing: 116 siRNAs Total 			( 15 % ) 
+	0: 45 siRNAs 		( 39 % )  
+	1: 71 siRNAs  		( 61 % )
+
+Parameter Optimization:: 76 siRNAs Total 	( 10 % ) 
+	0: 34 siRNAs 		( 45 % )  
+	1: 42 siRNAs  		( 55 % )
+
+split_initial Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/datasets/ROUND-3_Training_Data_75pcnt_partition.csv
+Testing Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/datasets/ROUND-3_Testing_Data_15pcnt_partition.csv
+Parameter Optimization Dataset saved to:
+	 output_model_fitting/data-rfN16107_h_p3_bDNA_bowgenw-annftxsg-annftxcbow_norm_25-60-rm-u/datasets/ROUND-3_Parameter_Optimization_Data_10pcnt_partition.csv
+Creating processed datasets complete!
+
+
+
+
+Running model fittings...
+self.modeltrain_id_ | Randomized 8-digit ID for this Set of Rounds:	 rfN34936
+Output data stored in:
+/Users/kmonopoli/Dropbox (UMass Medical School)/data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimizationoutput_model_fitting/popt-rfN34936_rf_None_3-rounds_MAR-21-2024/
+Model fitting parameter data appeneded to: 
+	 output_model_fitting/model-fitting-param-index.csv
+Running model fittings ONLY for final models (no parameter optimization)
+output_run_file_info_string =  data-rfN16107_popt-rfN34936_human_p3_bDNA_normalized_effco-25|ineffco-60-removed undefined siRNAs_FINAL-MODELS-ONLY_paramopt_pcnt_sz-10_MAR-21-2024
+Building Final Models...
+Building Final random-forest models for Round: 1 / 3
+
+Computing Final fbeta_score with beta = 0.5
+
+
+
+Final model 1 with encoding bow-gensim-weights saved to: ~/
+
+models/final_rf_model_rnd-1_bowgenw.pickle
+
+Computing Final fbeta_score with beta = 0.5
+
+
+
+Final model 1 with encoding ann-fasttext-skipgram saved to: ~/
+
+models/final_rf_model_rnd-1_annftxsg.pickle
+
+Computing Final fbeta_score with beta = 0.5
+
+
+
+Final model 1 with encoding ann-fasttext-cbow saved to: ~/
+
+models/final_rf_model_rnd-1_annftxcbow.pickle
+Building Final random-forest models for Round: 2 / 3
+
+Computing Final fbeta_score with beta = 0.5
+
+
+
+Final model 2 with encoding bow-gensim-weights saved to: ~/
+
+models/final_rf_model_rnd-2_bowgenw.pickle
+
+Computing Final fbeta_score with beta = 0.5
+
+
+
+Final model 2 with encoding ann-fasttext-skipgram saved to: ~/
+
+models/final_rf_model_rnd-2_annftxsg.pickle
+
+Computing Final fbeta_score with beta = 0.5
+
+
+
+Final model 2 with encoding ann-fasttext-cbow saved to: ~/
+
+models/final_rf_model_rnd-2_annftxcbow.pickle
+Building Final random-forest models for Round: 3 / 3
+
+Computing Final fbeta_score with beta = 0.5
+
+
+
+Final model 3 with encoding bow-gensim-weights saved to: ~/
+
+models/final_rf_model_rnd-3_bowgenw.pickle
+
+Computing Final fbeta_score with beta = 0.5
+
+
+
+Final model 3 with encoding ann-fasttext-skipgram saved to: ~/
+
+models/final_rf_model_rnd-3_annftxsg.pickle
+
+Computing Final fbeta_score with beta = 0.5
+
+
+
+Final model 3 with encoding ann-fasttext-cbow saved to: ~/
+
+models/final_rf_model_rnd-3_annftxcbow.pickle
+
+
+
+Predictions from final model saved to: ~/
+
+data/predictions_final_models.csv
+Model Fittings complete!
+
+
+Ploting precision-recall curves from Final Model Building...
+
+Plotting precision-recall curves for final models...
+
+
+Final Precision-Recall-Threshold curve data saved to: ~/data/final_performance_metrics_p-r_3-rnds.csv
+Figure saved to: output_model_fitting/popt-rfN34936_rf_None_3-rounds_MAR-21-2024/figures/p-r_3-rnds_final.png
+
+Curve plotting complete!
+
+Plotting box plots from Final Model Building...
+
+Box plotting complete!
+
+
+
+PROCESS FINISHED
+
+
+

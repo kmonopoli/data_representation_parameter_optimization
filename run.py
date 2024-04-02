@@ -229,19 +229,125 @@ from main import DataRepresentationBuilder
 
 from main import DataRepresentationBuilder
 
-drb = DataRepresentationBuilder(model_type__ = 'random-forest',
-                                parameter_to_optimize__ = 'None',
-                                custom_parameter_values_to_loop__ = [],
-                                num_rerurun_model_building__=3,
-                                kmer_size__=9,
-                                flank_len__=20,
-                                encoding_ls__ = ['one-hot','bow-gensim-weights-times-values','bow-gensim-weights','bow-countvect','ann-word2vec-gensim',],#'ann-word2vec-gensim'],#['bow-countvect', 'one-hot'],
-                                run_param_optimization__ = False,
-                                use_existing_processed_dataset__ = False,
-                                apply_final_models_to_external_dataset__ = True,
-                                ext_species_ls__ = ['mouse'],
-                                ext_chemical_scaffold_ls__=['P3'],
-                                randomize_ext_data__ = False,
+# drb = DataRepresentationBuilder(model_type__ = 'random-forest',
+#                                 parameter_to_optimize__ = 'kmer-size',#'None',
+#                                 custom_parameter_values_to_loop__ = [2,3,4, 11,20],
+#                                 num_rerurun_model_building__=6,
+#                                 #kmer_size__=9,
+#                                 flank_len__=20,
+#                                 encoding_ls__ = ['one-hot','bow-gensim-weights-times-values','bow-gensim-weights'],#,'bow-countvect','ann-word2vec-gensim',],#'ann-word2vec-gensim'],#['bow-countvect', 'one-hot'],
+#                                 #run_param_optimization__ = False,
+#                                 use_existing_processed_dataset__ = False,
+#                                 apply_final_models_to_external_dataset__ = True,
+#                                 ext_species_ls__ = ['mouse'],
+#                                 ext_chemical_scaffold_ls__=['P3'],
+#                                 randomize_ext_data__ = False,
+#
+#                                 )
+#
 
-                                )
+
+
+
+from main import DataRepresentationBuilder
+
+
+
+import glob
+trouble_shooting_datasets = glob.glob('new_input_data/for_troubleshooting_and_testing/*')
+trouble_shooting_datasets = [x for x in trouble_shooting_datasets if '_external_sirna' in x]
+# for f in trouble_shooting_datasets:
+#     #print(f.split('new_input_data/for_troubleshooting_and_testing/')[-1].split('_newly')[0])
+#     print('** '+f.split('new_input_data/for_troubleshooting_and_testing/')[-1].split('_external_sirna')[0])
+
+file_lab__ = 'original'
+# file_lab__ = 'shuffled-sequences'
+# file_lab__ = 'randomized-expression'
+# file_lab__ = 'shuffled-expression'
+
+ext_data_file = [x for x in trouble_shooting_datasets if file_lab__ in x][0].split('new_input_data/')[-1]
+print(ext_data_file)
+
+
+drb = DataRepresentationBuilder(
+    model_type__='random-forest',
+    parameter_to_optimize__='None',
+    custom_parameter_values_to_loop__=[],
+    num_rerurun_model_building__=4,
+    # 20+20+20 = 60
+    kmer_size__=9,
+    flank_len__=20,
+
+    encoding_ls__=[
+        'one-hot',
+        'bow-gensim-weights',
+
+        # 'bow-countvect', # TODO: DEBUG there is something wrong, taking very long to run (infinite looping?)
+
+        'ann-word2vec-gensim-cbow',
+        'ann-word2vec-gensim-skipgram',
+
+        'ann-fasttext-skipgram',
+        'ann-fasttext-cbow',
+
+        'ann-fasttext-class-trained',
+
+        # 'ann-word2vec-gensim', # OLD
+        # 'bow-gensim-values', # WRONG
+
+    ],
+
+    run_param_optimization__ = False,
+    use_existing_processed_dataset__ = False,
+
+    apply_final_models_to_external_dataset__ = True,
+
+    external_data_file__ = ext_data_file,
+)
+
+
+# from main import DataRepresentationBuilder
+#
+# ##### Flank Length
+#
+#
+# drb = DataRepresentationBuilder(
+#     model_type__='random-forest',
+#     run_param_optimization__=True,
+#     num_rerurun_model_building__=3,
+#
+#     parameter_to_optimize__='flank-length',
+#     custom_parameter_values_to_loop__=[0, 50],#5, 10, 20, 25, 50, 75, 100],
+#
+#     kmer_size__=9,
+#
+#     # flank_len__=20,
+#     # window_size__= 5,
+#     # word_freq_cutoff__ = 5,
+#
+#     encoding_ls__=[
+#         #         'one-hot',
+#         'bow-gensim-weights',
+#
+#         # 'bow-countvect', # TODO: DEBUG there is something wrong, taking very long to run (infinite looping?)
+#
+#         'ann-word2vec-gensim-cbow',
+#         'ann-word2vec-gensim-skipgram',
+#
+#         'ann-fasttext-skipgram',
+#         'ann-fasttext-cbow',
+#
+#         'ann-fasttext-class-trained',
+#
+#         # 'ann-word2vec-gensim', # OLD
+#         # 'bow-gensim-values', # WRONG
+#
+#     ],
+#
+#     use_existing_processed_dataset__=False,
+#
+#     apply_final_models_to_external_dataset__=True,
+#     external_data_file__='external_sirna_screen_data_bdna-human-p3_670-sirnas_MAR-21-2024.csv',
+# )
+
 

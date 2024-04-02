@@ -12,6 +12,7 @@ from matplotlib import rcParams
 from datetime import datetime
 import calendar
 import openpyxl
+import fasttext
 
 # from embedding_methods import embed_sequences_with_ann
 # from embedding_methods import embed_sequences_with_gensim
@@ -29,7 +30,7 @@ params = {'legend.fontsize': 12,
           'axes.titlesize': 12,
           'xtick.labelsize': 12,
           'ytick.labelsize': 12,
-          #'font.family': 'Arial',
+          'font.family': 'Arial', # TODO: comment out if running on the cluster!
           }
 pylab.rcParams.update(params)
 
@@ -46,18 +47,20 @@ processed_dataset_parameters_index_file = all_output_dir+'data-processing-param-
 model_fitting_parameters_index_file = all_output_dir+'model-fitting-param-index.csv'
 
 # Directory path to and file holding siRNA data
-input_data_dir = 'new_input_data/'
-#input_data_dir = '/Users/kmonopoli/Dropbox (UMass Medical School)/compiling_sirna_screening_data/'
-input_data_file = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sirnas-bdna-75-genes_JAN-29-2024.csv'
-#input_data_file = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_(4392sirnas-bdna|75-genes)_JAN-29-2024.csv'
+# input_data_dir = 'new_input_data/'
+# #input_data_dir = '/Users/kmonopoli/Dropbox (UMass Medical School)/compiling_sirna_screening_data/'
+# # input_data_file = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sirnas-bdna-75-genes_JAN-29-2024.csv'
+# #input_data_file = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_(4392sirnas-bdna|75-genes)_JAN-29-2024.csv'
+# input_data_file = 'training_sirna_screen_data_bdna-human-p3_1903-sirnas_MAR-21-2024.csv'
 
 # Holds additional siRNA data for evaluating final models
+# external_data_file_dict = {
+#     True: 'randomized_sirna_screen_data_777-sirnas_p3-bdna_FEB-28-2024.csv', # randomize_ext_data__ = True
+#     False: 'newly_added_sirna_screen_data_777-sirnas|-bdna_FEB-22-2024.csv'  # randomize_ext_data__ = False
+#     # False: 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sirnas-bdna-75-genes_JAN-29-2024.csv'  # randomize_ext_data__ = False
+# }
 
-external_data_file_dict = {
-    True: 'randomized_sirna_screen_data_777-sirnas_p3-bdna_FEB-28-2024.csv', # randomize_ext_data__ = True
-    #False: 'newly_added_sirna_screen_data_777-sirnas|-bdna_FEB-22-2024.csv'  # randomize_ext_data__ = False
-    False: 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sirnas-bdna-75-genes_JAN-29-2024.csv'  # randomize_ext_data__ = False
-}
+
 
 # Dictionaries used for labelling
 remove_undefined_label_dict = {True: 'removed undefined siRNAs', False: 'retained undefined siRNAs'}
@@ -74,20 +77,20 @@ param_norm_label_dict = {True: 'normalized', False: 'non-normalized'}
 ulabelled_data_file_dict = {
     # TODO: update Unlabelled Data files to reflect training dataset (human P3)
     # Unlabelled siRNA data Generated Randomly (i.e. as random sequences of A/U/C/G)
-    #'unlab-randomized': input_data_dir + '/semisupervised_for_cluster_oct-19-2023/' + 'unlabelled_randomized_sirna_data_37050-sirnas_hm_SEP-12-2023_pog.csv',
-    # 'unlab-randomized': input_data_dir + 'unlabelled_randomized_sirna_data_38024-sirnas_SEP-12-2023.csv',
-    'unlab-randomized': input_data_dir + 'unlabelled_sequences-random_sirna_data_(170000-sirnas)_FEB-29-2024.csv',
+    #'unlab-randomized': 'new_input_data/' + '/semisupervised_for_cluster_oct-19-2023/' + 'unlabelled_randomized_sirna_data_37050-sirnas_hm_SEP-12-2023_pog.csv',
+    # 'unlab-randomized': 'new_input_data/' + 'unlabelled_randomized_sirna_data_38024-sirnas_SEP-12-2023.csv',
+    'unlab-randomized': 'new_input_data/' + 'unlabelled_sequences-random_sirna_data_(170000-sirnas)_FEB-29-2024.csv',
 
     # Unlabelled siRNA Data Generated from Targeted Transcripts - evenly distributed throughout
-    'sequences-from-targeted-transcripts': input_data_dir + 'unlabelled_unweighted-sequences-from-targeted-transcripts_sirna_data_(131181-sirnas|human|P3|bDNA|46txs)_FEB-29-2024.csv',
+    'sequences-from-targeted-transcripts': 'new_input_data/' + 'unlabelled_unweighted-sequences-from-targeted-transcripts_sirna_data_(131181-sirnas|human|P3|bDNA|46txs)_FEB-29-2024.csv',
 
     # Unlabelled siRNA Data Generated from Targeted Transcripts - weighted by representation
-    #'weighted-sequences-from-targeted-transcripts': input_data_dir + 'unlabelled_weighted-sequences-from-targeted-transcripts_sirna_data_37928-sirnas_SEP-18-2023.csv',
-    'weighted-sequences-from-targeted-transcripts': input_data_dir + 'unlabelled_weighted-sequences-from-targeted-transcripts_sirna_data_(146977-sirnas|human|P3|bDNA|46txs)_FEB-29-2024.csv',
+    #'weighted-sequences-from-targeted-transcripts': 'new_input_data/' + 'unlabelled_weighted-sequences-from-targeted-transcripts_sirna_data_37928-sirnas_SEP-18-2023.csv',
+    'weighted-sequences-from-targeted-transcripts': 'new_input_data/' + 'unlabelled_weighted-sequences-from-targeted-transcripts_sirna_data_(146977-sirnas|human|P3|bDNA|46txs)_FEB-29-2024.csv',
 
     # Unlabelled siRNA Data Generated from Transcriptome (including untargeted transcripts)
-    # 'sequences-from-all-transcripts': input_data_dir + 'unlabelled_sequences-from-species-transcriptomes_sirna_data_39000-sirnas_OCT-5-2023.csv',
-    'sequences-from-all-transcripts': input_data_dir + 'unlabelled_sequences-from-transcriptomes_sirna_data_(170000-sirnas|human|P3|bDNA)_FEB-29-2024.csv',
+    # 'sequences-from-all-transcripts': 'new_input_data/' + 'unlabelled_sequences-from-species-transcriptomes_sirna_data_39000-sirnas_OCT-5-2023.csv',
+    'sequences-from-all-transcripts': 'new_input_data/' + 'unlabelled_sequences-from-transcriptomes_sirna_data_(170000-sirnas|human|P3|bDNA)_FEB-29-2024.csv',
 }
 
 
@@ -156,13 +159,19 @@ feature_encodings_dict = {
     'one-hot':'oh',
     'bow-countvect':'bowcv',
     'bow-gensim':'bowgen',
-    'bow-gensim-weights-times-values':'bowgenwtv',
-    'bow-gensim-weights-times-values-adjusted':'bowgenwtva',
+    # WRONG 'bow-gensim-weights-times-values':'bowgenwtv',
+    # WRONG 'bow-gensim-weights-times-values-adjusted':'bowgenwtva',
     'bow-gensim-weights':'bowgenw',
-    'bow-gensim-values':'bowgenv',
-    'bow-gensim-values-adjusted':'bowgenva',
+    # WRONG 'bow-gensim-values':'bowgenv',
+    # WRONG 'bow-gensim-values-adjusted':'bowgenva',
     'ann-keras':'annk',
-    'ann-word2vec-gensim':'w2v'
+    'ann-word2vec-gensim':'w2v',
+    'ann-word2vec-gensim-cbow':'w2vcbow',
+    'ann-word2vec-gensim-skipgram':'w2vsg',
+    'ann-fasttext-cbow':'annftxcbow',
+    'ann-fasttext-skipgram':'annftxsg',
+    'ann-fasttext-class-trained':'annftlab',
+
 }
 
 
@@ -170,13 +179,18 @@ feature_encodings_titles_dict = {
     'one-hot':'One-Hot',
     'bow-countvect':'BOW cv',
     'bow-gensim':'BOW g',
-    'bow-gensim-weights-times-values': 'BOW g wxv',
-    'bow-gensim-weights-times-values-adjusted':  'BOW g wxv adj',
+    # WRONG 'bow-gensim-weights-times-values': 'BOW g wxv',
+    # WRONG 'bow-gensim-weights-times-values-adjusted':  'BOW g wxv adj',
     'bow-gensim-weights':  'BOW g w',
-    'bow-gensim-values':  'BOW g v',
-    'bow-gensim-values-adjusted': 'BOW g v adj',
+    # WRONG 'bow-gensim-values':  'BOW g v',
+    # WRONG 'bow-gensim-values-adjusted': 'BOW g v adj',
     'ann-keras':'ANN',
     'ann-word2vec-gensim':'Word2Vec',
+    'ann-word2vec-gensim-cbow':'Word2Vec CBOW',
+    'ann-word2vec-gensim-skipgram':'Word2Vec sg',
+    'ann-fasttext-cbow':'ANN ftxt CBOW',
+    'ann-fasttext-skipgram':'ANN ftxt sg',
+    'ann-fasttext-class-trained':'ANN ftxt lab',
 }
 
 expr_key_norm_dict = {
@@ -235,7 +249,12 @@ class DataRepresentationBuilder:
                  use_existing_processed_dataset__ = False,
                  apply_final_models_to_external_dataset__ = False, # whether or not to use external_data_file to evaluate final models
                  ext_species_ls__=['human'], ext_chemical_scaffold_ls__=['P3'],
-                 randomize_ext_data__ = False,
+                 #randomize_ext_data__ = False, # Not used if using external_data_file__ parameter
+                 external_data_file__ = 'newly_added_sirna_screen_data_777-sirnas|-bdna_FEB-22-2024.csv', # NO randomization of extenral data
+                 # external_data_file__ = 'randomized_sirna_screen_data_777-sirnas_p3-bdna_FEB-28-2024.csv',  # Randomization of extenral data
+                 # external_data_file__  = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sirnas-bdna-75-genes_JAN-29-2024.csv',  # NO randomization of extenral data
+                 input_data_dir__='new_input_data/',
+                 input_data_file__ = 'training_sirna_screen_data_bdna-human-p3_1903-sirnas_MAR-21-2024.csv',
                  ):
         '''
         #########################################################################################################################################
@@ -315,6 +334,9 @@ class DataRepresentationBuilder:
                     if t_ not in encodings_ls:
                         raise ValueError("ERROR: Invalid feature_encoding in custom_parameter_to_optimize__ list : " + str(t_) + " , Expected one of: %s" % encodings_ls)
         # Set General parameters
+        self.input_data_dir = input_data_dir__ #= 'new_input_data/',
+        self.input_data_file = input_data_file__ #= 'training_sirna_screen_data_bdna-human-p3_1903-sirnas_MAR-21-2024.csv',
+
         self.num_rerurun_model_building = num_rerurun_model_building__  # times to rerun building models using INDEPENDENT 80:10:10 datasets
         self.run_round_num = run_round_num__  # NOTE: for running additional looping beyond num_rerurun_model_building__, currently not used
         self.screen_type_ls = screen_type_ls__  # NOTE: DualGlo will not have flanking regions
@@ -335,10 +357,15 @@ class DataRepresentationBuilder:
         self.run_param_optimization_ = run_param_optimization__
         self.use_existing_processed_dataset_ = use_existing_processed_dataset__
         self.apply_final_models_to_external_dataset_ = apply_final_models_to_external_dataset__ # whether or not to use external_data_file to evaluate final models
-        self.external_data_file_ = external_data_file_dict[randomize_ext_data__]
+        # self.external_data_file_ = external_data_file_dict[randomize_ext_data__]
+        self.external_data_file_ = external_data_file__
         self.ext_species_ls = ext_species_ls__ # TODO: include this information in data saving parameters and labels
         self.ext_chemical_scaffold_ls = ext_chemical_scaffold_ls__ # TODO: include this information in data saving parameters and labels
-        self.randomize_ext_data_ = randomize_ext_data__
+        #self.randomize_ext_data_ = randomize_ext_data__
+        if ('random' in external_data_file__) or ('shuffle' in external_data_file__):
+            self.randomize_ext_data_ = True
+        else:
+            self.randomize_ext_data_ = False
 
 
         # Splits for Train:Parameter Opt:Test
@@ -477,16 +504,17 @@ class DataRepresentationBuilder:
 
         print("\nPloting precision-recall curves from Final Model Building...")
         self.plot_final_model_precision_recall_curves()
-        #self.plot_final_model_top_precision_recall_curves() # TODO: uncomment to plot precision-recall curves of top 5 models
+        self.plot_final_model_top_precision_recall_curves() # TODO: uncomment to plot precision-recall curves of top 5 models
         if self.apply_final_models_to_external_dataset_:
             print("\nPloting precision-recall curves from Final Model Building evaluated on External Dataset...")
-            self.plot_final_model_precision_recall_curves_on_ext_dataset()
-            #self.plot_final_model_top_precision_recall_curves_on_ext_dataset() # TODO: uncomment to plot precision-recall curves of top 5 models
+            # self.plot_final_model_precision_recall_curves_on_ext_dataset()
+            self.plot_final_model_precision_recall_curves_on_ext_dataset_and_test_set()
+            # self.plot_final_model_top_precision_recall_curves_on_ext_dataset() # TODO: uncomment to plot precision-recall curves of top 5 models
         print("\nCurve plotting complete!")
 
         if self.run_param_optimization_:
             print("\nPlotting box plots from Parameter Optimization...")
-            self.plot_param_opt_model_box_plots()
+            # self.plot_param_opt_model_box_plots()
 
         print("\nPlotting box plots from Final Model Building...")
         self.plot_final_model_box_plots_per_param_val()
@@ -495,6 +523,8 @@ class DataRepresentationBuilder:
             print("\nPlotting box plots from Final Model Building evaluated on External Dataset...")
             self.plot_final_model_box_plots_per_metric_on_ext_dataset()
             self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
+
+            self.plot_final_model_and_external_data_box_plots_per_metric()
         print("\nBox plotting complete!")
 
         print("\n\n\nPROCESS FINISHED\n\n\n")
@@ -505,132 +535,6 @@ class DataRepresentationBuilder:
 
 
 
-
-
-
-
-
-
-    def plot_thresholds(self, df_, figure_label_, output_dir__='', savefig=True):
-        fig, ax = plt.subplots()
-        fig.set_size_inches(w=5, h=4)
-
-        colors_ls = [x.replace('inefficient', '#3AA6E2').replace('efficient', '#F7B531').replace('undefined', '#B6B6B7') for
-                     x in list(df_.sort_values(by=self.expr_key)['class'])]
-        ax.bar(
-            x=list(range(len(df_))),
-            height=df_.sort_values(by=self.expr_key)[self.expr_key],
-            color=colors_ls,
-            # width=(1.0),
-        )
-
-        container2 = ax.errorbar(
-            list(range(len(df_))),
-            df_.sort_values(by=self.expr_key)[self.expr_key],
-            yerr=df_.sort_values(by=self.expr_key)['standard_deviation'],
-            lolims=True,
-            color='black',
-        )
-
-        connector, (caplines,), (vertical_lines,) = container2.lines
-        connector.set_alpha(0)
-        caplines.set_solid_capstyle('butt')
-        try:
-            caplines.set_marker(None)
-        except:
-            pass
-        vertical_lines.set_linewidth(1.0)  # 0.5)
-
-        ax.set_ylim(0, max(df_[self.expr_key]) + 0.2 * max(df_[self.expr_key]))
-        ax.set_xlim(0, len(df_))
-        ax.set_ylabel('Target Gene Expression (%)\nNormalized Per Assay (Gene)')
-        ax.set_xlabel('siRNAs (' + str(len(df_)) + ' total)')
-        ax.tick_params(axis='x', bottom=False, labelbottom=False)  # remove x-axis ticks and labels
-
-        # Legend
-        from matplotlib.lines import Line2D
-        from matplotlib.patches import Patch
-
-        legend_elements = [
-            Patch(facecolor='#F7B531', edgecolor=None,
-                  label=('< ' + str( self.effco_) + '% : Efficient (' + str(len(df_[df_['class'] == 'efficient'])) + ' siRNAs)')),
-            Patch(facecolor='#3AA6E2', edgecolor=None, label=('≥ ' + str( self.ineffco_) + '% : Inefficient (' + str(
-                len(df_[df_['class'] == 'inefficient'])) + ' siRNAs)')),
-            Patch(facecolor='#B6B6B7', edgecolor=None,
-                  label=('Undefined (' + str(len(df_[df_['class'] == 'undefined'])) + ' siRNAs)')),
-        ]
-        ax.legend(handles=legend_elements, loc='upper left', frameon=False, fontsize=9)
-
-        plt.title(figure_label_)
-        # plt.title(output_run_file_info_string_.split('effco')[0].replace('_',' ').replace('-',' ')+'\n'+'Thresholds <'+str(effco_)+'% | ≥'+str(ineffco_)+'%',fontsize=12)
-
-        fig.tight_layout()
-
-        if savefig:
-            # ** SAVE FIGURE **
-            plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-            fnm_ = (all_output_dir + output_dir__ + figure_label_.split('\n')[0].replace(' ', '_').lower().replace('%',
-                                                                                                                   'pcnt') + '_partition')
-            fnm_svg_ = (all_output_dir + output_dir__ + 'svg_figs/' + figure_label_.split('\n')[0].replace(' ',
-                                                                                                           '_').lower().replace(
-                '%', 'pcnt') + '_partition')
-
-            fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
-
-            fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-            print('Figure saved to:', fnm_ + '.png')
-
-    def plot_proportions_pie(self, figure_label_, output_dir__, df_, undefined_df_, train_split_df_, split_initial_df_,
-                             df_train_kfld_, df_test_kfld_, df_paramopt_kfld_, round_ct_, savefig=True):
-        # Checking porportions of partitioned data roughly match input parameters
-
-        fig, ax = plt.subplots(1)  # 1,3)
-        fig.set_size_inches(w=5, h=5)
-        # For Plotting
-        import matplotlib.pylab as pylab
-        params = {'legend.fontsize': 12,
-                  'font.size': 12,
-                  #'font.family': 'Arial',
-                  }
-        pylab.rcParams.update(params)
-
-        ax.set_title('Round ' + str(round_ct_ + 1) + ' Partition\nTotal siRNAs: ' + str(len(train_split_df_)))
-        ax.pie(
-            [len(df_train_kfld_), len(df_test_kfld_), len(df_paramopt_kfld_)],  # len(split_initial_df_) ],
-            autopct='%1.f%%',
-            startangle=90,
-            colors=['#DB7AC8', '#FECC0A', '#28A18B'],  # '#28A18B'],
-        )
-
-        from matplotlib.patches import Patch
-
-        legend_elements = [
-            Patch(facecolor='#DB7AC8', edgecolor=None, label=(
-                    str(100 - self.split_set_size_pcnt_) + '% Round ' + str(round_ct_ + 1) + ' Training Dataset (' + str(
-                len(df_train_kfld_)) + ')')),
-            Patch(facecolor='#FECC0A', edgecolor=None, label=(
-                    str( self.test_set_size_pcnt_) + '% Round ' + str(round_ct_ + 1) + ' Testing Dataset (' + str(
-                len(df_test_kfld_)) + ')')),
-            Patch(facecolor='#28A18B', edgecolor=None, label=(str( self.paramopt_set_size_pcnt_) + '% Round ' + str(
-                round_ct_ + 1) + ' Parameter Optimization Dataset (' + str(len(df_paramopt_kfld_)) + ')')),
-        ]
-
-        ax.legend(handles=legend_elements, frameon=False, loc='upper right', bbox_to_anchor=(1.5, 0.1))
-        fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
-
-        if savefig:
-            # ** SAVE FIGURE **
-            plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
-            fnm_ = (all_output_dir + output_dir__ + figure_label_.split('\n')[0].replace(' ', '_').lower().replace('%',
-                                                                                                                   'pcnt') + '_partition')
-            fnm_svg_ = (all_output_dir + output_dir__ + 'svg_figs/' + figure_label_.split('\n')[0].replace(' ',
-                                                                                                           '_').lower().replace(
-                '%', 'pcnt') + '_partition')
-
-            fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
-
-            fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-            print('Figure saved to:', fnm_ + '.png')
 
     def find_existing_processed_datasets(self):
         '''
@@ -746,9 +650,9 @@ class DataRepresentationBuilder:
 
         # Read in Data
         try:
-            self.df = pd.read_excel(input_data_dir + input_data_file)
+            self.df = pd.read_excel(self.input_data_dir + self.input_data_file)
         except:
-            self.df = pd.read_csv(input_data_dir + input_data_file)
+            self.df = pd.read_csv(self.input_data_dir + self.input_data_file)
             print("Successfully read in .csv data")
 
         print("\n\n\nSuccessfully read in - " + str(len(self.df)) + ' siRNAs')
@@ -770,20 +674,22 @@ class DataRepresentationBuilder:
         print("Selecting data with chemical scaffold:\n", self.chemical_scaffold_ls)
         self.df = self.df[self.df['chemical_scaffold'].isin(self.chemical_scaffold_ls)]
 
+        print("Training dataset size:",len(self.df))
+
         # If Using additional external dataset to evaluate final models Load in
         if self.apply_final_models_to_external_dataset_:
             print("\n\n\nIMPORTANT: apply_final_models_to_external_dataset_ set to ("+str(self.apply_final_models_to_external_dataset_)+") so using additional external dataset to evaluate final models\n\n\n")
             print("\n\n\nLoading in external_data_file_ ("+str(self.external_data_file_)+") along with input_data_file ...\n\n\n")
 
             try:
-                df_ext = pd.read_excel(input_data_dir + self.external_data_file_)
-                #df_ext = pd.read_excel(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
+                df_ext = pd.read_excel(self.input_data_dir + self.external_data_file_)
+                #df_ext = pd.read_excel(self.input_data_dir + self.input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
 
             except:
-                df_ext = pd.read_csv(input_data_dir + self.external_data_file_)
-                #df_ext = pd.read_csv(input_data_dir + input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
+                df_ext = pd.read_csv(self.input_data_dir + self.external_data_file_)
+                #df_ext = pd.read_csv(self.input_data_dir + self.input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
 
-            print("Successfully read in external dataset - "+str(len(df_ext))+' siRNAs')
+            print("Successfully read in external dataset - "+str(len(df_ext))+' siRNAs (NOTE: this includes middle (undefined) efficacy siRNAs')
 
             ########################################################################
             ##                 ~*~ Select External Data ~*~                       ##
@@ -799,9 +705,22 @@ class DataRepresentationBuilder:
             df_ext = df_ext[df_ext['chemical_scaffold'].isin(self.ext_chemical_scaffold_ls)]
 
             # Randomize expression data
-            if self.randomize_ext_data_:
-                print("\n\n\nWARNING: Randomizing external dataset expression data\n\n\n")
-                df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
+            #if self.randomize_ext_data_:
+            # print("\n\n\nWARNING: Randomizing external dataset expression data\n\n\n")
+            # #df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
+            # import random
+            # ext_expr_ls = list(df_ext[self.expr_key])
+            # random.shuffle(ext_expr_ls)
+            # df_ext[self.expr_key] = ext_expr_ls
+
+            # # # # # Randomize expression data (from TRAINING dataet)
+            # # # # # if self.randomize_ext_data_:
+            # # # # print("\n\n\nWARNING: Randomizing TRAINING dataset expression data\n\n\n")
+            # # # # #df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
+            # # # # import random
+            # # # # train_expr_ls = list(self.df[self.expr_key])
+            # # # # random.shuffle(train_expr_ls)
+            # # # # self.df[self.expr_key] = train_expr_ls
 
             # Add additional column to both df and df_ext to keep track of if external data or original data
             self.df['from_external_test_dataset'] = [False] * len(self.df)
@@ -811,6 +730,7 @@ class DataRepresentationBuilder:
             self.df = pd.concat([self.df, df_ext], axis=0)
             self.df.reset_index(inplace=True, drop=True)
             self.df.sort_values(by='from_external_test_dataset', ascending=True, inplace=True)
+            self.df.reset_index(inplace=True, drop=True)
             print('Successfully concatenated input and external datasets\n')
 
 
@@ -900,14 +820,16 @@ class DataRepresentationBuilder:
                     #print('\n', f_, ' ', list(self.df[f_].apply(lambda x: len(x)).value_counts().index)[0])
 
         self.df.sort_values(by=[self.expr_key], inplace=True)
-        self.df.reset_index(drop=True, inplace=True)
+        #self.df.reset_index(drop=True, inplace=True)
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print((self.df[['chemical_scaffold', 'screen_type', 'species']].value_counts()))
         self.df['class'] = self.df[self.expr_key].apply(lambda x: classify(x, self.effco_, self.ineffco_))
         print(self.df['class'].value_counts())
+
         # Convert classes into form that can be read by kfld splitter (0's and 1's and -1's for UNLABELLED)
         self.df['numeric_class'] = [int(x.replace('inefficient', '0').replace('efficient', '1').replace('undefined', '-1')) for x in list(self.df['class'])]
 
+        # drop an nans
 
         self.load_in_unlab_data()
         self.perform_feature_embedding()
@@ -1037,12 +959,25 @@ class DataRepresentationBuilder:
 
         # TODO: update to work for semisupervised? ~ seem to be having a problem when running semi-sup encoding data
 
+        # Shuffle data so not sorted by efficacy (For troubleshooting)
+        import random
+        shuffled_indx_ls = list(range(len(self.df)))
+        random.shuffle(shuffled_indx_ls)
+        self.df['temp_index'] = shuffled_indx_ls
+        self.df.sort_values(by=['temp_index'],inplace=True)
+        self.df.drop(columns=['temp_index'],inplace=True)
+
 
         from embedding_methods import one_hot_encode_sequences
         from embedding_methods import embed_sequences_with_bow_countvect
-        from embedding_methods import embed_sequences_with_gensim_doc2bow
+        from embedding_methods import embed_sequences_with_gensim_doc2bow_tfidf
         from embedding_methods import embed_sequences_with_keras
         from embedding_methods import embed_sequences_with_gensim_word2vec
+        from embedding_methods import embed_sequences_with_gensim_word2vec_cbow
+        from embedding_methods import embed_sequences_with_gensim_word2vec_skipgram
+        from embedding_methods import embed_sequences_with_fasttext_cbow
+        from embedding_methods import embed_sequences_with_fasttext_skipgram
+        from embedding_methods import embed_sequences_with_fasttext_class_trained
 
         #['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
 
@@ -1108,28 +1043,45 @@ class DataRepresentationBuilder:
 
 
                             elif encoding_ == 'bow-gensim':### Bag-of-Words Embedding with Gensim Doc2bow ###
-                                self.df['bow-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)+ '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow(
-                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_,word_freq_cutoff_=wfco_ )  # , output_directory = output_directory)
+                                self.df['bow-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)+ '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow_tfidf(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_,word_freq_cutoff_=wfco_)  # , output_directory = output_directory)
 
-                            elif encoding_ == 'bow-gensim-weights-times-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                                self.df['bow-gensim-weights-times-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)+ '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow(
-                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='weights-times-values')  # , output_directory = output_directory)
+
+
+                            # elif encoding_ == 'bow-gensim-weights-times-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                            #     self.df['bow-gensim-weights-times-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)+ '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow_tfidf(
+                            #         list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='weights-times-values',
+                            #         # TODO: below for troubleshooting, remove later
+                            #         data_expr_pcnts_ = list(self.df[self.expr_key]),
+                            #         data_numeric_classes_ =  list(self.df['numeric_class']),
+                            #         data_classes_ =  list(self.df['class']),
+                            #         data_source_ = list(self.df['from_external_test_dataset']),
+                            #         data_oligo_names_ = list(self.df['oligo_name']),
+                            #         data_expr_pcnts_norm_ = list(self.df['expression_percent_normalized_by_max_min']),
+                            #     )  # , output_directory = output_directory)
+                            #
+                            #     #raise Exception('Troubleshooting stopping...')
+
 
                             elif encoding_ == 'bow-gensim-weights':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                                self.df['bow-gensim-weights_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)]= embed_sequences_with_gensim_doc2bow(
-                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='weights')  # , output_directory = output_directory)
+                                self.df['bow-gensim-weights_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)]= embed_sequences_with_gensim_doc2bow_tfidf(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='weights',
+                                    data_expr_pcnts_=list(self.df[self.expr_key]), data_numeric_classes_=list(self.df['numeric_class']), data_classes_=list(self.df['class']),  # TODO: for troubleshooting, remove later
+                                )  # , output_directory = output_directory)
 
-                            elif encoding_ == 'bow-gensim-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                                self.df['bow-gensim-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow(
-                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='values')  # , output_directory = output_directory)
-
-                            elif encoding_ == 'bow-gensim-weights-times-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                                self.df['bow-gensim-weights-times-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow(
-                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='weights-times-values-adjusted')  # , output_directory = output_directory)
-
-                            elif encoding_ == 'bow-gensim-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
-                                self.df['bow-gensim-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)]= embed_sequences_with_gensim_doc2bow(
-                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='values-adjusted')  # , output_directory = output_directory)
+                            # elif encoding_ == 'bow-gensim-values':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                            #     self.df['bow-gensim-values_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow_tfidf(
+                            #         list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='values',
+                            #         data_expr_pcnts_=list(self.df[self.expr_key]), data_numeric_classes_=list(self.df['numeric_class']), data_classes_=list(self.df['class']),  # TODO: for troubleshooting, remove later
+                            #     )  # , output_directory = output_directory)
+                            #
+                            # elif encoding_ == 'bow-gensim-weights-times-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                            #     self.df['bow-gensim-weights-times-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_doc2bow_tfidf(
+                            #         list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='weights-times-values-adjusted')  # , output_directory = output_directory)
+                            #
+                            # elif encoding_ == 'bow-gensim-values-adjusted':  ### Bag-of-Words Embedding with Gensim Doc2bow ###
+                            #     self.df['bow-gensim-values-adjusted_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)]= embed_sequences_with_gensim_doc2bow_tfidf(
+                            #         list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, vector_output_='values-adjusted')  # , output_directory = output_directory)
 
 
 
@@ -1137,9 +1089,35 @@ class DataRepresentationBuilder:
                                 self.df['ann-keras_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_keras(
                                     list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_,output_dimmension_=self.output_dimmension_)  # , output_directory = output_directory)
 
-                            elif encoding_ == 'ann-word2vec-gensim':### Deep Embedding with Word2Vec - Gensim ###
+                            elif encoding_ == 'ann-word2vec-gensim':### Deep Embedding with Word2Vec - Gensim (TODO: old remove?)  ###
                                 self.df['ann-word2vec-gensim_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = embed_sequences_with_gensim_word2vec(
                                     list(self.df[flank_seq_working_key__]), kmer_size_=kmer_,window_size_=wndwsz_,word_freq_cutoff_=wfco_)  # , output_directory = output_directory)
+
+                            elif encoding_ == 'ann-word2vec-gensim-skipgram':  ### Deep Embedding with Word2Vec - Gensim SkipGram ###
+                                self.df['ann-word2vec-gensim-skipgram_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-' + str(wndwsz_) + '-wfreq-' + str(wfco_)] = embed_sequences_with_gensim_word2vec_skipgram(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_,)
+
+                            elif encoding_ == 'ann-word2vec-gensim-cbow':  ### Deep Embedding with Word2Vec - Gensim CBOW ###
+                                self.df['ann-word2vec-gensim-cbow_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-' + str(wndwsz_) + '-wfreq-' + str(wfco_)] = embed_sequences_with_gensim_word2vec_cbow(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_,)
+
+                            elif encoding_ == 'ann-fasttext-skipgram':  ### Deep Embedding with Fasttext - SkipGram ###
+                                self.df['ann-fasttext-skipgram_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-' + str(wndwsz_) + '-wfreq-' + str(wfco_)] = embed_sequences_with_fasttext_skipgram(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, )
+
+                            elif encoding_ == 'ann-fasttext-cbow':  ### Deep Embedding with Fasttext - CBOW ###
+                                self.df['ann-fasttext-cbow_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-' + str(wndwsz_) + '-wfreq-' + str(wfco_)] = embed_sequences_with_fasttext_cbow(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_, )
+
+                            elif encoding_ == 'ann-fasttext-class-trained':  ### Deep Embedding with Fasttext - CBOW ###
+                                self.df['ann-fasttext-class-trained_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-' + str(wndwsz_) + '-wfreq-' + str(wfco_)] = embed_sequences_with_fasttext_class_trained(
+                                    list(self.df[flank_seq_working_key__]), kmer_size_=kmer_, window_size_=wndwsz_, word_freq_cutoff_=wfco_,
+                                    data_classes_ = list(self.df['class'])  , indxs_ext_data_ = list(self.df['from_external_test_dataset']) ,
+                                )
+
+
+
+
                             else:
                                 raise ValueError('ERROR: encoding '+str(encoding_)+' is not supported')
 
@@ -1633,7 +1611,7 @@ class DataRepresentationBuilder:
                         autopct=lambda pct: piefn(pct, data_),
                         pctdistance=0.75,
                         startangle=90,
-                        textprops=dict(color="black", fontsize=11),  # , fontweight='bold'),
+                        textprops=dict(color="black", fontsize=12),  # , fontweight='bold'),
                         colors=[train_col, test_col, paramopt_col],  # paramopt_col],
                         radius=1.5,
                         wedgeprops=dict(width=0.7),
@@ -1653,7 +1631,7 @@ class DataRepresentationBuilder:
                     pie_legend_elements[pie_wedge_index_dict[dataset_]].set_linewidth(1)
 
                     axpie.legend(handles=pie_legend_elements, frameon=False, loc='lower left', handleheight=0.5, handlelength=0.75,
-                                 bbox_to_anchor=(0.2, 0.2), fontsize=11)
+                                 bbox_to_anchor=(0.2, 0.2), fontsize=12)
 
                     # Remove axes that are not needed (based on number of total parameter optmimization rounds)
                     ct_datasplit_rounds_to_plot_ = 1
@@ -2034,13 +2012,13 @@ class DataRepresentationBuilder:
                         ax_curr_.bar_label(container, label_type='center', rotation=0, color='black', fontweight='bold',
                                            fontsize=12)
 
-                ax_train_1.set_title('      ', rotation=90, fontweight='bold', fontsize=30, fontfamily='Times New Roman')
-                ax_po_1.set_title('      ', rotation=90, fontweight='bold', fontsize=30, fontfamily='Times New Roman')
-                ax_test_1.set_title('      ', rotation=90, fontweight='bold', fontsize=30, fontfamily='Times New Roman')
+                ax_train_1.set_title('      ', rotation=90, fontweight='bold', fontsize=12)#, fontfamily='Times New Roman')
+                ax_po_1.set_title('      ', rotation=90, fontweight='bold', fontsize=12)#, fontfamily='Times New Roman')
+                ax_test_1.set_title('      ', rotation=90, fontweight='bold', fontsize=12)#, fontfamily='Times New Roman')
 
-                ax_train_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
-                ax_po_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
-                ax_test_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=25, fontfamily='Times New Roman')
+                ax_train_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=12)#, fontfamily='Times New Roman')
+                ax_po_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=12)#, fontfamily='Times New Roman')
+                ax_test_3.set_title('  ...', rotation=90, fontweight='bold', fontsize=12)#, fontfamily='Times New Roman')
 
                 # ** SAVE FIGURE **
                 plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
@@ -2241,6 +2219,7 @@ class DataRepresentationBuilder:
 
     def parameter_optimization(self):
         print("Running parameter optimization...")
+        import pickle
 
         self.top_param_val_per_round_dict = {}
         self.paramop_performance_metrics_encodings_dict = {}
@@ -2357,6 +2336,16 @@ class DataRepresentationBuilder:
                                     print("Predicting with paramopt model...")
                                     preds_po = clf_po.predict_proba(X_paramopt_)[:, 1]
                                     preds_binary_po = clf_po.predict(X_paramopt_)
+
+
+
+                                    # Pickle parameter optimization models (per round, per embedding)
+                                    # print("Pickling model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
+                                    fnm_ = self.output_directory + 'models/' + 'paramopt_' + model_type_dict[m_] + '_model_rnd-' + str(n_ + 1) + '_' + feature_encodings_dict[e] + '.pickle'
+                                    with open(fnm_, 'wb') as pickle_file:
+                                        pickle.dump(clf_po, pickle_file)
+                                    pickle_file.close()
+                                    print('\n\n\nParamopt model ' + str(n_ + 1) + ' with encoding ' + str(e) + ' saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
 
                                     ## Evaluate Parameter Optimization Model Performance
                                     print("Evaluating model performance of paramopt model...")
@@ -2509,6 +2498,10 @@ class DataRepresentationBuilder:
         #self.flank_seq_working_key = 'seq_flank-20nts_target' # TODO: delete line (used only for testing)
         #self.all_data_split_dir = 'data-TEST-rfF26194_h_p3_bDNA_oh-bowcv_norm_25-60-rm-u/' # TODO: delete line (used only for testing)
 
+        all_preds_dict = {} # For exporting predictions to .csv file
+        if self.apply_final_models_to_external_dataset_:
+            all_preds_dict_ext = {} # For exporting predictions to .csv file
+
         # TODO: flank-seq-working key might not work for cases where don't have targeting region or just have target region alone
         for n_ in range(self.num_rerurun_model_building):
             if not self.run_param_optimization_:
@@ -2599,11 +2592,17 @@ class DataRepresentationBuilder:
 
 
                 preds_final = clf_final.predict_proba(X_test_)[:, 1]
+                preds_final_inv = clf_final.predict_proba(X_test_)[:, 0]
                 preds_binary_final = clf_final.predict(X_test_)
+
+
 
                 if self.apply_final_models_to_external_dataset_:
                     ext_preds_final = clf_final.predict_proba(X_ext_)[:, 1]
+                    ext_preds_final_inv = clf_final.predict_proba(X_ext_)[:, 0]
                     ext_preds_binary_final = clf_final.predict(X_ext_)
+
+
 
                 #print("Evaluating performance of model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
 
@@ -2756,6 +2755,34 @@ class DataRepresentationBuilder:
                 #     clf__ = pickle.load(pickle_file)
                 # pickle_file.close()
 
+                # For exporting predictions to .csv file
+
+                all_preds_dict[str(n_) + '_' + key2__ + '_actual'] = list(Y_test_)
+                all_preds_dict[str(n_) + '_' + key2__ + '_preds_final'] = list(preds_final)
+                all_preds_dict[str(n_) + '_' + key2__ + '_preds_final_inv'] = list(preds_final_inv)
+                all_preds_dict[str(n_) + '_' + key2__ + '_preds_binary_final'] = list(preds_binary_final)
+
+
+                if self.apply_final_models_to_external_dataset_:
+                    all_preds_dict_ext[str(n_) + '_on-ext-data_' + key2__ + '_actual'] = list(Y_ext_)
+                    all_preds_dict_ext[str(n_) + '_on-ext-data_' + key2__ + '_preds_final'] = list(ext_preds_final)
+                    all_preds_dict_ext[str(n_) + '_on-ext-data_' + key2__ + '_preds_final_inv'] = list(ext_preds_final_inv)
+                    all_preds_dict_ext[str(n_) + '_on-ext-data_' + key2__ + '_preds_binary_final'] = list(ext_preds_binary_final)
+
+        # Export predictions to .csv file
+        fnm_ = self.output_directory + 'data/' + 'predictions_final_models.csv'
+        all_preds_dict_df = pd.DataFrame(all_preds_dict)
+        all_preds_dict_df.to_csv(fnm_)
+        print('\n\n\nPredictions from final model saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
+
+        if self.apply_final_models_to_external_dataset_:
+            fnm_ = self.output_directory + 'data/' + 'predictions_final_models_ext_dataset.csv'
+            all_preds_dict_ext_df = pd.DataFrame(all_preds_dict_ext)
+            all_preds_dict_ext_df.to_csv(fnm_)
+            print('\n\n\nPredictions on External Dataset from final model saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
+
+
+
 
 
 
@@ -2765,7 +2792,7 @@ class DataRepresentationBuilder:
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
 
-        pr_curves_dict_ = self.paramop_performance_curves_encodings_dict
+
         pr_curves_keys_ = self.paramop_key_ls
         title_st_ = sup_title_id_info + 'Parameter Optimization ' + str(self.parameter_to_optimize) + '\n' + str(self.num_rerurun_model_building) + ' Rounds ' + str(len(self.param_values_to_loop_)) + ' Parameter Values'
 
@@ -2819,6 +2846,9 @@ class DataRepresentationBuilder:
                     ct_po_rounds_to_plot_ += 1
             # get best parameter value per round
             best_aucprs_dict = {}
+
+            all_prts_dict = {} # For exporting Precision-Recall curve numeric data as a .csv file
+            longest_prt_ = -1 # For exporting Precision-Recall curve numeric data as a .csv file
             for n in range(self.num_rerurun_model_building): # loop through rounds
                 best_round_aucpr_ = -9999
                 best_round_param_ = ''
@@ -2830,6 +2860,11 @@ class DataRepresentationBuilder:
                         if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
                                 ('label' in self.model_type_) and (e == 'one-hot'))):
                                 prt_ls = self.paramop_performance_curves_encodings_dict[k__]['Precision_Recall_Curve']
+                                prt_ls = [list(x) for x in prt_ls]
+                                all_prts_dict[str(n)+'_'+k__] = prt_ls
+                                for v in prt_ls:
+                                    if longest_prt_ < len(v): # keep track of longest Precision, Recall, Threshold curve list to pad later
+                                        longest_prt_ = len(v)
                                 aucpr_ = metrics.auc(prt_ls[1], prt_ls[0])
                                 if aucpr_ > best_round_aucpr_:
                                     best_round_aucpr_ = aucpr_
@@ -2838,11 +2873,31 @@ class DataRepresentationBuilder:
                             aucpr_ = 0
                 best_aucprs_dict[n] = [best_round_param_,best_round_aucpr_,]
 
+            # Export Precision-Recall curve numeric data as a .csv file
+            # Pad all curves in all_prts_dict so all same length as longest_prt_
+            all_prts_dict_for_df = {}
+            for k__ in list(all_prts_dict.keys()):
+                # padded_prts_ls = []
+                for v, label_ in zip(all_prts_dict[k__], ['precision', 'recall', 'thresholds']):
+                    amt_to_pad_ = longest_prt_ - len(v)  # [[ ],[ ], [ ]]
+                    v += [0] * amt_to_pad_
+                    all_prts_dict_for_df[label_ + '_' + k__] = v
+                    # padded_prts_ls.append(v)
+                # all_prts_dict[k__] = padded_prts_ls
+            all_prts_paramopt_df = pd.DataFrame(all_prts_dict_for_df)
+            # all_prts_paramopt_df = pd.DataFrame(all_prts_dict)
+
+            # ** SAVE DATA **
+            fnm_ = (self.output_directory + 'data/' + 'paramopt_performance_metrics_p-r_' + str(self.num_rerurun_model_building) + '-rnds_po_' + e + '.csv')
+            all_prts_paramopt_df.to_csv(fnm_)
+            print('\n\nParamopt. Precision-Recall-Threshold curve data saved to:', fnm_.replace(self.output_directory, '~/'))
+
+
             col_ = 0
             row_ = 0
             for n in range(self.num_rerurun_model_building):  # different axes per round
                 axs[row_, col_].set_title('Round: ' + str(n + 1) + '\nBest ' + self.parameter_to_optimize +' '+ str(best_aucprs_dict[n][0]),
-                                          fontsize=8, fontweight= 'bold', color=param_col_ls_dict[best_aucprs_dict[n][0]])
+                                          fontsize=12, fontweight= 'bold', color=param_col_ls_dict[best_aucprs_dict[n][0]])
 
                 for p in self.param_values_to_loop_: # different colors
                     k__ =str(e) + '-' + self.parameter_to_optimize + '-' + str(p) + '_round_' + str(n)
@@ -2883,17 +2938,20 @@ class DataRepresentationBuilder:
             for i_ in range(self.num_rerurun_model_building):#len(p_r_t_po__ls_)):
                 axs[row_,col_].set_xlim(0,1)
                 axs[row_,col_].set_ylim(0,1.1)
-                axs[row_,col_].set_xticks(ticks=np.arange(0,1.1,.25), minor=True)
                 axs[row_,col_].tick_params(direction='in',which='both',length=3,width=1)
 
                 if (row_ == rows_cols_compiled_po_fig-1) and (col_ == 0):
                     axs[row_,col_].set_xlabel('Recall')
                     axs[row_,col_].set_ylabel('Precision')
                     axs[row_,col_].set_xticks(ticks=np.arange(0,1.1,.5),labels=['',0.5,1.0])
+                    axs[row_,col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
 
-                else:
-                    axs[row_,col_].set_xticks([])
-                    axs[row_,col_].set_yticks([])
+                else: # Don't label the ticks because are a grid
+                    # axs[row_,col_].set_xticks([])
+                    # axs[row_,col_].set_yticks([])
+                    axs[row_, col_].set_xticks(ticks=[0.0 , 0.5, 1.0 ], labels=['', '', ''])
+                    axs[row_, col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=['', '', ''])
+
                 if col_ == rows_cols_compiled_po_fig-1:
                     col_ = 0
                     row_+=1
@@ -2907,9 +2965,9 @@ class DataRepresentationBuilder:
                 legend_elements.append(Line2D([0], [0],
                                               color= param_col_ls_dict[val__],#embd_color_dict[embd_][val__],
                                               lw=4, label=str(val__)))
-            axs[0][rows_cols_compiled_po_fig].legend(handles=legend_elements, loc='upper left', frameon=False,bbox_to_anchor = (0,1),title=self.parameter_to_optimize,title_fontsize=10,fontsize=10)
+            axs[0][rows_cols_compiled_po_fig].legend(handles=legend_elements, loc='upper left', frameon=False,bbox_to_anchor = (0,1),title=self.parameter_to_optimize,title_fontsize=12,fontsize=12)
             axs[0][rows_cols_compiled_po_fig].axis('off')
-            axbig.legend(handles=legend_elements, loc='upper left', frameon=False,bbox_to_anchor = (0,1),title=self.parameter_to_optimize,title_fontsize=10,fontsize=10)
+            axbig.legend(handles=legend_elements, loc='upper left', frameon=False,bbox_to_anchor = (0,1),title=self.parameter_to_optimize,title_fontsize=12,fontsize=12)
             axbig.axis('off')
 
             plt.suptitle(e.replace('_',' ').capitalize(), fontsize = 12, fontweight = 'bold')
@@ -2929,7 +2987,7 @@ class DataRepresentationBuilder:
         ## Plot Compiled Multimetrics Model Performance - Parameter Optimization Models
         # Each column of paramop_detailed_metric_df contains a single round for a single embedding type
         paramop_detailed_metric_df = pd.DataFrame(self.paramop_performance_metrics_encodings_dict)
-        fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_paramopt.csv')
+        fnm_ = (self.output_directory + 'data/' + 'paramopt_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_paramopt.csv')
         paramop_detailed_metric_df.to_csv(fnm_,index=True)
         print("Parameter Optimization Models Performance Metrics Dataframe saved to:\n\t",fnm_)
 
@@ -2951,8 +3009,12 @@ class DataRepresentationBuilder:
         paired_feature_encoding_ls = [self.feature_encoding_ls[i:i+3] for i in range(0, len(self.feature_encoding_ls), 3)]
 
         for plotn_ in list(range(num_plots_)):
-            fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(paramop_detailed_metric_df))
-            fig.set_size_inches(w=14, h=2*len(paired_feature_encoding_ls[plotn_]))
+            if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row since is a combined plot with all embeddings
+                fig, axs = plt.subplots(1, len(paramop_detailed_metric_df))
+                fig.set_size_inches(w=14, h=3 )
+            else:
+                fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(paramop_detailed_metric_df))
+                fig.set_size_inches(w=14, h=3*len(paired_feature_encoding_ls[plotn_]))
 
             # Split Evaluation Metric Data per parameter value
             # Loop through each embedding type
@@ -2998,17 +3060,17 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_, fontsize=7 )
+                        axs[j,i].set_title(metric_, fontsize=8.5 )
                         if i == 3:
                             #if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n'+str(embedding_type_paramop_eval_)+'\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n'+str(embedding_type_paramop_eval_)+'\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
                             else:
-                                axs[j,i].set_title(str(embedding_type_paramop_eval_)+'\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[j,i].set_title(str(embedding_type_paramop_eval_)+'\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
-                        axs[j,i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
+                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
                             axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
@@ -3031,17 +3093,17 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_, fontsize=7 )
+                        axs[i].set_title(metric_, fontsize=8.5 )
                         if i == 3:
                             # if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(embedding_type_paramop_eval_) + '\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Parameter Optimization Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(embedding_type_paramop_eval_) + '\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
                             else:
-                                axs[i].set_title(str(embedding_type_paramop_eval_) + '\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[i].set_title(str(embedding_type_paramop_eval_) + '\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
-                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
+                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
                             axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
@@ -3096,10 +3158,13 @@ class DataRepresentationBuilder:
             embd_color_dict[e] = param_col_ls_dict
 
 
+
         # Plot a single PLOT for each embedding type
         fig, axs = plt.subplots(1,len(self.feature_encoding_ls )+ 1)
         fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
 
+        all_prts_dict = {}  # For exporting Precision-Recall curve numeric data as a .csv file
+        longest_prt_ = -1  # For exporting Precision-Recall curve numeric data as a .csv file
 
         for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
             axs[col_].set_title(str(e))
@@ -3119,14 +3184,22 @@ class DataRepresentationBuilder:
 
                     pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
                     rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    thresholds__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][2]
                     unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
                     unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
+
+                    # For exporting Precision-Recall curve numeric data as a .csv file
+                    prt_ls = [list(pcurve__),list(rcurve__),list(thresholds__)]
+                    all_prts_dict[str(n) + '_' + key__] = prt_ls
+                    for v in prt_ls:
+                        if longest_prt_ < len(v):  # keep track of longest Precision, Recall, Threshold curve list to pad later
+                            longest_prt_ = len(v)
 
                     axs[col_].plot(
                         rcurve__,  # r_OH,# x
                         pcurve__,  # p_OH,# y
                         lw=1,
-                        color= color_,
+                        color= '#fc8803',#color_,
                     )
 
                     # axs[col_].plot(
@@ -3146,11 +3219,15 @@ class DataRepresentationBuilder:
             if col_ == 0:
                 axs[col_].set_xlabel('Recall')
                 axs[col_].set_ylabel('Precision')
-                axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
 
             else:
-                axs[col_].set_xticks([])
-                axs[col_].set_yticks([])
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
+                # axs[col_].set_xticks([])
+                # axs[col_].set_yticks([])
+
 
         # Add legend for parameter values
         from matplotlib.lines import Line2D
@@ -3162,14 +3239,35 @@ class DataRepresentationBuilder:
                 color_ = '#5784db'
         #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
             legend_elements.append(Line2D([0], [0],
-                                          color=color_,  # embd_color_dict[embd_][val__],
+                                          color='#fc8803',#color_,  # embd_color_dict[embd_][val__],
                                           lw=4, label=str(val__)))
-        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
+        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=12, fontsize=12)
         axs[-1].axis('off')
 
         fig.suptitle('Compiled Precision-Recall Curves Final Models - Per Embedding ' + str(self.num_rerurun_model_building) +
                      ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
         fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
+
+
+        # Export Precision-Recall curve numeric data as a .csv file
+        # Pad all curves in all_prts_dict so all same length as longest_prt_
+        all_prts_dict_for_df = {}
+        for k__ in list(all_prts_dict.keys()):
+            #padded_prts_ls = []
+            for v, label_ in zip(all_prts_dict[k__],['precision','recall','thresholds']):
+                amt_to_pad_ = longest_prt_ - len(v)  # [[ ],[ ], [ ]]
+                v += [0] * amt_to_pad_
+                all_prts_dict_for_df[label_ +'_'+k__] = v
+                # padded_prts_ls.append(v)
+            #all_prts_dict[k__] = padded_prts_ls
+        all_prts_final_df = pd.DataFrame(all_prts_dict_for_df)
+
+        # ** SAVE DATA **
+        fnm_ = (self.output_directory + 'data/' + 'final_performance_metrics_p-r_' + str(self.num_rerurun_model_building) + '-rnds.csv')
+        all_prts_final_df.to_csv(fnm_)
+        print('\n\nFinal Precision-Recall-Threshold curve data saved to:', fnm_.replace(self.output_directory, '~/'))
+
+
         # ** SAVE FIGURE **
         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
         fnm_ = (self.output_directory + 'figures/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final')
@@ -3270,17 +3368,20 @@ class DataRepresentationBuilder:
             # Format Axes
             axs[col_].set_xlim(0, 1)
             axs[col_].set_ylim(0, 1.1)
-            axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
+            # axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
             axs[col_].tick_params(direction='in', which='both', length=3, width=1)
 
             if col_ == 0:
                 axs[col_].set_xlabel('Recall')
                 axs[col_].set_ylabel('Precision')
-                axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
 
             else:
-                axs[col_].set_xticks([])
-                axs[col_].set_yticks([])
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
+                # axs[col_].set_xticks([])
+                # axs[col_].set_yticks([])
 
         # Add legend for parameter values
         from matplotlib.lines import Line2D
@@ -3294,7 +3395,7 @@ class DataRepresentationBuilder:
             legend_elements.append(Line2D([0], [0],
                                           color=color_,  # embd_color_dict[embd_][val__],
                                           lw=4, label=str(val__)))
-        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
+        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=12, fontsize=12)
         axs[-1].axis('off')
 
         fig.suptitle('Top 5 Precision-Recall Curves Final Models - Per Embedding ' + str(self.num_rerurun_model_building) +
@@ -3318,7 +3419,7 @@ class DataRepresentationBuilder:
                         xy=(right_coord, height),
                         xytext=(3, 0), textcoords="offset points",  # 3 points horizontal offset
                         ha='left', va='center',
-                        fontsize=7, color=label_color,
+                        fontsize=8.5, color=label_color,
                         )
 
     def autolabel_boxplot_below(self, caps, medians, ax_, label_color = 'black'):
@@ -3333,16 +3434,19 @@ class DataRepresentationBuilder:
                          xy=(left_coord, height),
                          xytext=(-3, -3), textcoords="offset points",  # 3 points vertical and horizontal offset
                          ha='left', va='top',
-                         fontsize=4, color=label_color,
+                         fontsize=8.5, color=label_color,
                          )
 
     def plot_final_model_box_plots_per_param_val(self):
         print("\nPlotting box plots for final models per parameter value...")
+        if self.param_values_to_loop_ == []:
+            print("No parameter values to plot by")
+            return
         ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
 
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
         final_detailed_metric_df = pd.DataFrame(self.final_detailed_performance_metrics_encodings_dict)
-        fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final.csv')
+        fnm_ = (self.output_directory + 'data/' + 'final_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final.csv')
         final_detailed_metric_df.to_csv(fnm_,index=True)
         print("Final Models Performance Metrics Dataframe saved to:\n\t",fnm_)
 
@@ -3361,17 +3465,13 @@ class DataRepresentationBuilder:
         num_plots_ =  int(int(len(self.feature_encoding_ls)/3)+(len(self.feature_encoding_ls)%3))# + 1
         paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 3] for i in range(0, len(self.feature_encoding_ls), 3)]
 
-
         for plotn_ in list(range(num_plots_)):
-
             if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row since is a combined plot with all embeddings
                 fig, axs = plt.subplots(1, len(final_detailed_metric_df))
                 fig.set_size_inches(w=14, h=3 )
-
             else:
                 fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
-                fig.set_size_inches(w=14, h=2 * len(paired_feature_encoding_ls[plotn_]))
-
+                fig.set_size_inches(w=14, h=3*len(paired_feature_encoding_ls[plotn_]))
 
             # Split Evaluation Metric Data per parameter value
             # Loop through all embeddings used
@@ -3389,6 +3489,14 @@ class DataRepresentationBuilder:
 
                 # Get parameter VALUES only for each selected embedding
                 param_vals_one_embd_ = list(set([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)]))
+
+                # Get counts for each
+
+                from collections import Counter
+                param_vals_one_embd_mult_ = list([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)])
+
+                ct_param_vals_one_embd_mult_ = Counter(param_vals_one_embd_mult_)
+                x_labs_with_counts_ = [str(x) + '\n(' + str(ct_param_vals_one_embd_mult_[x]) + ')' for x in param_vals_one_embd_]
 
                 # If Parameter values are integers, order them from smallest to larget
                 try:
@@ -3434,17 +3542,18 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_, fontsize=7 )
+                        axs[j,i].set_title(metric_, fontsize=8.5 )
                         if i == 3:
                             #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
                             else:
-                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
-                        axs[j,i].set_xlabel(str(self.parameter_to_optimize),fontsize=7 )
+                        #axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        axs[j, i].set_xticklabels(x_labs_with_counts_, rotation=0, fontsize=8.5)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize),fontsize=8.5 )
 
 
                         if metric_ == 'MCC':
@@ -3468,17 +3577,18 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_, fontsize=7 )
+                        axs[i].set_title(metric_, fontsize=8.5 )
                         if i == 3:
                             # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_) , fontsize=7 )  # ,fontweight='bold')
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_) , fontsize=8.5 )  # ,fontweight='bold')
                             else:
-                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
-                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
+                        # axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        axs[i].set_xticklabels(x_labs_with_counts_, rotation=0, fontsize=8.5)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
 
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
@@ -3537,8 +3647,9 @@ class DataRepresentationBuilder:
         for i in range(len(metrics_ls)):
             metric_ = metrics_ls[i]
 
-            data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in
-                     enc_ls_]
+            data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
+            # data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in [0, 1]                                       ]].transpose()[metric_]) for enc_ in enc_ls_]
+
             bplot1 = axs[i].boxplot(
                 data_,
                 vert=True,  # vertical box alignment
@@ -3565,10 +3676,12 @@ class DataRepresentationBuilder:
                 axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                 axs[i].tick_params(axis='y', labelsize=fntsz_)
 
+
             self.autolabel_boxplot_below(bplot1['caps'][::2],bplot1['medians'], axs[i])
 
         fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
                      ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
+
         fig.tight_layout()
 
 
@@ -3617,7 +3730,8 @@ class DataRepresentationBuilder:
         fig, axs = plt.subplots(1,len(self.feature_encoding_ls )+ 1)
         fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
 
-
+        all_prts_dict = {}
+        longest_prt_ = -1
         for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
             axs[col_].set_title(str(e))
             for n in range(self.num_rerurun_model_building):  # loop through rounds
@@ -3636,8 +3750,17 @@ class DataRepresentationBuilder:
 
                     pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
                     rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    thresholds__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
                     unach_pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
                     unach_rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
+
+                    # For exporting Precision-Recall curve numeric data as a .csv file
+                    prt_ls = [list(pcurve__), list(rcurve__), list(thresholds__)]
+                    all_prts_dict[str(n) + '_' + key__] = prt_ls
+                    for v in prt_ls:
+                        if longest_prt_ < len(v):  # keep track of longest Precision, Recall, Threshold curve list to pad later
+                            longest_prt_ = len(v)
+
 
                     axs[col_].plot(
                         rcurve__,  # r_OH,# x
@@ -3645,6 +3768,7 @@ class DataRepresentationBuilder:
                         lw=1,
                         color= color_,
                     )
+
 
                     # axs[col_].plot(
                     #     rcurve__,  # r_OH,# x
@@ -3657,17 +3781,45 @@ class DataRepresentationBuilder:
             # Format Axes
             axs[col_].set_xlim(0, 1)
             axs[col_].set_ylim(0, 1.1)
-            axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
+            # axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
             axs[col_].tick_params(direction='in', which='both', length=3, width=1)
 
             if col_ == 0:
                 axs[col_].set_xlabel('Recall')
                 axs[col_].set_ylabel('Precision')
-                axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
 
             else:
-                axs[col_].set_xticks([])
-                axs[col_].set_yticks([])
+                # axs[col_].set_xticks([])
+                # axs[col_].set_yticks([])
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
+
+            # Add colored border
+            for spine in axs[col_].spines.values():
+                spine.set_edgecolor('red')
+                spine.set_linewidth(3)
+
+
+        # Export Precision-Recall curve numeric data as a .csv file
+        # Pad all curves in all_prts_dict so all same length as longest_prt_
+        all_prts_dict_for_df = {}
+        for k__ in list(all_prts_dict.keys()):
+            # padded_prts_ls = []
+            for v, label_ in zip(all_prts_dict[k__], ['precision', 'recall', 'thresholds']):
+                amt_to_pad_ = longest_prt_ - len(v)  # [[ ],[ ], [ ]]
+                v += [0] * amt_to_pad_
+                all_prts_dict_for_df[label_ + '_' + k__] = v
+                # padded_prts_ls.append(v)
+            # all_prts_dict[k__] = padded_prts_ls
+        all_prts_final_df = pd.DataFrame(all_prts_dict_for_df)
+
+        # ** SAVE DATA **
+        fnm_ = (self.output_directory + 'data/' + 'external_eval_final_p-r-curve_' + str(self.num_rerurun_model_building) + '-rnds_ext-data-eval.csv')
+        all_prts_final_df.to_csv(fnm_)
+        print('\n\nFinal model Applied to External Dataset Precision-Recall-Threshold curve data saved to:', fnm_.replace(self.output_directory, '~/'))
+
 
         # Add legend for parameter values
         from matplotlib.lines import Line2D
@@ -3681,14 +3833,17 @@ class DataRepresentationBuilder:
             legend_elements.append(Line2D([0], [0],
                                           color=color_,  # embd_color_dict[embd_][val__],
                                           lw=4, label=str(val__)))
-        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
+        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=12, fontsize=12)
         axs[-1].axis('off')
+
+
 
         random_flag_ = ''
         if self.randomize_ext_data_:
             random_flag_ = '(Randomized) '
         fig.suptitle('Compiled Precision-Recall Curves Final Models Evaluated on External Dataset '+random_flag_+'- Per Embedding ' + str(self.num_rerurun_model_building) +
-                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-')) + '\n'+
+                     'External Dataset: '+self.external_data_file_, fontsize=9)
         fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
         # ** SAVE FIGURE **
         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
@@ -3794,17 +3949,25 @@ class DataRepresentationBuilder:
             # Format Axes
             axs[col_].set_xlim(0, 1)
             axs[col_].set_ylim(0, 1.1)
-            axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
+            # axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
             axs[col_].tick_params(direction='in', which='both', length=3, width=1)
 
             if col_ == 0:
                 axs[col_].set_xlabel('Recall')
                 axs[col_].set_ylabel('Precision')
-                axs[col_].set_xticks(ticks=np.arange(0, 1.1, .5), labels=['', 0.5, 1.0])
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
 
             else:
-                axs[col_].set_xticks([])
-                axs[col_].set_yticks([])
+                # axs[col_].set_xticks([])
+                # axs[col_].set_yticks([])
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
+
+            # Add colored border
+            for spine in axs[col_].spines.values():
+                spine.set_edgecolor('red')
+                spine.set_linewidth(3)
 
         # Add legend for parameter values
         from matplotlib.lines import Line2D
@@ -3818,7 +3981,7 @@ class DataRepresentationBuilder:
             legend_elements.append(Line2D([0], [0],
                                           color=color_,  # embd_color_dict[embd_][val__],
                                           lw=4, label=str(val__)))
-        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=10, fontsize=10)
+        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=12, fontsize=12)
         axs[-1].axis('off')
 
         random_flag_ = ''
@@ -3826,7 +3989,8 @@ class DataRepresentationBuilder:
             random_flag_ = '(Randomized) '
 
         fig.suptitle('Top 5 Precision-Recall Curves Final Models Evaluated on External Dataset '+random_flag_+'- Per Embedding ' + str(self.num_rerurun_model_building) +
-                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-')) + '\n' + 'External Dataset: '+self.external_data_file_, fontsize=9)
+
         fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
         # ** SAVE FIGURE **
         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
@@ -3853,7 +4017,9 @@ class DataRepresentationBuilder:
         print("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t",fnm_)
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
-        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k')
+        blue_medians = dict(linewidth=2, color='#1494DF') # medianprops=blue_medians,
+
         medianprops__1 = dict(linewidth=2, color='goldenrod')
         medianprops__2 = dict(linewidth=2, color='#2c8799')
         medianprops__3 = dict(linewidth=2, color='firebrick')
@@ -3863,10 +4029,14 @@ class DataRepresentationBuilder:
         # fig, axs = plt.subplots( len(self.feature_encoding_ls), len(final_detailed_metric_df))
         # fig.set_size_inches(w=14, h=3*len(self.feature_encoding_ls))
         # Update: Make plots in sets of two or fewer (so not too large)
-        num_plots_ =  int(int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)%2))
-        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 2] for i in range(0, len(self.feature_encoding_ls), 2)]
+        # num_plots_ =  int(int(len(self.feature_encoding_ls)/2)+(len(self.feature_encoding_ls)%2))
+        # paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 2] for i in range(0, len(self.feature_encoding_ls), 2)]
+
+        num_plots_ = int(int(len(self.feature_encoding_ls) / 3) + (len(self.feature_encoding_ls) % 3))
+        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 3] for i in range(0, len(self.feature_encoding_ls), 3)]
 
         for plotn_ in list(range(num_plots_)):
+
             fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
             fig.set_size_inches(w=14, h=3 * len(paired_feature_encoding_ls[plotn_]))
 
@@ -3927,22 +4097,27 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__,
+                            flierprops=flierprops__, boxprops=boxprops__, medianprops=blue_medians,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_, fontsize=7 )
+                        axs[j,i].set_title(metric_, fontsize=8.5 )
                         if i == 3:
                             #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
                             else:
-                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
-                        axs[j,i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
+                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
+
+                        # # Add colored border
+                        # for spine in axs[j,i].spines.values():
+                        #     spine.set_edgecolor('red')
+                        #     spine.set_linewidth(3)
 
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
@@ -3961,26 +4136,31 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__,
+                            flierprops=flierprops__, boxprops=boxprops__, medianprops=blue_medians,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_, fontsize=7 )
+                        axs[i].set_title(metric_, fontsize=8.5 )
                         if i == 3:
                             # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_),fontsize=7 )  # ,fontweight='bold')
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_),fontsize=8.5 )  # ,fontweight='bold')
                             else:
-                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_), fontsize=7 )  # ,fontweight='bold')
+                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=7)
-                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=7 )
+                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
 
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
                         self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
+
+                        # # Add colored border
+                        # for spine in axs[i].spines.values():
+                        #     spine.set_edgecolor('red')
+                        #     spine.set_linewidth(3)
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
@@ -4003,7 +4183,9 @@ class DataRepresentationBuilder:
                 random_flag_ = '(Randomized) '
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models Evaluated on External Dataset '+random_flag_+'- Per Parameter Value ' + str(self.num_rerurun_model_building) +
-                         ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+                         ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-')) + '\n'+'External Dataset: '+self.external_data_file_, fontsize=9)
+            fig.patch.set_linewidth(10)
+            fig.patch.set_edgecolor('red')
             fig.tight_layout()
 
             # ** SAVE FIGURE **
@@ -4014,6 +4196,231 @@ class DataRepresentationBuilder:
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
             print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
         return
+
+
+    def plot_final_model_box_plots_per_param_val_on_final_and_external(self):
+        print("\nPlotting box plots for final models AND external dataset per parameter value...")
+        if not self.apply_final_models_to_external_dataset_:
+            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            return
+
+        ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
+
+        # Each column of final_detailed_metric_df contains a single round for a single embedding type
+        final_detailed_metric_df_ext = pd.DataFrame(self.ext_final_detailed_performance_metrics_encodings_dict)
+
+        blue_medians = dict(linewidth=2, color='#1494DF') # medianprops=blue_medians,
+
+        ######################################
+        if self.param_values_to_loop_ == []:
+            print("No parameter values to plot by")
+            return
+        ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
+
+        # Each column of final_detailed_metric_df contains a single round for a single embedding type
+        final_detailed_metric_df = pd.DataFrame(self.final_detailed_performance_metrics_encodings_dict)
+
+        flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
+        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+        medianprops__1 = dict(linewidth=2, color='goldenrod')
+        medianprops__2 = dict(linewidth=2, color='#2c8799')
+        medianprops__3 = dict(linewidth=2, color='firebrick')
+
+        # one axis per performance metric
+        # one box per embedding per axis
+        # fig, axs = plt.subplots( len(self.feature_encoding_ls), len(final_detailed_metric_df))
+        # fig.set_size_inches(w=14, h=3*len(self.feature_encoding_ls))
+        # Update: Make plots in sets of two or fewer (so not too large)
+        # TODO: Add +1 to num_plots_ for an extra plot with all embeddings overlayed (in different colors)
+        num_plots_ =  int(int(len(self.feature_encoding_ls)/3)+(len(self.feature_encoding_ls)%3))# + 1
+        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 3] for i in range(0, len(self.feature_encoding_ls), 3)]
+
+        for plotn_ in list(range(num_plots_)):
+            if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row since is a combined plot with all embeddings
+                fig, axs = plt.subplots(1, len(final_detailed_metric_df))
+                fig.set_size_inches(w=14, h=3 )
+            else:
+                fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
+                fig.set_size_inches(w=14, h=3*len(paired_feature_encoding_ls[plotn_]))
+
+            # Split Evaluation Metric Data per parameter value
+            # Loop through all embeddings used
+            #for embedding_type_final_eval_, j in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):
+            for embedding_type_final_eval_, j in zip(paired_feature_encoding_ls[plotn_], list(range(len(paired_feature_encoding_ls[plotn_])))):
+
+                # From final_detailed_metric_df get just columns for a single selected embedding type
+                # Get just columns with selected embedding metric (embedding_type_final_eval_)
+                cols_with_embd_ = [x for x in list(final_detailed_metric_df.columns) if embedding_type_final_eval_ in x]
+                print("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
+                      str(embedding_type_final_eval_)+" - ",len(cols_with_embd_),'out of',len(list(final_detailed_metric_df.columns)))
+
+                # Get just columns with selected embedding metric (embedding_type_final_eval_)
+                final_detailed_metric_one_embd_df = final_detailed_metric_df[cols_with_embd_]
+
+                # Get parameter VALUES only for each selected embedding
+                param_vals_one_embd_ = list(set([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)]))
+
+                # Get counts for each
+
+                from collections import Counter
+                param_vals_one_embd_mult_ = list([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)])
+
+                ct_param_vals_one_embd_mult_ = Counter(param_vals_one_embd_mult_)
+                x_labs_with_counts_ = [str(x) + '\n(' + str(ct_param_vals_one_embd_mult_[x]) + ')' for x in param_vals_one_embd_]
+
+                # If Parameter values are integers, order them from smallest to larget
+                try:
+                    int_param_vals_one_embd_ = [int(x) for x in param_vals_one_embd_]
+                    int_param_vals_one_embd_.sort()
+                    param_vals_one_embd_ = [str(x) for x in int_param_vals_one_embd_]
+                except:
+                    pass
+
+                metrics_ls = list(final_detailed_metric_one_embd_df.index)
+
+                final_model_ct_per_param_val_dict = {} # holds counts of each parameter value used to build a final model
+                for v__ in self.param_values_to_loop_:
+                    ct_v__ = len([x for x in self.final_model_params_ls if str(x) == str(v__)])
+                    final_model_ct_per_param_val_dict[str(v__)] = ct_v__
+
+                for i in range(len(metrics_ls)):
+                    metric_ = metrics_ls[i]
+                    # Plot by parameter value
+                    # data_ = [list(final_detailed_metric_one_embd_df[
+                    #                   [embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ + '_round_' + str(i) for i in
+                    #                    list(range(final_model_ct_per_param_val_dict[str(param_val_)]))]].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    # get columns for single parameter value and metric
+
+                    cols_to_select_ = []
+                    for param_val_ in param_vals_one_embd_:
+                        # Get rounds for given parameter value and embedding
+                        rounds_per_one_param_val_ = [int(x.split('_round_')[-1]) for x in list(final_detailed_metric_one_embd_df.columns) if embedding_type_final_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' in x]
+                        for rnd__ in rounds_per_one_param_val_:
+                            cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
+                    cols_to_select_ext_ = []
+                    for param_val_ in param_vals_one_embd_:
+                        # Get rounds for given parameter value and embedding
+                        rounds_per_one_param_val_ = [int(x.split('_round_')[-1]) for x in list(final_detailed_metric_one_embd_df_ext.columns) if embedding_type_final_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' in x]
+                        for rnd__ in rounds_per_one_param_val_:
+                            cols_to_select_ext_.append(embedding_type_final_eval_ + '-' + str(self.parameter_to_optimize) + '-' + param_val_ + '_round_' + str(rnd__))
+
+                    data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    data_ext = [list(final_detailed_metric_one_embd_df_ext[cols_to_select_ext_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
+                    #print(data_)
+                    # Multiple Rows
+                    try:
+                        bplot1 = axs[j,i].boxplot(
+                            data_,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
+
+                        )  # will be used to label x-ticks
+                        bplot2 = axs[j, i].boxplot(
+                            data_ext,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__,medianprops=blue_medians,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
+
+                        )  # will be used to label x-ticks
+                        axs[j,i].set_title(metric_, fontsize=8.5 )
+                        if i == 3:
+                            #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                            if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
+                            else:
+                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
+
+                        # update x-axis labels
+                        #axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        axs[j, i].set_xticklabels(x_labs_with_counts_, rotation=0, fontsize=8.5)
+                        axs[j,i].set_xlabel(str(self.parameter_to_optimize),fontsize=8.5 )
+
+
+                        if metric_ == 'MCC':
+                            axs[j,i].set_ylim(-1, 1)
+                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[j,i].tick_params(axis='y', labelsize=7)
+                        else:
+                            axs[j,i].set_ylim(0, 1)
+                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[j,i].tick_params(axis='y', labelsize=7)
+
+                    # Single Row
+                    except:
+                        bplot1 = axs[i].boxplot(
+                            data_,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
+
+                        )  # will be used to label x-ticks
+                        bplot2 = axs[i].boxplot(
+                            data_ext,
+                            vert=True,  # vertical box alignment
+                            patch_artist=True,  # fill with color
+                            labels=param_vals_one_embd_,
+                            flierprops=flierprops__, boxprops=boxprops__, medianprops=blue_medians,
+                            capprops=dict(color='black'),
+                            whiskerprops=dict(color='black'),
+
+                        )  # will be used to label x-ticks
+                        axs[i].set_title(metric_, fontsize=8.5 )
+                        if i == 3:
+                            # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                            if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_) , fontsize=8.5 )  # ,fontweight='bold')
+                            else:
+                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
+
+                        # update x-axis labels
+                        # axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        axs[i].set_xticklabels(x_labs_with_counts_, rotation=0, fontsize=8.5)
+                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
+
+                        # label metric score values next to each box
+                        #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
+
+                        if metric_ == 'MCC':
+                            axs[i].set_ylim(-1, 1)
+                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                            axs[i].tick_params(axis='y', labelsize=7)
+                        else:
+                            axs[i].set_ylim(0, 1)
+                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                            axs[i].tick_params(axis='y', labelsize=7)
+                    try:
+                        # label metric score values next to each box
+                        #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
+                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j, i])
+                    except:
+                        pass # already labeled above
+
+            #if plotn_ == num_plots_ - 1:  # TODO: last plot needs a legend (to identify each embedding as a different color)
+
+            fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models and External - Per Parameter Value ' + str(self.num_rerurun_model_building) +
+                         ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+            fig.tight_layout()
+
+            # ** SAVE FIGURE **
+            plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+            fnm_ = (self.output_directory + 'figures/' + str(plotn_+1)+'_final_and_ext_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
+            fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + str(plotn_+1)+'_final_and_ext_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
+            fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+            fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        return
+
 
     def plot_final_model_box_plots_per_metric_on_ext_dataset(self):
         print("\nPlotting box plots -- per performance metric -- for final models evaluated on external dataset per parameter value...")
@@ -4027,10 +4434,13 @@ class DataRepresentationBuilder:
         enc_ls_ = self.feature_encoding_ls
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
-        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+        blue_medians = dict(linewidth=2, color='#1494DF')  # medianprops=blue_medians,
+        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k')
+
         medianprops__1 = dict(linewidth=2, color='goldenrod')
         medianprops__2 = dict(linewidth=2, color='#2c8799')
         medianprops__3 = dict(linewidth=2, color='firebrick')
+
 
         # one axis per performance metric
         # one box per embedding per axis
@@ -4039,15 +4449,15 @@ class DataRepresentationBuilder:
         fntsz_ = 7
         for i in range(len(metrics_ls)):
             metric_ = metrics_ls[i]
+            data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building))]].transpose()[metric_]) for enc_ in enc_ls_]
+            # data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in enc_ls_]
 
-            data_ = [list(final_metric_df[[enc_+'_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in
-                     enc_ls_]
             bplot1 = axs[i].boxplot(
                 data_,
                 vert=True,  # vertical box alignment
                 patch_artist=True,  # fill with color
                 labels=enc_ls_,
-                flierprops=flierprops__, boxprops=boxprops__,
+                flierprops=flierprops__, boxprops=boxprops__, medianprops=blue_medians,
                 capprops=dict(color='black'),
                 whiskerprops=dict(color='black'),
 
@@ -4058,6 +4468,11 @@ class DataRepresentationBuilder:
 
             # update x-axis labels
             axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], rotation=90, fontsize = fntsz_)
+
+            # # Add colored border
+            # for spine in axs[i].spines.values():
+            #     spine.set_edgecolor('red')
+            #     spine.set_linewidth(3)
 
             if metric_ == 'MCC':
                 axs[i].set_ylim(-1, 1)
@@ -4075,7 +4490,9 @@ class DataRepresentationBuilder:
             random_flag_ = '(Randomized) '
 
         fig.suptitle('Compiled Multiple Metrics Final Models Evaluated on External Dataset '+random_flag_+str(self.num_rerurun_model_building)+
-                     ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
+                     ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-'))+'\n'+'External Dataset: '+self.external_data_file_, fontsize=9)
+        fig.patch.set_linewidth(10)
+        fig.patch.set_edgecolor('red')
         fig.tight_layout()
 
 
@@ -4088,9 +4505,297 @@ class DataRepresentationBuilder:
         print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
         return
 
+    def plot_final_model_and_external_data_box_plots_per_metric(self):
+        print("\nPlotting box plots -- per performance metric -- for final models...")
+        ## Plot Compiled Multimetrics Model Performance - Final Models per metric
+        final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
+        final_metric_df_ext = pd.DataFrame(self.ext_final_performance_metrics_encodings_dict)
+
+        fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_on-test-dataset_per-metric.csv')
+        final_metric_df.to_csv(fnm_, index=True)
+        print("Final Models Performance Metrics on Test Dataset Dataframe saved to:\n\t", fnm_)
+
+        # Each column of final_detailed_metric_df contains a single round for a single embedding type
+        fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_per-metric.csv')
+        final_metric_df_ext.to_csv(fnm_, index=True)
+        print("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
+
+
+        metrics_ls = list(final_metric_df.index)
+        enc_ls_ = self.feature_encoding_ls
+
+        flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
+        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+        medianprops__1 = dict(linewidth=2, color='goldenrod')
+        medianprops__2 = dict(linewidth=2, color='#2c8799')
+        medianprops__3 = dict(linewidth=2, color='firebrick')
+        blue_medians = dict(linewidth=2, color='#1494DF')  # medianprops=blue_medians,
+
+        # one axis per performance metric
+        # one box per embedding per axis
+        fig, axs = plt.subplots(1, len(final_metric_df)+1)
+        fig.set_size_inches(w=12+1, h=3)
+        fntsz_ = 7
+
+        # For exporting data used to make boxplots
+        bxplt_data_dict ={} # dict of lists by metric
+        bxplt_data_ext_dict ={} # dict of lists by metric
+
+        for i in range(len(metrics_ls)):
+            metric_ = metrics_ls[i]
+
+            data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
+            data_ext = [list(final_metric_df_ext[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
+
+            # data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in enc_ls_]
+            # data_ext = [list(final_metric_df_ext[[enc_ + '_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in enc_ls_]
+
+            # For exporting data used to make boxplots
+            bxplt_data_dict[metric_] = data_
+            bxplt_data_ext_dict[metric_] = data_ext
+
+            bplot1 = axs[i].boxplot(
+                data_,
+                vert=True,  # vertical box alignment
+                patch_artist=True,  # fill with color
+                labels=enc_ls_,
+                flierprops=flierprops__, boxprops=boxprops__,medianprops=blue_medians,
+                capprops=dict(color='black'),
+                whiskerprops=dict(color='black'),
+
+            )  # will be used to label x-ticks
+            bplot2 = axs[i].boxplot(
+                data_ext,
+                vert=True,  # vertical box alignment
+                patch_artist=True,  # fill with color
+                labels=enc_ls_,
+                flierprops=flierprops__, boxprops=boxprops__,
+                capprops=dict(color='black'),
+                whiskerprops=dict(color='black'),
+
+            )
+            axs[i].set_title(metric_, fontsize=fntsz_)
+            if i == 3:
+                axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=fntsz_)  # ,fontweight='bold')
+
+
+            # # update x-axis labels
+            tick_lab_list__ = []
+            for x in self.feature_encoding_ls:
+                tick_lab_list__.append('')
+            for x in self.feature_encoding_ls:
+                tick_lab_list__.append(feature_encodings_dict[x])
+
+            # axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], fontsize=fntsz_, rotation=90)
+            axs[i].set_xticklabels(tick_lab_list__, fontsize=fntsz_, rotation=90)
+            # axs[i].set_xticklabels(['','','','one-hot','gensim-weights','gensim-values'], fontsize=fntsz_, rotation=90)
+
+            if metric_ == 'MCC':
+                axs[i].set_ylim(-1, 1)
+                axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                axs[i].tick_params(axis='y', labelsize=fntsz_)
+            else:
+                axs[i].set_ylim(0, 1)
+                axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                axs[i].tick_params(axis='y', labelsize=fntsz_)
+
+            self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i], label_color = '#1494DF')
+            self.autolabel_boxplot_below(bplot2['caps'][::2], bplot2['medians'], axs[i], label_color = '#eb9834')
+
+        fig.suptitle('Compiled Multiple Metrics Final Models ' + str(self.num_rerurun_model_building) +
+                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+
+        # Each column of final_detailed_metric_df contains a single round for a single embedding type
+        # For exporting data used to make boxplots
+        bxplt_data_df = pd.DataFrame(bxplt_data_dict)
+        fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_per-metric.csv')
+        bxplt_data_df.to_csv(fnm_, index=True)
+        print("Final Models Performance Metrics used to make boxplots Dataframe saved to:\n\t", fnm_)
+
+        bxplt_data_ext_df = pd.DataFrame(bxplt_data_ext_dict)
+        fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_per-metric.csv')
+        bxplt_data_ext_df.to_csv(fnm_, index=True)
+        print("Final Models Performance Metrics used to make boxplots (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
+
+        # Add legend for parameter values
+        from matplotlib.lines import Line2D
+
+        legend_elements = [
+            Line2D([0], [0],
+                   color='#1494DF',  # embd_color_dict[embd_][val__],
+                   lw=4, label='Test Set'),
+            Line2D([0], [0],
+                   color='#eb9834',  # color_,  # embd_color_dict[embd_][val__],
+                   lw=4, label='External Dataset')
+        ]
+        axs[-1].legend(
+            handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), fontsize=12
+            #title=self.parameter_to_optimize, title_fontsize=12,
+        )
+        axs[-1].axis('off')
+
+
+        fig.tight_layout()
+
+        # ** SAVE FIGURE **
+        plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+        fnm_ = (self.output_directory + 'figures/' + 'bxp_' + str(self.num_rerurun_model_building) + '-rnds_final_and_external')
+        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_' + str(self.num_rerurun_model_building) + '-rnds_final_and_external')
+        fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+        fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        return
+
+    def plot_final_model_precision_recall_curves_on_ext_dataset_and_test_set(self):
+        print("\nPlotting precision-recall curves for final models on test set AND evaluated on external dataset...")
+        if not self.apply_final_models_to_external_dataset_:
+            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            return
+
+        ## Plot Final Model Precision-Recall curves as a single figure
+        sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
+                             self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
+
+        pr_curves_dict = self.final_performance_curves_encodings_dict
+        pr_curves_dict_ext = self.ext_final_performance_curves_encodings_dict
+        pr_curves_keys_ = self.final_key_ls
+
+        import seaborn as sns
+
+        # # Create dictionary of parameter colors based on parameter
+        # param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
+        # greys_col_ls = list(sns.color_palette("Greys", len(self.param_values_to_loop_)).as_hex())
+        #
+        # param_col_ls_dict = {}
+        # for i in range(len(self.param_values_to_loop_)):
+        #     param_col_ls_dict[self.param_values_to_loop_[i]] = param_col_ls[i]
+        #
+        # greys_col_ls_dict = {}
+        # for i in range(len(self.param_values_to_loop_)):
+        #     greys_col_ls_dict[self.param_values_to_loop_[i]] = greys_col_ls[i]
+        #
+        # embd_color_dict = {}
+        # for e in self.feature_encoding_ls:
+        #     embd_color_dict[e] = param_col_ls_dict
+
+
+        # Plot a single PLOT for each embedding type
+        fig, axs = plt.subplots(1,len(self.feature_encoding_ls )+ 1)
+        fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
+
+        all_prts_dict = {}
+        longest_prt_ = -1
+        for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
+            axs[col_].set_title(str(e))
+            for n in range(self.num_rerurun_model_building):  # loop through rounds
+
+                # Get p-r curves per round for given embedding and round
+                key__ = str(e) + '_' + str(n)
+                p = self.final_model_params_ls[n]
+
+                # try: # get color for parameter optimization looping
+                #     color_ = param_col_ls_dict[p]
+                # except: # if not looping through parameters select color from list
+                #     color_ = '#5784db'
+                # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
+                        ('label' in self.model_type_) and (e == 'one-hot'))):
+
+                    pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                    rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    thresholds__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    unach_pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
+                    unach_rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
 
 
 
+                    axs[col_].plot(
+                        rcurve__,  # r_OH,# x
+                        pcurve__,  # p_OH,# y
+                        lw=1,
+                        color= '#1494DF',
+                    )
+
+                    pcurve__ext__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                    rcurve__ext__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+
+                    axs[col_].plot(
+                        rcurve__ext__,  # r_OH,# x
+                        pcurve__ext__,  # p_OH,# y
+                        lw=1,
+                        color='#eb9834',
+                    )
+
+                    # axs[col_].plot(
+                    #     rcurve__,  # r_OH,# x
+                    #     unach_rcurve__,  # p_OH,# y
+                    #     lw=1,
+                    #     color=color_,
+                    #     linestyle='dashed',
+                    # )
+
+            # Format Axes
+            axs[col_].set_xlim(0, 1)
+            axs[col_].set_ylim(0, 1.1)
+            # axs[col_].set_xticks(ticks=np.arange(0, 1.1, .25), minor=True)
+            axs[col_].tick_params(direction='in', which='both', length=3, width=1)
+
+            if col_ == 0:
+                axs[col_].set_xlabel('Recall')
+                axs[col_].set_ylabel('Precision')
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                # axs[col_].set_xticks(ticks=[0.0, 0.5, 1.0], labels=['', 0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
+
+            else:
+                axs[col_].set_xticks(ticks=[0.5, 1.0 ], labels=[0.5, 1.0])
+                # axs[col_].set_xticks(ticks=[0.0, 0.5, 1.0], labels=['', 0.5, 1.0])
+                axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
+                #axs[col_].set_xticks([])
+                #axs[col_].set_yticks([])
+
+            # # Add colored border
+            # for spine in axs[col_].spines.values():
+            #     spine.set_edgecolor('red')
+            #     spine.set_linewidth(3)
+
+
+
+
+        # Add legend for parameter values
+        from matplotlib.lines import Line2D
+
+        legend_elements = [
+                        Line2D([0], [0],
+                   color='#1494DF',  # embd_color_dict[embd_][val__],
+                   lw=4, label='Test Set'),
+            Line2D([0], [0],
+                   color= '#eb9834',#color_,  # embd_color_dict[embd_][val__],
+                   lw=4, label='External Dataset')
+        ]
+        axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=12, fontsize=12)
+        axs[-1].axis('off')
+
+
+
+        random_flag_ = ''
+        if self.randomize_ext_data_:
+            random_flag_ = '(Randomized) '
+        fig.suptitle('Compiled Precision-Recall Curves Final Models Evaluated on External Dataset '+random_flag_+'- Per Embedding ' + str(self.num_rerurun_model_building) +
+                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-')) + '\n'+
+                     'External Dataset: '+self.external_data_file_, fontsize=9)
+
+        fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
+
+
+        # ** SAVE FIGURE **
+        plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+        fnm_ = (self.output_directory + 'figures/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_and-test-set')
+        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_and-test-set')
+        fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+        fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        return
 
 
 # TODO: (maybe?) export metrics/scores from parameter optimization to a file?
@@ -4107,3 +4812,5 @@ class DataRepresentationBuilder:
 
 # drb = DataRepresentationBuilder(model_type__ = 'linear-classification', parameter_to_optimize__ = 'kmer-size', custom_parameter_values_to_loop__ = [3,9] ,num_rerurun_model_building__=2,flank_len__=10,
 #                                 encoding_ls__ = ['one-hot', 'ann-word2vec-gensim'])#, 'bow-gensim', 'ann-keras', 'bow-countvect'])
+
+
