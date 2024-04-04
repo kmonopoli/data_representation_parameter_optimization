@@ -293,6 +293,7 @@ class DataRepresentationBuilder:
                  # external_data_file__  = 'cleaned_no-bad-or-duplicate-screens_sirna_screen_data_4392sirnas-bdna-75-genes_JAN-29-2024.csv',  # NO randomization of extenral data
                  input_data_dir__='new_input_data/',
                  input_data_file__ = 'training_sirna_screen_data_bdna-human-p3_1903-sirnas_MAR-21-2024.csv',
+                 include_random_background_comparison__ = False,
                  ):
         '''
         #########################################################################################################################################
@@ -405,6 +406,7 @@ class DataRepresentationBuilder:
         else:
             self.randomize_ext_data_ = False
 
+        self.include_random_background_comparison_ = include_random_background_comparison__
 
         # Splits for Train:Parameter Opt:Test
         self.test_set_size_pcnt_ = 15
@@ -2668,10 +2670,18 @@ class DataRepresentationBuilder:
         self.final_detailed_performance_metrics_encodings_dict = {}
         self.final_performance_curves_encodings_dict = {}
 
+        # add randomized background
+        if self.include_random_background_comparison_:
+            self.randombackground_final_models_encodings_dict = {}
+            self.randombackground_final_performance_metrics_encodings_dict = {}
+            self.randombackground_final_detailed_performance_metrics_encodings_dict = {}
+            self.randombackground_final_performance_curves_encodings_dict = {}
+
         if self.apply_final_models_to_external_dataset_:
             self.ext_final_performance_metrics_encodings_dict = {}
             self.ext_final_detailed_performance_metrics_encodings_dict = {}
             self.ext_final_performance_curves_encodings_dict = {}
+
 
         self.final_key_ls = []
         self.final_model_params_ls = []
@@ -2680,6 +2690,9 @@ class DataRepresentationBuilder:
         #self.all_data_split_dir = 'data-TEST-rfF26194_h_p3_bDNA_oh-bowcv_norm_25-60-rm-u/' # TODO: delete line (used only for testing)
 
         all_preds_dict = {} # For exporting predictions to .csv file
+        if self.include_random_background_comparison_:
+            all_preds_dict_randombackground = {} # For exporting predictions to .csv file
+
         if self.apply_final_models_to_external_dataset_:
             all_preds_dict_ext = {} # For exporting predictions to .csv file
 
@@ -2732,6 +2745,7 @@ class DataRepresentationBuilder:
                 # TODO: include undefined data in external test dataset evaluation
                 df_ext = pd.read_csv(ext_data_fnm_)
 
+
             for e in self.feature_encoding_ls:
                 # Train Final  Models
                 clf_final = model_dict[model_type___]
@@ -2767,6 +2781,15 @@ class DataRepresentationBuilder:
 
                     Y_ext_ = np.array(df_ext['numeric_class'])
 
+                if self.include_random_background_comparison_:
+                    print("Including additional evaluation on randomized background dataset")
+                    # NOTE: X_randombackground_ is same as X_test_
+                    # X_randombackground_ = X_test_.copy()#[[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___) + '_windw-' + str(window_size___) + '-wfreq-' + str(word_freq_cutoff___)]]
+
+                    Y_randombackground_ = Y_test_.copy()#list(self.df_train['numeric_class'])
+                    import random
+                    random.shuffle(Y_randombackground_)
+
                 #print("Fitting model "+str(n_ + 1)+' / '+str(self.num_rerurun_model_building)+'...')
                 clf_final.fit(X_train_, Y_train_)
                 #print("\tfitting complete!")
@@ -2783,7 +2806,10 @@ class DataRepresentationBuilder:
                     ext_preds_final_inv = clf_final.predict_proba(X_ext_)[:, 0]
                     ext_preds_binary_final = clf_final.predict(X_ext_)
 
-
+                if self.include_random_background_comparison_:
+                    randombackground_preds_final = preds_final.copy()# clf_final.predict_proba(X_randombackground_)[:, 1]
+                    randombackground_preds_final_inv = preds_final_inv.copy()# clf_final.predict_proba(X_randombackground_)[:, 0]
+                    randombackground_preds_binary_final = preds_binary_final.copy()# clf_final.predict(X_randombackground_)
 
                 #print("Evaluating performance of model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
 
@@ -2921,6 +2947,69 @@ class DataRepresentationBuilder:
                     self.ext_final_performance_curves_encodings_dict[key__] = ext_final_performance_curves_dict_
 
 
+                if self.include_random_background_comparison_:
+                    print("\nEvaluating performance on Randomized (shuffled) Background Data for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...\n')
+
+
+                    ## Evaluate Parameter Optimization Model Performance
+                    # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                    if not (((model_type___ == 'semi-sup-label-propagation') or (model_type___ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
+                        randombackground_p_final_, randombackground_r_final_, randombackground_ts_final_ = precision_recall_curve(Y_randombackground_, randombackground_preds_final)
+                        randombackground_aucpr_final_ = metrics.auc(randombackground_r_final_, randombackground_p_final_)
+
+                    randombackground_fscore_final_ = f1_score(Y_randombackground_, randombackground_preds_binary_final)  # , average=None)
+
+                    randombackground_fbetascore_final_ = fbeta_score(Y_randombackground_, randombackground_preds_binary_final, beta=self.f_beta_)  # , average=None)
+                    print("\nComputing Final fbeta_score with beta =", self.f_beta_)
+
+                    randombackground_accuracy_final_ = accuracy_score(Y_randombackground_, randombackground_preds_binary_final)
+
+                    randombackground_mcc_final_ = matthews_corrcoef(Y_randombackground_, randombackground_preds_binary_final)
+                    # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
+                    if not (((model_type___ == 'semi-sup-label-propagation') or (model_type___ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
+                        # Compute Unacheiveable Region
+                        randombackground_class_dist_final = randombackground_p_final_[0]  # class distribution (Pr=1)
+                        randombackground_unach_recalls_final = list(randombackground_r_final_)[::-1]
+                        # compute y (precision) values from the x (recall) values
+                        randombackground_unach_precs_final = []
+                        for x in randombackground_unach_recalls_final:
+                            randombackground_y = (randombackground_class_dist_final * x) / ((1 - randombackground_class_dist_final) + (randombackground_class_dist_final * x))
+                            randombackground_unach_precs_final.append(randombackground_y)
+                        randombackground_unach_p_r_final_ = [randombackground_unach_precs_final, randombackground_unach_recalls_final]
+                        randombackground_auc_unach_adj_final_ = metrics.auc(randombackground_r_final_, randombackground_p_final_) - metrics.auc(randombackground_unach_recalls_final, randombackground_unach_precs_final)
+
+                        randombackground_final_performance_curves_dict_ = {
+                            'Precision_Recall_Curve': [randombackground_p_final_, randombackground_r_final_, randombackground_ts_final_],
+                            'Unacheivable_Region_Curve': [randombackground_unach_precs_final, randombackground_unach_recalls_final],
+                        }
+                        randombackground_aucpr_adj_final_ = randombackground_aucpr_final_ - randombackground_p_final_[0]
+                    else:
+                        print("\n\nWARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model\n\n')
+                        randombackground_paramop_performance_curves_dict_ = {
+                            'Precision_Recall_Curve': [[], [], []],
+                            'Unacheivable_Region_Curve': [[], []],
+                        }
+                        randombackground_aucpr_final_ = 0
+                        randombackground_aucpr_adj_final_ = 0
+                        randombackground_auc_unach_adj_final_ = 0
+
+                    randombackground_final_performance_metrics_dict_ = {
+                        'AUCPR': randombackground_aucpr_final_,
+                        'AUCPR-adj': randombackground_aucpr_adj_final_,
+                        'AUCPR-unach-adj': randombackground_auc_unach_adj_final_,
+                        'F-Score': randombackground_fscore_final_,
+                        'Fbeta-Score': randombackground_fbetascore_final_,
+                        'Accuracy': randombackground_accuracy_final_,
+                        'MCC': randombackground_mcc_final_,
+                    }
+
+                    self.randombackground_final_performance_metrics_encodings_dict[key__] = randombackground_final_performance_metrics_dict_
+                    self.randombackground_final_detailed_performance_metrics_encodings_dict[key2__] = randombackground_final_performance_metrics_dict_
+                    self.randombackground_final_performance_curves_encodings_dict[key__] = randombackground_final_performance_curves_dict_
+
+
+
+
 
                 # Pickle final models (per round, per embedding)
                 #print("Pickling model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
@@ -2950,6 +3039,12 @@ class DataRepresentationBuilder:
                     all_preds_dict_ext[str(n_) + '_on-ext-data_' + key2__ + '_preds_final_inv'] = list(ext_preds_final_inv)
                     all_preds_dict_ext[str(n_) + '_on-ext-data_' + key2__ + '_preds_binary_final'] = list(ext_preds_binary_final)
 
+                if self.include_random_background_comparison_:
+                    all_preds_dict_randombackground[str(n_) + '_on-randombackground-data_' + key2__ + '_actual'] = list(Y_randombackground_)
+                    all_preds_dict_randombackground[str(n_) + '_on-randombackground-data_' + key2__ + '_preds_final'] = list(randombackground_preds_final)
+                    all_preds_dict_randombackground[str(n_) + '_on-randombackground-data_' + key2__ + '_preds_final_inv'] = list(randombackground_preds_final_inv)
+                    all_preds_dict_randombackground[str(n_) + '_on-randombackground-data_' + key2__ + '_preds_binary_final'] = list(randombackground_preds_binary_final)
+
         # Export predictions to .csv file
         fnm_ = self.output_directory + 'data/' + 'predictions_final_models.csv'
         all_preds_dict_df = pd.DataFrame(all_preds_dict)
@@ -2962,10 +3057,11 @@ class DataRepresentationBuilder:
             all_preds_dict_ext_df.to_csv(fnm_)
             print('\n\n\nPredictions on External Dataset from final model saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
 
-
-
-
-
+        if self.include_random_background_comparison_:
+            fnm_ = self.output_directory + 'data/' + 'predictions_final_models_randombackground_dataset.csv'
+            all_preds_dict_randombackground_df = pd.DataFrame(all_preds_dict_randombackground)
+            all_preds_dict_randombackground_df.to_csv(fnm_)
+            print('\n\n\nPredictions on Random Background Dataset from final model saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
 
     def plot_param_opt_precision_recall_curves(self):
         print("\nPlotting P-R curves for parameter optimization...")
@@ -4671,16 +4767,22 @@ class DataRepresentationBuilder:
         ## Plot Compiled Multimetrics Model Performance - Final Models per metric
         final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
         final_metric_df_ext = pd.DataFrame(self.ext_final_performance_metrics_encodings_dict)
+        if self.include_random_background_comparison_:  # randombackground
+            final_metric_df_randombackground = pd.DataFrame(self.randombackground_final_performance_metrics_encodings_dict)
 
+        # Each column of final_detailed_metric_df contains a single round for a single embedding type
         fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_on-test-dataset_per-metric.csv')
         final_metric_df.to_csv(fnm_, index=True)
         print("Final Models Performance Metrics on Test Dataset Dataframe saved to:\n\t", fnm_)
 
-        # Each column of final_detailed_metric_df contains a single round for a single embedding type
         fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_per-metric.csv')
         final_metric_df_ext.to_csv(fnm_, index=True)
         print("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
 
+        if self.include_random_background_comparison_:  # randombackground
+            fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_randombackground-data-eval_per-metric.csv')
+            final_metric_df_randombackground.to_csv(fnm_, index=True)
+            print("Final Models Performance Metrics (when Evaluated on Random Background Shuffled Dataset) Dataframe saved to:\n\t", fnm_)
 
         metrics_ls = list(final_metric_df.index)
         enc_ls_ = self.feature_encoding_ls
@@ -4689,8 +4791,8 @@ class DataRepresentationBuilder:
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
         medianprops__= dict(linewidth=2, color=testing_set_plot_color)
         medianprops__ext = dict(linewidth=2, color=external_set_plot_color)
-
-
+        if self.include_random_background_comparison_:  # randombackground
+            medianprops__randombackground = dict(linewidth=2, color='grey')
 
         # one axis per performance metric
         # one box per embedding per axis
@@ -4701,12 +4803,16 @@ class DataRepresentationBuilder:
         # For exporting data used to make boxplots
         bxplt_data_dict ={} # dict of lists by metric
         bxplt_data_ext_dict ={} # dict of lists by metric
+        if self.include_random_background_comparison_:  # randombackground
+            bxplt_data_randombackground_dict = {}  # dict of lists by metric
 
         for i in range(len(metrics_ls)):
             metric_ = metrics_ls[i]
 
             data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
             data_ext = [list(final_metric_df_ext[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
+            if self.include_random_background_comparison_:  # randombackground
+                data_randombackground = [list(final_metric_df_randombackground[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
 
             # data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in enc_ls_]
             # data_ext = [list(final_metric_df_ext[[enc_ + '_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in enc_ls_]
@@ -4714,6 +4820,8 @@ class DataRepresentationBuilder:
             # For exporting data used to make boxplots
             bxplt_data_dict[metric_] = data_
             bxplt_data_ext_dict[metric_] = data_ext
+            if self.include_random_background_comparison_:  # randombackground
+                bxplt_data_randombackground_dict[metric_] = data_randombackground
 
             bplot1 = axs[i].boxplot(
                 data_,
@@ -4735,6 +4843,19 @@ class DataRepresentationBuilder:
                 whiskerprops=dict(color='black'),
 
             )
+
+            if self.include_random_background_comparison_:  # randombackground
+                bplot3 = axs[i].boxplot(
+                    data_randombackground,
+                    vert=True,  # vertical box alignment
+                    patch_artist=True,  # fill with color
+                    labels=enc_ls_,
+                    flierprops=flierprops__, boxprops=boxprops__, medianprops=medianprops__randombackground,
+                    capprops=dict(color='black'),
+                    whiskerprops=dict(color='black'),
+
+                )
+
             axs[i].set_title(metric_, fontsize=fntsz_)
             if i == 3:
                 axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=fntsz_)  # ,fontweight='bold')
@@ -4744,6 +4865,9 @@ class DataRepresentationBuilder:
             tick_lab_list__ = []
             for x in self.feature_encoding_ls:
                 tick_lab_list__.append('')
+            if self.include_random_background_comparison_:
+                for x in self.feature_encoding_ls:
+                    tick_lab_list__.append('')
             for x in self.feature_encoding_ls:
                 tick_lab_list__.append(feature_encodings_dict[x])
 
@@ -4778,6 +4902,13 @@ class DataRepresentationBuilder:
         bxplt_data_ext_df.to_csv(fnm_, index=True)
         print("Final Models Performance Metrics used to make boxplots (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
 
+        if self.include_random_background_comparison_:  # randombackground
+            bxplt_data_randombackground_df = pd.DataFrame(bxplt_data_randombackground_dict)
+            fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_randombackground-data-eval_per-metric.csv')
+            bxplt_data_randombackground_df.to_csv(fnm_, index=True)
+            print("Final Models Performance Metrics used to make boxplots (when Evaluated on Randomized Background Shuffled Dataset) Dataframe saved to:\n\t", fnm_)
+
+
         # Add legend for parameter values
 
         legend_elements = [
@@ -4788,6 +4919,12 @@ class DataRepresentationBuilder:
                    color=external_set_plot_color,  # color_,  # embd_color_dict[embd_][val__],
                    lw=4, label='External Dataset')
         ]
+        if self.include_random_background_comparison_:  # randombackground
+            legend_elements.append(
+                Line2D([0], [0],
+                   color='grey',  # color_,  # embd_color_dict[embd_][val__],
+                   lw=4, label='Random Background (training data shuffled efficacies)'))
+
         axs[-1].legend(
             handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), fontsize=12
             #title=self.parameter_to_optimize, title_fontsize=12,
@@ -4812,12 +4949,15 @@ class DataRepresentationBuilder:
             print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
 
+
         ## Plot Final Model Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
 
         pr_curves_dict = self.final_performance_curves_encodings_dict
         pr_curves_dict_ext = self.ext_final_performance_curves_encodings_dict
+        if self.include_random_background_comparison_: # randombackground
+            pr_curves_dict_randombackground = self.randombackground_final_performance_curves_encodings_dict
         pr_curves_keys_ = self.final_key_ls
 
 
@@ -4845,9 +4985,9 @@ class DataRepresentationBuilder:
 
                     pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
                     rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
-                    thresholds__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
-                    unach_pcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
-                    unach_rcurve__ = self.ext_final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
+                    thresholds__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                    # unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
+                    # unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
 
 
 
@@ -4867,6 +5007,18 @@ class DataRepresentationBuilder:
                         lw=1,
                         color=external_set_plot_color,
                     )
+                    if self.include_random_background_comparison_:
+                        pcurve__randombackground__ = self.randombackground_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                        rcurve__randombackground__ = self.randombackground_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+
+                        axs[col_].plot(
+                            rcurve__randombackground__,  # r_OH,# x
+                            pcurve__randombackground__,  # p_OH,# y
+                            lw=1,
+                            color='grey',
+                        )
+
+
 
                     # axs[col_].plot(
                     #     rcurve__,  # r_OH,# x
@@ -4914,6 +5066,12 @@ class DataRepresentationBuilder:
                    color= external_set_plot_color,#color_,  # embd_color_dict[embd_][val__],
                    lw=4, label='External Dataset')
         ]
+        if self.include_random_background_comparison_:
+            legend_elements.append(
+                Line2D([0], [0],
+                       color='grey',  # color_,  # embd_color_dict[embd_][val__],
+                       lw=4, label='Random Background (training dataset shuffled efficacies)')
+            )
         axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=12, fontsize=12)
         axs[-1].axis('off')
 
@@ -4944,7 +5102,8 @@ class DataRepresentationBuilder:
         ## Plot Compiled Multimetrics Model Performance - Final Models per metric
         final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
         final_metric_df_ext = pd.DataFrame(self.ext_final_performance_metrics_encodings_dict)
-
+        if self.include_random_background_comparison_:  # randombackground
+            final_metric_df_randombackground = pd.DataFrame(self.randombackground_final_performance_metrics_encodings_dict)
         # fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_on-test-dataset_per-metric.csv')
         # final_metric_df.to_csv(fnm_, index=True)
         # print("Final Models Performance Metrics on Test Dataset Dataframe saved to:\n\t", fnm_)
@@ -4962,7 +5121,8 @@ class DataRepresentationBuilder:
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
         medianprops__= dict(linewidth=2, color=testing_set_plot_color)
         medianprops__ext = dict(linewidth=2, color=external_set_plot_color)
-
+        if self.include_random_background_comparison_:  # randombackground
+            medianprops__randombackground = dict(linewidth=2, color='grey')
 
 
         # one axis per performance metric
@@ -4974,12 +5134,15 @@ class DataRepresentationBuilder:
         # For exporting data used to make boxplots
         bxplt_data_dict ={} # dict of lists by metric
         bxplt_data_ext_dict ={} # dict of lists by metric
-
+        if self.include_random_background_comparison_:  # randombackground
+            bxplt_data_randombackground_dict = {}  # dict of lists by metric
         for i in range(len(metrics_ls)):
             metric_ = metrics_ls[i]
 
             data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
             data_ext = [list(final_metric_df_ext[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
+            if self.include_random_background_comparison_:  # randombackground
+                data_randombackground = [list(final_metric_df_randombackground[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building))]].transpose()[metric_]) for enc_ in enc_ls_]
 
             # data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in enc_ls_]
             # data_ext = [list(final_metric_df_ext[[enc_ + '_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in enc_ls_]
@@ -4987,6 +5150,8 @@ class DataRepresentationBuilder:
             # For exporting data used to make boxplots
             bxplt_data_dict[metric_] = data_
             bxplt_data_ext_dict[metric_] = data_ext
+            if self.include_random_background_comparison_:  # randombackground
+                bxplt_data_randombackground_dict[metric_] = data_randombackground
 
             bplot1 = axs[i].boxplot(
                 data_,
@@ -5008,6 +5173,18 @@ class DataRepresentationBuilder:
                 whiskerprops=dict(color='black'),
 
             )
+            if self.include_random_background_comparison_:  # randombackground
+                bplot3 = axs[i].boxplot(
+                    data_randombackground,
+                    vert=True,  # vertical box alignment
+                    patch_artist=True,  # fill with color
+                    labels=enc_ls_,
+                    flierprops=flierprops__, boxprops=boxprops__, medianprops=medianprops__randombackground,
+                    capprops=dict(color='black'),
+                    whiskerprops=dict(color='black'),
+
+                )
+
             axs[i].set_title(metric_, fontsize=fntsz_)
             if i == 3:
                 axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=fntsz_)  # ,fontweight='bold')
@@ -5017,6 +5194,9 @@ class DataRepresentationBuilder:
             tick_lab_list__ = []
             for x in self.feature_encoding_ls:
                 tick_lab_list__.append('')
+            if self.include_random_background_comparison_:
+                for x in self.feature_encoding_ls:
+                    tick_lab_list__.append('')
             for x in self.feature_encoding_ls:
                 tick_lab_list__.append(feature_encodings_dict[x])
 
@@ -5056,6 +5236,12 @@ class DataRepresentationBuilder:
                    color=external_set_plot_color,  # color_,  # embd_color_dict[embd_][val__],
                    lw=4, label='External Dataset')
         ]
+        if self.include_random_background_comparison_:  # randombackground
+            legend_elements.append(
+                Line2D([0], [0],
+                       color='grey',  # color_,  # embd_color_dict[embd_][val__],
+                       lw=4, label='Background Random (training data shuffled efficacies)')
+            )
         axs[-1].legend(
             handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), fontsize=12
             #title=self.parameter_to_optimize, title_fontsize=12,
