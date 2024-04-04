@@ -1397,7 +1397,6 @@ class DataRepresentationBuilder:
         f.close()
         print("Data processing parameter data appeneded to: \n\t", processed_dataset_parameters_index_file)
 
-
         # Name and Plot Entire Dataset (excluding unlabelled data used for semi-supervised)
         all_data_label = "All siRNA Data"
         self.plot_thresholds(self.df.iloc[self.indxs_labeled_data], all_data_label, self.all_data_split_dir + 'figures/')
@@ -1405,21 +1404,22 @@ class DataRepresentationBuilder:
         if self.apply_final_models_to_external_dataset_:
             # Name and Plot External Dataset
             ext_data_label = "External Test siRNA Data"
-            self.plot_thresholds(self.df[self.df['from_external_test_dataset']] , ext_data_label, self.all_data_split_dir + 'figures/')
+            self.plot_thresholds(self.df[self.df['from_external_test_dataset']], ext_data_label, self.all_data_split_dir + 'figures/')
 
-        # Undefined dataset holds all middle values (class = 'undefined' | numeric_class = -1 )
-        self.mid_undef_df = self.df.iloc[self.indxs_mid_undefined].copy()
+
 
         # Relabel undefined data as nonfunctional if remove_undefined_ = False (so won't be removed in next part)
         if not self.remove_undefined_:
-            print('\nNOTE: remove_undefined_ set to '+str(self.remove_undefined_)+' so Undefined data will not be excluded from either Training or External datasets!')
+            print('\nNOTE: remove_undefined_ set to ' + str(self.remove_undefined_) + ' so Undefined data will not be excluded from either Training or External datasets!')
+
             # Exclude external undefined data (if added)
 
             def reclassify_undefined_numeric(x):
-                if x <0:
+                if x < 0:
                     return 0
                 else:
                     return x
+
             def reclassify_undefined_label(x):
                 if x == 'undefined':
                     return 'inefficient'
@@ -1428,8 +1428,15 @@ class DataRepresentationBuilder:
 
             self.df['numeric_class'] = self.df['numeric_class'].apply(lambda x: reclassify_undefined_numeric(x))
             self.df['class'] = self.df['class'].apply(lambda x: reclassify_undefined_label(x))
+            self.indxs_mid_undefined = list(self.df[self.df['numeric_class'] == -1].index)
 
-        # Remove undefined data
+
+
+        # Undefined dataset holds all middle values (class = 'undefined' | numeric_class = -1 )
+        self.mid_undef_df = self.df.iloc[self.indxs_mid_undefined].copy()
+
+
+
         # Exclude external undefined data (if added)
         if self.apply_final_models_to_external_dataset_:
             self.df_noundef = self.df[ (self.df['numeric_class'] != -1) & (~self.df['from_external_test_dataset']) ].copy()
@@ -1451,14 +1458,30 @@ class DataRepresentationBuilder:
             self.df_noundef = self.df[self.df['numeric_class'] != -1].copy()
             self.df_noundef.reset_index(inplace=True, drop=False)
 
-        # Name and Plot Undefined (excluded) Dataset
-        undefined_label = "Undefined Data"
-        self.plot_thresholds(self.mid_undef_df, undefined_label + "\nexcluded from training and evaluation - for now",self.all_data_split_dir + 'figures/')
+        if self.remove_undefined_: # note: if don't remove undefined data (i.e. remove_undefined_ = False) below code will not work
+            # Name and Plot Undefined (excluded) Dataset
+            undefined_label = "Undefined Data"
+            self.plot_thresholds(self.mid_undef_df, undefined_label + "\nexcluded from training and evaluation - for now",self.all_data_split_dir + 'figures/')
 
-        # Save Undefined dataset
-        self.mid_undef_df_fnm = all_output_dir + self.all_data_split_dir + undefined_label.replace(' ', '_').replace('%','pcnt') + '_partition.csv'
-        self.mid_undef_df.to_csv(self.mid_undef_df_fnm, index=False)
-        print("Undefined Dataset saved to:\n\t", self.mid_undef_df_fnm)
+            # Save Undefined dataset
+            self.mid_undef_df_fnm = all_output_dir + self.all_data_split_dir + undefined_label.replace(' ', '_').replace('%','pcnt') + '_partition.csv'
+            self.mid_undef_df.to_csv(self.mid_undef_df_fnm, index=False)
+            print("Undefined Dataset saved to:\n\t", self.mid_undef_df_fnm)
+
+        # TODO: TEMP DELETE BELOW:
+        # Name and Plot Entire Dataset (excluding unlabelled data used for semi-supervised)
+        all_data_label = "After Remove Undef - All siRNA Data"
+        self.plot_thresholds(self.df.iloc[self.indxs_labeled_data], all_data_label, self.all_data_split_dir + 'figures/')
+
+        if self.apply_final_models_to_external_dataset_:
+            # Name and Plot External Dataset
+            ext_data_label = "After Remove Undef - External Test siRNA Data"
+            self.plot_thresholds(self.df[self.df['from_external_test_dataset']] , ext_data_label, self.all_data_split_dir + 'figures/')
+        # TODO: TEMP DELETE ABOVE
+
+
+
+
 
         # Create 80:10:10 splits INDEPENDENTLY on the labelled (efficnet/inefficent) siRNA data
         print('Allowed percentage classification proportiond deviation: ' + str(self.allowed_classification_prop_deviation_pcnt_) + '% (' + str( int(np.round(len(self.df_noundef) * (self.allowed_classification_prop_deviation_pcnt_ / 100), 0))) + ' siRNAs)')
