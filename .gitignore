@@ -18,6 +18,7 @@ run_*.py
 *.png
 *.svg
 *.pickle
+*.pkl
 
 *.csv
 *.xlsx
