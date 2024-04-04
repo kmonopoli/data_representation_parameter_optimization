@@ -2782,12 +2782,12 @@ class DataRepresentationBuilder:
                     Y_ext_ = np.array(df_ext['numeric_class'])
 
                 if self.include_random_background_comparison_:
+                    import random
                     print("Including additional evaluation on randomized background dataset")
-                    # NOTE: X_randombackground_ is same as X_test_
-                    # X_randombackground_ = X_test_.copy()#[[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___) + '_windw-' + str(window_size___) + '-wfreq-' + str(word_freq_cutoff___)]]
+                    X_randombackground_ = X_test_.copy()#[[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___) + '_windw-' + str(window_size___) + '-wfreq-' + str(word_freq_cutoff___)]]
+                    random.shuffle(X_randombackground_)
 
                     Y_randombackground_ = Y_test_.copy()#list(self.df_train['numeric_class'])
-                    import random
                     random.shuffle(Y_randombackground_)
 
                 #print("Fitting model "+str(n_ + 1)+' / '+str(self.num_rerurun_model_building)+'...')
@@ -2807,9 +2807,13 @@ class DataRepresentationBuilder:
                     ext_preds_binary_final = clf_final.predict(X_ext_)
 
                 if self.include_random_background_comparison_:
-                    randombackground_preds_final = preds_final.copy()# clf_final.predict_proba(X_randombackground_)[:, 1]
-                    randombackground_preds_final_inv = preds_final_inv.copy()# clf_final.predict_proba(X_randombackground_)[:, 0]
-                    randombackground_preds_binary_final = preds_binary_final.copy()# clf_final.predict(X_randombackground_)
+                    # randombackground_preds_final = preds_final.copy()
+                    # randombackground_preds_final_inv = preds_final_inv.copy()
+                    # randombackground_preds_binary_final = preds_binary_final.copy()
+
+                    randombackground_preds_final =  clf_final.predict_proba(X_randombackground_)[:, 1]
+                    randombackground_preds_final_inv =  clf_final.predict_proba(X_randombackground_)[:, 0]
+                    randombackground_preds_binary_final = clf_final.predict(X_randombackground_)
 
                 #print("Evaluating performance of model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
 
@@ -4923,7 +4927,7 @@ class DataRepresentationBuilder:
             legend_elements.append(
                 Line2D([0], [0],
                    color='grey',  # color_,  # embd_color_dict[embd_][val__],
-                   lw=4, label='Random Background (training data shuffled efficacies)'))
+                   lw=4, label='Random Background'))
 
         axs[-1].legend(
             handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), fontsize=12
@@ -5070,7 +5074,7 @@ class DataRepresentationBuilder:
             legend_elements.append(
                 Line2D([0], [0],
                        color='grey',  # color_,  # embd_color_dict[embd_][val__],
-                       lw=4, label='Random Background (training dataset shuffled efficacies)')
+                       lw=4, label='Random Background')
             )
         axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=12, fontsize=12)
         axs[-1].axis('off')
@@ -5240,7 +5244,7 @@ class DataRepresentationBuilder:
             legend_elements.append(
                 Line2D([0], [0],
                        color='grey',  # color_,  # embd_color_dict[embd_][val__],
-                       lw=4, label='Background Random (training data shuffled efficacies)')
+                       lw=4, label='Random Background')
             )
         axs[-1].legend(
             handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), fontsize=12
