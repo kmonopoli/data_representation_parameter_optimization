@@ -1,28 +1,71 @@
 #!/opt/anaconda3/bin/python
-import pandas as pd
-import numpy as np
-import os
+
+
 # warnings.filterwarnings('ignore')
-from gensim import corpora
-from sklearn.ensemble import RandomForestClassifier
-from sklearn import metrics
-from sklearn.metrics import precision_recall_curve
-from matplotlib import pyplot as plt
-from matplotlib import rcParams
+
+
+
+import os
 from datetime import datetime
 import calendar
+import math
+from random import randint
+import random
+from collections import Counter
+
+
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib import rcParams
+import matplotlib.pylab as pylab
+import seaborn as sns
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+
+
+
+
+
+
+
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.semi_supervised import SelfTrainingClassifier
+from sklearn.semi_supervised import LabelPropagation
+from sklearn.semi_supervised import LabelSpreading
+from sklearn.linear_model import LogisticRegression
+from sklearn import metrics
+from sklearn.metrics import precision_recall_curve
+from sklearn.model_selection import train_test_split
+
+
+from gensim import corpora
 import openpyxl
 import fasttext
+import pickle
 
-# from embedding_methods import embed_sequences_with_ann
-# from embedding_methods import embed_sequences_with_gensim
-# from embedding_methods import one_hot_encode_sequences
+
+from embedding_methods import one_hot_encode_sequences
+from embedding_methods import embed_sequences_with_bow_countvect
+from embedding_methods import embed_sequences_with_gensim_doc2bow_tfidf
+from embedding_methods import embed_sequences_with_keras
+from embedding_methods import embed_sequences_with_gensim_word2vec
+from embedding_methods import embed_sequences_with_gensim_word2vec_cbow
+from embedding_methods import embed_sequences_with_gensim_word2vec_skipgram
+from embedding_methods import embed_sequences_with_fasttext_cbow
+from embedding_methods import embed_sequences_with_fasttext_skipgram
+from embedding_methods import embed_sequences_with_fasttext_class_trained
+
 
 from sirna_model_building_helper_methods import classify
 from sirna_model_building_helper_methods import get_flanking_sequence
 
 
-import matplotlib.pylab as pylab
+
+
+
 
 params = {'legend.fontsize': 12,
           'figure.figsize': (6, 4),
@@ -37,6 +80,18 @@ pylab.rcParams.update(params)
 #########################################################################################################################################
 #####################################      Constants (Global Variables/Dictionaries)        #############################################
 #########################################################################################################################################
+
+training_set_plot_color = '#1494DF' #'#D46F37'
+testing_set_plot_color = '#4BB3B1'
+external_set_plot_color = '#eb9834'
+paramopt_set_plot_color = '#6359A4'
+
+
+
+ineff_color = '#3AA6E2'
+eff_color = '#F7B531'
+undef_color = '#B6B6B7'
+
 
 # For organizing output files, everything will go into this folder
 all_output_dir = 'output_model_fitting/'
@@ -112,12 +167,8 @@ model_type_dict = {
 }
 
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-from sklearn.semi_supervised import SelfTrainingClassifier
-from sklearn.semi_supervised import LabelPropagation
-from sklearn.semi_supervised import LabelSpreading
-from sklearn.linear_model import LogisticRegression
+
+
 model_dict = { # Dictionary of ACTUAL models for model parameter optimization
     'random-forest': RandomForestClassifier(),
     'semi-sup-random-forest': SelfTrainingClassifier(RandomForestClassifier( max_depth=3)), # NOTE: to speed up fitting set max_depth
@@ -141,19 +192,8 @@ param_id_dict = {  # Dictionary containing all possible parameters to optmize ma
     'None':'n',
     # Note: if add more parameters to optimize, add them here
 }
-### TODO: ERROR Model optimization --> ValueError: Input contains NaN.
 
-### TODO: ERROR Unlab dataset optimization --> FileNotFoundError: [Errno 2] No such file or directory: 'PARAMOPT'
 
-### TODO: ERROR Window size/Word freq cutoff | RF -->  TypeError: unsupported operand type(s) for +: 'int' and 'str'
-### TODO: ERROR ANN dimmension | RF TypeError: '>' not supported between instances of 'int' and 'str'
-
-### TODO: ERROR ANN dimmension | SemiSup RF --> ValueError: Cannot set a DataFrame with multiple columns to the single column seq_flank-50nts_target
-### TODO: ERROR Embedding | SemiSup RF -->      ValueError: Cannot set a DataFrame with multiple columns to the single column seq_flank-50nts_target
-
-### TODO: ERROR Semi-sup lab spreading --> TERM_MEMLIMIT:
-### TODO: ERROR ssrf kmer --> TERM_MEMLIMIT
-### TODO: ERROR TSVM  --> TERM_MEMLIMIT
 
 feature_encodings_dict = {
     'one-hot':'oh',
@@ -221,8 +261,6 @@ default_params_to_loop_dict = {
 
 
 
-
-
 class DataRepresentationBuilder:
     #########################################################################################################################################
     #####################################            DataRepresentationBuilder Class            #############################################
@@ -261,7 +299,7 @@ class DataRepresentationBuilder:
         #####################################        Dataset Parameters (Instance Variables)        #############################################
         #########################################################################################################################################
         '''
-        import pandas as pd
+
         pd.set_option('display.max_columns', None)
 
         if not run_param_optimization__:
@@ -495,36 +533,37 @@ class DataRepresentationBuilder:
         self.run_model_fittings()
         print("Model Fittings complete!\n")
 
-        # TODO: apply final model(s) to external dataset (can it be embedded separately?)
-
 
         if self.run_param_optimization_:
             print("\nPloting precision-recall curves from Parameter Optimization...")
             self.plot_param_opt_precision_recall_curves()
 
-        print("\nPloting precision-recall curves from Final Model Building...")
-        self.plot_final_model_precision_recall_curves()
-        self.plot_final_model_top_precision_recall_curves() # TODO: uncomment to plot precision-recall curves of top 5 models
+        #*# print("\nPloting precision-recall curves from Final Model Building...")
+        #*# self.plot_final_model_precision_recall_curves()
+        # self.plot_final_model_top_precision_recall_curves()
+
         if self.apply_final_models_to_external_dataset_:
             print("\nPloting precision-recall curves from Final Model Building evaluated on External Dataset...")
             # self.plot_final_model_precision_recall_curves_on_ext_dataset()
+            # self.plot_final_model_top_precision_recall_curves_on_ext_dataset()
             self.plot_final_model_precision_recall_curves_on_ext_dataset_and_test_set()
-            # self.plot_final_model_top_precision_recall_curves_on_ext_dataset() # TODO: uncomment to plot precision-recall curves of top 5 models
+
         print("\nCurve plotting complete!")
 
         if self.run_param_optimization_:
             print("\nPlotting box plots from Parameter Optimization...")
-            # self.plot_param_opt_model_box_plots()
+            self.plot_param_opt_model_box_plots()
 
         print("\nPlotting box plots from Final Model Building...")
-        self.plot_final_model_box_plots_per_param_val()
-        self.plot_final_model_box_plots_per_metric()
+        #*# self.plot_final_model_box_plots_per_param_val()
+        #*# self.plot_final_model_box_plots_per_metric()
         if self.apply_final_models_to_external_dataset_:
             print("\nPlotting box plots from Final Model Building evaluated on External Dataset...")
-            self.plot_final_model_box_plots_per_metric_on_ext_dataset()
-            self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
-
+            #*# self.plot_final_model_box_plots_per_metric_on_ext_dataset()
+            #*# self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
             self.plot_final_model_and_external_data_box_plots_per_metric()
+            self.plot_final_model_and_external_data_box_plots_f_score_only()
+
         print("\nBox plotting complete!")
 
         print("\n\n\nPROCESS FINISHED\n\n\n")
@@ -532,9 +571,126 @@ class DataRepresentationBuilder:
 
 
 
+    def plot_thresholds(self, df_, figure_label_, output_dir__='', savefig=True):
+        fig, ax = plt.subplots()
+        fig.set_size_inches(w=5, h=4)
 
 
+        colors_ls = [x.replace('inefficient', ineff_color).replace('efficient', eff_color).replace('undefined', undef_color) for
+                     x in list(df_.sort_values(by=self.expr_key)['class'])]
+        ax.bar(
+            x=list(range(len(df_))),
+            height=df_.sort_values(by=self.expr_key)[self.expr_key],
+            color=colors_ls,
+            # width=(1.0),
+        )
 
+        container2 = ax.errorbar(
+            list(range(len(df_))),
+            df_.sort_values(by=self.expr_key)[self.expr_key],
+            yerr=df_.sort_values(by=self.expr_key)['standard_deviation'],
+            lolims=True,
+            color='black',
+        )
+
+        connector, (caplines,), (vertical_lines,) = container2.lines
+        connector.set_alpha(0)
+        caplines.set_solid_capstyle('butt')
+        try:
+            caplines.set_marker(None)
+        except:
+            pass
+        vertical_lines.set_linewidth(1.0)  # 0.5)
+
+        ax.set_ylim(0, max(df_[self.expr_key]) + 0.2 * max(df_[self.expr_key]))
+        ax.set_xlim(0, len(df_))
+        ax.set_ylabel('Target Gene Expression (%)\nNormalized Per Assay (Gene)')
+        ax.set_xlabel('siRNAs (' + str(len(df_)) + ' total)')
+        ax.tick_params(axis='x', bottom=False, labelbottom=False)  # remove x-axis ticks and labels
+
+        # Legend
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
+
+        legend_elements = [
+            Patch(facecolor=eff_color, edgecolor=None,
+                  label=('< ' + str(self.effco_) + '% : Efficient (' + str(len(df_[df_['class'] == 'efficient'])) + ' siRNAs)')),
+            Patch(facecolor=ineff_color, edgecolor=None, label=('≥ ' + str(self.ineffco_) + '% : Inefficient (' + str(
+                len(df_[df_['class'] == 'inefficient'])) + ' siRNAs)')),
+            Patch(facecolor=undef_color, edgecolor=None,
+                  label=('Undefined (' + str(len(df_[df_['class'] == 'undefined'])) + ' siRNAs)')),
+        ]
+        ax.legend(handles=legend_elements, loc='upper left', frameon=False, fontsize=9)
+
+        plt.title(figure_label_)
+        # plt.title(output_run_file_info_string_.split('effco')[0].replace('_',' ').replace('-',' ')+'\n'+'Thresholds <'+str(effco_)+'% | ≥'+str(ineffco_)+'%',fontsize=12)
+
+        fig.tight_layout()
+
+        if savefig:
+            # ** SAVE FIGURE **
+            plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+            fnm_ = (all_output_dir + output_dir__ + figure_label_.split('\n')[0].replace(' ', '_').lower().replace('%',
+                                                                                                                   'pcnt') + '_partition')
+            fnm_svg_ = (all_output_dir + output_dir__ + 'svg_figs/' + figure_label_.split('\n')[0].replace(' ',
+                                                                                                           '_').lower().replace(
+                '%', 'pcnt') + '_partition')
+
+            fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+
+            fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+            print('Figure saved to:', fnm_ + '.png')
+
+    def plot_proportions_pie(self, figure_label_, output_dir__, df_, undefined_df_, train_split_df_, split_initial_df_,
+                             df_train_kfld_, df_test_kfld_, df_paramopt_kfld_, round_ct_, savefig=True):
+        # Checking porportions of partitioned data roughly match input parameters
+
+        fig, ax = plt.subplots(1)  # 1,3)
+        fig.set_size_inches(w=5, h=5)
+        # For Plotting
+        import matplotlib.pylab as pylab
+        params = {'legend.fontsize': 12,
+                  'font.size': 12,
+                  }
+        pylab.rcParams.update(params)
+
+        ax.set_title('Round ' + str(round_ct_ + 1) + ' Partition\nTotal siRNAs: ' + str(len(train_split_df_)))
+        ax.pie(
+            [len(df_train_kfld_), len(df_test_kfld_), len(df_paramopt_kfld_)],  # len(split_initial_df_) ],
+            autopct='%1.f%%',
+            startangle=90,
+            colors=['#DB7AC8', '#FECC0A', '#28A18B'],
+        )
+
+        from matplotlib.patches import Patch
+
+        legend_elements = [
+            Patch(facecolor='#DB7AC8', edgecolor=None, label=(
+                    str(100 - self.split_set_size_pcnt_) + '% Round ' + str(round_ct_ + 1) + ' Training Dataset (' + str(
+                len(df_train_kfld_)) + ')')),
+            Patch(facecolor='#FECC0A', edgecolor=None, label=(
+                    str(self.test_set_size_pcnt_) + '% Round ' + str(round_ct_ + 1) + ' Testing Dataset (' + str(
+                len(df_test_kfld_)) + ')')),
+            Patch(facecolor='#28A18B', edgecolor=None, label=(str(self.paramopt_set_size_pcnt_) + '% Round ' + str(
+                round_ct_ + 1) + ' Parameter Optimization Dataset (' + str(len(df_paramopt_kfld_)) + ')')),
+        ]
+
+        ax.legend(handles=legend_elements, frameon=False, loc='upper right', bbox_to_anchor=(1.5, 0.1))
+        fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
+
+        if savefig:
+            # ** SAVE FIGURE **
+            plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+            fnm_ = (all_output_dir + output_dir__ + figure_label_.split('\n')[0].replace(' ', '_').lower().replace('%',
+                                                                                                                   'pcnt') + '_partition')
+            fnm_svg_ = (all_output_dir + output_dir__ + 'svg_figs/' + figure_label_.split('\n')[0].replace(' ',
+                                                                                                           '_').lower().replace(
+                '%', 'pcnt') + '_partition')
+
+            fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+
+            fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+            print('Figure saved to:', fnm_ + '.png')
 
     def find_existing_processed_datasets(self):
         '''
@@ -708,7 +864,7 @@ class DataRepresentationBuilder:
             #if self.randomize_ext_data_:
             # print("\n\n\nWARNING: Randomizing external dataset expression data\n\n\n")
             # #df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
-            # import random
+
             # ext_expr_ls = list(df_ext[self.expr_key])
             # random.shuffle(ext_expr_ls)
             # df_ext[self.expr_key] = ext_expr_ls
@@ -717,7 +873,6 @@ class DataRepresentationBuilder:
             # # # # # if self.randomize_ext_data_:
             # # # # print("\n\n\nWARNING: Randomizing TRAINING dataset expression data\n\n\n")
             # # # # #df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
-            # # # # import random
             # # # # train_expr_ls = list(self.df[self.expr_key])
             # # # # random.shuffle(train_expr_ls)
             # # # # self.df[self.expr_key] = train_expr_ls
@@ -960,7 +1115,6 @@ class DataRepresentationBuilder:
         # TODO: update to work for semisupervised? ~ seem to be having a problem when running semi-sup encoding data
 
         # Shuffle data so not sorted by efficacy (For troubleshooting)
-        import random
         shuffled_indx_ls = list(range(len(self.df)))
         random.shuffle(shuffled_indx_ls)
         self.df['temp_index'] = shuffled_indx_ls
@@ -968,16 +1122,6 @@ class DataRepresentationBuilder:
         self.df.drop(columns=['temp_index'],inplace=True)
 
 
-        from embedding_methods import one_hot_encode_sequences
-        from embedding_methods import embed_sequences_with_bow_countvect
-        from embedding_methods import embed_sequences_with_gensim_doc2bow_tfidf
-        from embedding_methods import embed_sequences_with_keras
-        from embedding_methods import embed_sequences_with_gensim_word2vec
-        from embedding_methods import embed_sequences_with_gensim_word2vec_cbow
-        from embedding_methods import embed_sequences_with_gensim_word2vec_skipgram
-        from embedding_methods import embed_sequences_with_fasttext_cbow
-        from embedding_methods import embed_sequences_with_fasttext_skipgram
-        from embedding_methods import embed_sequences_with_fasttext_class_trained
 
         #['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
 
@@ -1161,7 +1305,7 @@ class DataRepresentationBuilder:
         #################################    Split Dataset into Train:Paramopt:Test    ###############################
         ##############################################################################################################
         # Create a unique self.datasplit_id_ for data splitting so can re-run with same data
-        from random import randint
+
         # self.datasplit_id_ = 'SUPk'+str(randint(100, 999) ) # ID used to find output data file
         self.datasplit_id_ = model_type_dict[self.model_type_] + self.parameter_to_optimize[0].upper() + str(randint(10000, 99999))  # ID used to find output data file
         # Check that datasplit_id_ doesn't exist already
@@ -1266,6 +1410,25 @@ class DataRepresentationBuilder:
         # Undefined dataset holds all middle values (class = 'undefined' | numeric_class = -1 )
         self.mid_undef_df = self.df.iloc[self.indxs_mid_undefined].copy()
 
+        # Relabel undefined data as nonfunctional if remove_undefined_ = False (so won't be removed in next part)
+        if not self.remove_undefined_:
+            print('\nNOTE: remove_undefined_ set to '+str(self.remove_undefined_)+' so Undefined data will not be excluded from either Training or External datasets!')
+            # Exclude external undefined data (if added)
+
+            def reclassify_undefined_numeric(x):
+                if x <0:
+                    return 0
+                else:
+                    return x
+            def reclassify_undefined_label(x):
+                if x == 'undefined':
+                    return 'inefficient'
+                else:
+                    return x
+
+            self.df['numeric_class'] = self.df['numeric_class'].apply(lambda x: reclassify_undefined_numeric(x))
+            self.df['class'] = self.df['class'].apply(lambda x: reclassify_undefined_label(x))
+
         # Remove undefined data
         # Exclude external undefined data (if added)
         if self.apply_final_models_to_external_dataset_:
@@ -1308,7 +1471,7 @@ class DataRepresentationBuilder:
                 ## 1) Create Training set first --> split_initial and train_split_ dataframes for:
                 #    80:10:10 --> train (80) : paramopt (10) : train (10)
                 #    NOTE: split_initial will not contain unlabelled data
-                from sklearn.model_selection import train_test_split
+
 
                 # Make train Set First
                 train_split_df, split_initial_indxs, _, _ = train_test_split(
@@ -1501,13 +1664,17 @@ class DataRepresentationBuilder:
             print("Plotting data splits as a grid...")
             # Plot Data Splitting for each round in a single figure
             if self.num_rerurun_model_building > 2:
-                train_col = '#D46F37'
-                test_col = '#4BB3B1'
-                paramopt_col = '#6359A4'
+
+
+                train_col = training_set_plot_color
+                test_col = testing_set_plot_color
+                paramopt_col = paramopt_set_plot_color
+
+
                 # sns.palplot([train_col,test_col,paramopt_col])
 
                 # find nearest square for plotting
-                import math
+
 
                 rows_cols_compiled_datasplit_fig = math.ceil(math.sqrt(self.num_rerurun_model_building))
 
@@ -1584,16 +1751,15 @@ class DataRepresentationBuilder:
                     axpie = fig.add_subplot(gs[1, -1])
 
                     # Legend
-                    from matplotlib.lines import Line2D
-                    from matplotlib.patches import Patch
+
 
                     legend_elements = [
-                        Patch(facecolor='#F7B531', edgecolor=None, label=('< ' + str(self.effco_) + '% : Efficient')),
+                        Patch(facecolor=eff_color, edgecolor=None, label=('< ' + str(self.effco_) + '% : Efficient')),
                         # ('+str(len(self.df_[self.df_['class'] == 'efficient']))+' siRNAs)')),
-                        Patch(facecolor='#3AA6E2', edgecolor=None, label=('≥ ' + str(
+                        Patch(facecolor=ineff_color, edgecolor=None, label=('≥ ' + str(
                             self.ineffco_) + '% : Inefficient')),
                         # ('+str(len(self.df_[self.df_['class'] == 'inefficient']))+' siRNAs)')),
-                        Patch(facecolor='#B6B6B7', edgecolor=None, label=('Undefined')),
+                        Patch(facecolor=undef_color, edgecolor=None, label=('Undefined')),
                         # ('+str(len(self.df_[self.df_['class'] == 'undefined']))+' siRNAs)')),
                     ]
                     axlegend.legend(handles=legend_elements, loc='upper left', frameon=False, fontsize=12)
@@ -1652,7 +1818,7 @@ class DataRepresentationBuilder:
 
                         # Plot data for each round
                         colors_ls = [
-                            x.replace('inefficient', '#3AA6E2').replace('efficient', '#F7B531').replace('undefined', '#B6B6B7') for
+                            x.replace('inefficient', ineff_color).replace('efficient', eff_color).replace('undefined', undef_color) for
                             x in list(self.df_.sort_values(by=self.expr_key)['class'])]
 
                         # Get axis to plot on
@@ -1689,15 +1855,13 @@ class DataRepresentationBuilder:
                         ax.tick_params(axis='x', bottom=False, labelbottom=False)  # remove x-axis ticks and labels
 
                         # Legend
-                        from matplotlib.lines import Line2D
-                        from matplotlib.patches import Patch
 
                         legend_elements = [
-                            Patch(facecolor='#F7B531', edgecolor=None, label=(str(len(self.df_[self.df_['class'] == 'efficient'])))),
+                            Patch(facecolor=eff_color, edgecolor=None, label=(str(len(self.df_[self.df_['class'] == 'efficient'])))),
                             # +' siRNAs')),
-                            Patch(facecolor='#3AA6E2', edgecolor=None, label=(str(len(self.df_[self.df_['class'] == 'inefficient'])))),
+                            Patch(facecolor=ineff_color, edgecolor=None, label=(str(len(self.df_[self.df_['class'] == 'inefficient'])))),
                             # +' siRNAs')),
-                            # Patch(facecolor='#B6B6B7', edgecolor=None, label=('Undefined ('+str(len(self.df_[self.df_['class'] == 'undefined']))+' siRNAs)')),
+                            # Patch(facecolor=undef_color, edgecolor=None, label=('Undefined ('+str(len(self.df_[self.df_['class'] == 'undefined']))+' siRNAs)')),
                         ]
                         ax.legend(handles=legend_elements, loc='upper left', frameon=False, fontsize=12,
                                   handleheight=0.5, handlelength=1.5)
@@ -1741,9 +1905,11 @@ class DataRepresentationBuilder:
                 self.df_ = pd.read_csv(data_fnm_)
                 data_sz_dict[dataset_] = len(self.df_)
 
-            train_col = '#D46F37'
-            test_col = '#4BB3B1'
-            paramopt_col = '#6359A4'
+
+            train_col = training_set_plot_color
+            test_col = testing_set_plot_color
+            paramopt_col = paramopt_set_plot_color
+
             # sns.palplot([train_col,test_col,paramopt_col])
 
             pie_wedge_index_dict = {'Train': 0, 'Test': 1, 'Paramopt': 2}
@@ -1767,8 +1933,6 @@ class DataRepresentationBuilder:
                 wedgeprops=dict(width=0.7),
             )
 
-            from matplotlib.lines import Line2D
-            from matplotlib.patches import Patch
 
             pie_legend_elements = [
                 Patch(facecolor=train_col, edgecolor=None, label='Training'),  # ('+str(data_sz_dict['Train'])+')')),
@@ -1811,9 +1975,9 @@ class DataRepresentationBuilder:
                 except:
                     self.df_no_unlab = self.df[self.df['numeric_class'] != -1].copy()
 
-                ineff_col = '#3AA6E2'
-                eff_col = '#F7B531'
-                undef_col = '#B6B6B7'
+                ineff_col = ineff_color
+                eff_col = eff_color
+                undef_col = undef_color
                 data_fnm_dict = {'Train': 'training_data', 'Paramopt': 'Parameter_Optimization_Data', 'Test': 'Testing_Data'}
                 data_pcnt_sz_dict = {'Train': 100 - (self.test_set_size_pcnt_ + self.paramopt_set_size_pcnt_),
                                      'Paramopt': self.paramopt_set_size_pcnt_, 'Test': self.test_set_size_pcnt_}
@@ -2059,7 +2223,6 @@ class DataRepresentationBuilder:
         '''
 
         # Create a unique self.modeltrain_id_
-        from random import randint
         # self.modeltrain_id_ = 'SUPk'+str(randint(10000, 99999) ) # ID used to find output data filie
         self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
         # be sure modeltrain_id_ doesn't exist already
@@ -2219,7 +2382,7 @@ class DataRepresentationBuilder:
 
     def parameter_optimization(self):
         print("Running parameter optimization...")
-        import pickle
+
 
         self.top_param_val_per_round_dict = {}
         self.paramop_performance_metrics_encodings_dict = {}
@@ -2480,7 +2643,6 @@ class DataRepresentationBuilder:
 
 
     def build_final_models(self):
-        import pickle
         print("Building Final Models...")
         self.final_models_encodings_dict = {}
         self.final_performance_metrics_encodings_dict = {}
@@ -2797,12 +2959,11 @@ class DataRepresentationBuilder:
         title_st_ = sup_title_id_info + 'Parameter Optimization ' + str(self.parameter_to_optimize) + '\n' + str(self.num_rerurun_model_building) + ' Rounds ' + str(len(self.param_values_to_loop_)) + ' Parameter Values'
 
         ## Find nearest square for plotting grid
-        import math
         rows_cols_compiled_po_fig = math.ceil(math.sqrt(self.num_rerurun_model_building))
 
         param_sizes_to_loop_ = self.param_values_to_loop_
 
-        import seaborn as sns
+
         param_col_ls = list(sns.color_palette("hls", len(param_sizes_to_loop_)).as_hex())
         greys_col_ls = list(sns.color_palette("Greys", len(param_sizes_to_loop_)).as_hex())
 
@@ -2959,7 +3120,7 @@ class DataRepresentationBuilder:
                     col_+=1
 
             # Add legend for parameter values
-            from matplotlib.lines import Line2D
+
             legend_elements = []
             for val__,i in zip(param_sizes_to_loop_,range(len(param_sizes_to_loop_))):
                 legend_elements.append(Line2D([0], [0],
@@ -2993,9 +3154,8 @@ class DataRepresentationBuilder:
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
-        medianprops__1 = dict(linewidth=2, color='goldenrod')
-        medianprops__2 = dict(linewidth=2, color='#2c8799')
-        medianprops__3 = dict(linewidth=2, color='firebrick')
+        medianprops__paramopt = dict(linewidth=2, color=paramopt_set_plot_color)
+
 
         # Loop for each encoding and plot as a grid with different encoding per line
 
@@ -3055,7 +3215,7 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__,
+                            flierprops=flierprops__, boxprops=boxprops__,medianprops=medianprops__paramopt,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
@@ -3080,7 +3240,7 @@ class DataRepresentationBuilder:
                             axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                             axs[j,i].tick_params(axis='y', labelsize=7)
 
-                        self.autolabel_boxplot_below(bplot1['caps'][::2],  bplot1['medians'], axs[j,i])
+                        #*# self.autolabel_boxplot_below(bplot1['caps'][::2],  bplot1['medians'], axs[j,i])
                     # One row
                     except:
                         bplot1 = axs[i].boxplot(
@@ -3088,7 +3248,7 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__,
+                            flierprops=flierprops__, boxprops=boxprops__,medianprops=medianprops__paramopt,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
@@ -3112,7 +3272,7 @@ class DataRepresentationBuilder:
                             axs[i].set_ylim(0, 1)
                             axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                             axs[i].tick_params(axis='y', labelsize=7)
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
+                        #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
@@ -3139,7 +3299,6 @@ class DataRepresentationBuilder:
         pr_curves_dict_ = self.final_performance_curves_encodings_dict
         pr_curves_keys_ = self.final_key_ls
 
-        import seaborn as sns
 
         # Create dictionary of parameter colors based on parameter
         param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
@@ -3177,7 +3336,9 @@ class DataRepresentationBuilder:
                 try: # get color for parameter optimization looping
                     color_ = param_col_ls_dict[p]
                 except: # if not looping through parameters select color from list
-                    color_ = '#5784db'
+                    color_ = testing_set_plot_color #
+
+
                 # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
                 if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
                         ('label' in self.model_type_) and (e == 'one-hot'))):
@@ -3199,7 +3360,7 @@ class DataRepresentationBuilder:
                         rcurve__,  # r_OH,# x
                         pcurve__,  # p_OH,# y
                         lw=1,
-                        color= '#fc8803',#color_,
+                        color= color_,
                     )
 
                     # axs[col_].plot(
@@ -3230,16 +3391,15 @@ class DataRepresentationBuilder:
 
 
         # Add legend for parameter values
-        from matplotlib.lines import Line2D
         legend_elements = []
         for val__, i in zip(list(set(self.final_model_params_ls)), range(len(list(set(self.final_model_params_ls))))):
             try:  # get color for parameter optimization looping
                 color_ = param_col_ls_dict[val__]
             except:  # if not looping through parameters select color from list
-                color_ = '#5784db'
+                color_ = testing_set_plot_color
         #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
             legend_elements.append(Line2D([0], [0],
-                                          color='#fc8803',#color_,  # embd_color_dict[embd_][val__],
+                                          color=color_,
                                           lw=4, label=str(val__)))
         axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=12, fontsize=12)
         axs[-1].axis('off')
@@ -3286,7 +3446,6 @@ class DataRepresentationBuilder:
         pr_curves_dict_ = self.final_performance_curves_encodings_dict
         pr_curves_keys_ = self.final_key_ls
 
-        import seaborn as sns
         param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
         greys_col_ls = list(sns.color_palette("Greys", len(self.param_values_to_loop_)).as_hex())
 
@@ -3342,7 +3501,7 @@ class DataRepresentationBuilder:
                 try:  # get color for parameter optimization looping
                     color_ = param_col_ls_dict[p]
                 except:  # if not looping through parameters select color from list
-                    color_ = '#5784db'
+                    color_ = testing_set_plot_color
                 # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
                 if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
                         ('label' in self.model_type_) and (e == 'one-hot'))):
@@ -3384,14 +3543,13 @@ class DataRepresentationBuilder:
                 # axs[col_].set_yticks([])
 
         # Add legend for parameter values
-        from matplotlib.lines import Line2D
         legend_elements = []
         for val__, i in zip(list(set(self.final_model_params_ls)), range(len(list(set(self.final_model_params_ls))))):
         #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
             try:  # get color for parameter optimization looping
                 color_ = param_col_ls_dict[val__]
             except:  # if not looping through parameters select color from list
-                color_ = '#5784db'
+                color_ = testing_set_plot_color
             legend_elements.append(Line2D([0], [0],
                                           color=color_,  # embd_color_dict[embd_][val__],
                                           lw=4, label=str(val__)))
@@ -3452,9 +3610,6 @@ class DataRepresentationBuilder:
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
-        medianprops__1 = dict(linewidth=2, color='goldenrod')
-        medianprops__2 = dict(linewidth=2, color='#2c8799')
-        medianprops__3 = dict(linewidth=2, color='firebrick')
 
         # one axis per performance metric
         # one box per embedding per axis
@@ -3492,12 +3647,12 @@ class DataRepresentationBuilder:
 
                 # Get counts for each
 
-                from collections import Counter
-                param_vals_one_embd_mult_ = list([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)])
+
+                param_vals_one_embd_mult_ = list([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_df.columns)])
 
                 ct_param_vals_one_embd_mult_ = Counter(param_vals_one_embd_mult_)
-                x_labs_with_counts_ = [str(x) + '\n(' + str(ct_param_vals_one_embd_mult_[x]) + ')' for x in param_vals_one_embd_]
-
+                x_labs_with_counts_ = [str(x) + '\n(' + str(ct_param_vals_one_embd_mult_[x]) + ')' for x in param_vals_one_embd_mult_]
+                x_labs_with_counts_ = list(set(x_labs_with_counts_))
                 # If Parameter values are integers, order them from smallest to larget
                 try:
                     int_param_vals_one_embd_ = [int(x) for x in param_vals_one_embd_]
@@ -3592,7 +3747,7 @@ class DataRepresentationBuilder:
 
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
+                        #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
@@ -3602,12 +3757,12 @@ class DataRepresentationBuilder:
                             axs[i].set_ylim(0, 1)
                             axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                             axs[i].tick_params(axis='y', labelsize=7)
-                    try:
-                        # label metric score values next to each box
-                        #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j, i])
-                    except:
-                        pass # already labeled above
+                    # try:
+                    #     # label metric score values next to each box
+                    #     #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
+                    #     #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j, i])
+                    # except:
+                    #     pass # already labeled above
 
             #if plotn_ == num_plots_ - 1:  # TODO: last plot needs a legend (to identify each embedding as a different color)
 
@@ -3635,9 +3790,7 @@ class DataRepresentationBuilder:
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
-        medianprops__1 = dict(linewidth=2, color='goldenrod')
-        medianprops__2 = dict(linewidth=2, color='#2c8799')
-        medianprops__3 = dict(linewidth=2, color='firebrick')
+        medianprops__ = dict(linewidth=2, color=testing_set_plot_color)
 
         # one axis per performance metric
         # one box per embedding per axis
@@ -3655,7 +3808,7 @@ class DataRepresentationBuilder:
                 vert=True,  # vertical box alignment
                 patch_artist=True,  # fill with color
                 labels=enc_ls_,
-                flierprops=flierprops__, boxprops=boxprops__,
+                flierprops=flierprops__, boxprops=boxprops__, medianprops=medianprops__,
                 capprops=dict(color='black'),
                 whiskerprops=dict(color='black'),
 
@@ -3677,7 +3830,7 @@ class DataRepresentationBuilder:
                 axs[i].tick_params(axis='y', labelsize=fntsz_)
 
 
-            self.autolabel_boxplot_below(bplot1['caps'][::2],bplot1['medians'], axs[i])
+            #*# self.autolabel_boxplot_below(bplot1['caps'][::2],bplot1['medians'], axs[i])
 
         fig.suptitle('Compiled Multiple Metrics Final Models '+str(self.num_rerurun_model_building)+
                      ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-')+'\n'),fontsize=9)
@@ -3707,7 +3860,6 @@ class DataRepresentationBuilder:
         pr_curves_dict_ = self.ext_final_performance_curves_encodings_dict
         pr_curves_keys_ = self.final_key_ls
 
-        import seaborn as sns
 
         # Create dictionary of parameter colors based on parameter
         param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
@@ -3743,7 +3895,8 @@ class DataRepresentationBuilder:
                 try: # get color for parameter optimization looping
                     color_ = param_col_ls_dict[p]
                 except: # if not looping through parameters select color from list
-                    color_ = '#5784db'
+                    color_ = external_set_plot_color
+
                 # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
                 if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
                         ('label' in self.model_type_) and (e == 'one-hot'))):
@@ -3797,9 +3950,9 @@ class DataRepresentationBuilder:
                 axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
 
             # Add colored border
-            for spine in axs[col_].spines.values():
-                spine.set_edgecolor('red')
-                spine.set_linewidth(3)
+            # for spine in axs[col_].spines.values():
+            #     spine.set_edgecolor('red')
+            #     spine.set_linewidth(3)
 
 
         # Export Precision-Recall curve numeric data as a .csv file
@@ -3822,13 +3975,12 @@ class DataRepresentationBuilder:
 
 
         # Add legend for parameter values
-        from matplotlib.lines import Line2D
         legend_elements = []
         for val__, i in zip(list(set(self.final_model_params_ls)), range(len(list(set(self.final_model_params_ls))))):
             try:  # get color for parameter optimization looping
                 color_ = param_col_ls_dict[val__]
             except:  # if not looping through parameters select color from list
-                color_ = '#5784db'
+                color_ = external_set_plot_color
         #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
             legend_elements.append(Line2D([0], [0],
                                           color=color_,  # embd_color_dict[embd_][val__],
@@ -3867,7 +4019,6 @@ class DataRepresentationBuilder:
         pr_curves_dict_ = self.ext_final_performance_curves_encodings_dict
         pr_curves_keys_ = self.final_key_ls
 
-        import seaborn as sns
         param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
         greys_col_ls = list(sns.color_palette("Greys", len(self.param_values_to_loop_)).as_hex())
 
@@ -3923,7 +4074,7 @@ class DataRepresentationBuilder:
                 try:  # get color for parameter optimization looping
                     color_ = param_col_ls_dict[p]
                 except:  # if not looping through parameters select color from list
-                    color_ = '#5784db'
+                    color_ = external_set_plot_color
                 # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
                 if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
                         ('label' in self.model_type_) and (e == 'one-hot'))):
@@ -3965,19 +4116,18 @@ class DataRepresentationBuilder:
                 axs[col_].set_yticks(ticks=[0.0 , 0.5, 1.0 ], labels=[0.0, 0.5, 1.0])
 
             # Add colored border
-            for spine in axs[col_].spines.values():
-                spine.set_edgecolor('red')
-                spine.set_linewidth(3)
+            # for spine in axs[col_].spines.values():
+            #     spine.set_edgecolor('red')
+            #     spine.set_linewidth(3)
 
         # Add legend for parameter values
-        from matplotlib.lines import Line2D
         legend_elements = []
         for val__, i in zip(list(set(self.final_model_params_ls)), range(len(list(set(self.final_model_params_ls))))):
         #for val__, i in zip(self.param_values_to_loop_, range(len(self.param_values_to_loop_))):
             try:  # get color for parameter optimization looping
                 color_ = param_col_ls_dict[val__]
             except:  # if not looping through parameters select color from list
-                color_ = '#5784db'
+                color_ = external_set_plot_color
             legend_elements.append(Line2D([0], [0],
                                           color=color_,  # embd_color_dict[embd_][val__],
                                           lw=4, label=str(val__)))
@@ -4018,11 +4168,7 @@ class DataRepresentationBuilder:
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k')
-        blue_medians = dict(linewidth=2, color='#1494DF') # medianprops=blue_medians,
-
-        medianprops__1 = dict(linewidth=2, color='goldenrod')
-        medianprops__2 = dict(linewidth=2, color='#2c8799')
-        medianprops__3 = dict(linewidth=2, color='firebrick')
+        medianprops__ = dict(linewidth=2, color= external_set_plot_color)
 
         # one axis per performance metric
         # one box per embedding per axis
@@ -4097,7 +4243,7 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__, medianprops=blue_medians,
+                            flierprops=flierprops__, boxprops=boxprops__, medianprops=medianprops__,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
@@ -4136,7 +4282,7 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__, medianprops=blue_medians,
+                            flierprops=flierprops__, boxprops=boxprops__, medianprops=medianprops__,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
@@ -4155,7 +4301,7 @@ class DataRepresentationBuilder:
 
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
+                        #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
                         # # Add colored border
                         # for spine in axs[i].spines.values():
@@ -4171,12 +4317,12 @@ class DataRepresentationBuilder:
                             axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                             axs[i].tick_params(axis='y', labelsize=7)
 
-                    try:
-                        # label metric score values next to each box
-                        #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j,i])
-                    except:
-                        pass # already labeled above
+                    # try:
+                    #     # label metric score values next to each box
+                    #     #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
+                    #     #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j,i])
+                    # except:
+                    #     pass # already labeled above
 
             random_flag_ = ''
             if self.randomize_ext_data_:
@@ -4184,9 +4330,9 @@ class DataRepresentationBuilder:
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models Evaluated on External Dataset '+random_flag_+'- Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-')) + '\n'+'External Dataset: '+self.external_data_file_, fontsize=9)
-            fig.patch.set_linewidth(10)
-            fig.patch.set_edgecolor('red')
-            fig.tight_layout()
+            # fig.patch.set_linewidth(10)
+            # fig.patch.set_edgecolor('red')
+            # fig.tight_layout()
 
             # ** SAVE FIGURE **
             plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
@@ -4209,7 +4355,8 @@ class DataRepresentationBuilder:
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
         final_detailed_metric_df_ext = pd.DataFrame(self.ext_final_detailed_performance_metrics_encodings_dict)
 
-        blue_medians = dict(linewidth=2, color='#1494DF') # medianprops=blue_medians,
+
+
 
         ######################################
         if self.param_values_to_loop_ == []:
@@ -4222,9 +4369,8 @@ class DataRepresentationBuilder:
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
-        medianprops__1 = dict(linewidth=2, color='goldenrod')
-        medianprops__2 = dict(linewidth=2, color='#2c8799')
-        medianprops__3 = dict(linewidth=2, color='firebrick')
+        medianprops__ = dict(linewidth=2, color=testing_set_plot_color)
+        medianprops__ext = dict(linewidth=2, color=external_set_plot_color)
 
         # one axis per performance metric
         # one box per embedding per axis
@@ -4262,7 +4408,6 @@ class DataRepresentationBuilder:
 
                 # Get counts for each
 
-                from collections import Counter
                 param_vals_one_embd_mult_ = list([x.split(str(self.parameter_to_optimize)+'-')[-1].split('_round_')[0] for x in list(final_detailed_metric_one_embd_df.columns)])
 
                 ct_param_vals_one_embd_mult_ = Counter(param_vals_one_embd_mult_)
@@ -4314,7 +4459,7 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__,
+                            flierprops=flierprops__, boxprops=boxprops__,medianprops=medianprops__,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
@@ -4324,7 +4469,7 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__,medianprops=blue_medians,
+                            flierprops=flierprops__, boxprops=boxprops__,medianprops=medianprops__ext,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
@@ -4359,7 +4504,7 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__,
+                            flierprops=flierprops__, boxprops=boxprops__,medianprops=medianprops__,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
@@ -4369,7 +4514,7 @@ class DataRepresentationBuilder:
                             vert=True,  # vertical box alignment
                             patch_artist=True,  # fill with color
                             labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__, medianprops=blue_medians,
+                            flierprops=flierprops__, boxprops=boxprops__, medianprops=medianprops__ext,
                             capprops=dict(color='black'),
                             whiskerprops=dict(color='black'),
 
@@ -4389,7 +4534,7 @@ class DataRepresentationBuilder:
 
                         # label metric score values next to each box
                         #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
+                        #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)
@@ -4399,12 +4544,12 @@ class DataRepresentationBuilder:
                             axs[i].set_ylim(0, 1)
                             axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                             axs[i].tick_params(axis='y', labelsize=7)
-                    try:
-                        # label metric score values next to each box
-                        #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
-                        self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j, i])
-                    except:
-                        pass # already labeled above
+                    # try:
+                    #     # label metric score values next to each box
+                    #     #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
+                    #     #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j, i])
+                    # except:
+                    #     pass # already labeled above
 
             #if plotn_ == num_plots_ - 1:  # TODO: last plot needs a legend (to identify each embedding as a different color)
 
@@ -4434,12 +4579,9 @@ class DataRepresentationBuilder:
         enc_ls_ = self.feature_encoding_ls
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
-        blue_medians = dict(linewidth=2, color='#1494DF')  # medianprops=blue_medians,
+        medianprops__ext = dict(linewidth=2, color=external_set_plot_color)
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k')
 
-        medianprops__1 = dict(linewidth=2, color='goldenrod')
-        medianprops__2 = dict(linewidth=2, color='#2c8799')
-        medianprops__3 = dict(linewidth=2, color='firebrick')
 
 
         # one axis per performance metric
@@ -4457,7 +4599,7 @@ class DataRepresentationBuilder:
                 vert=True,  # vertical box alignment
                 patch_artist=True,  # fill with color
                 labels=enc_ls_,
-                flierprops=flierprops__, boxprops=boxprops__, medianprops=blue_medians,
+                flierprops=flierprops__, boxprops=boxprops__, medianprops=medianprops__ext,
                 capprops=dict(color='black'),
                 whiskerprops=dict(color='black'),
 
@@ -4483,7 +4625,7 @@ class DataRepresentationBuilder:
                 axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                 axs[i].tick_params(axis='y', labelsize=fntsz_)
 
-            self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
+            #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
         random_flag_ = ''
         if self.randomize_ext_data_:
@@ -4491,9 +4633,9 @@ class DataRepresentationBuilder:
 
         fig.suptitle('Compiled Multiple Metrics Final Models Evaluated on External Dataset '+random_flag_+str(self.num_rerurun_model_building)+
                      ' rounds' +'\n'+self.output_run_file_info_string_.replace('_',' ').replace(self.region_.replace('_','-'),self.region_.replace('_','-'))+'\n'+'External Dataset: '+self.external_data_file_, fontsize=9)
-        fig.patch.set_linewidth(10)
-        fig.patch.set_edgecolor('red')
-        fig.tight_layout()
+        # fig.patch.set_linewidth(10)
+        # fig.patch.set_edgecolor('red')
+        # fig.tight_layout()
 
 
         # ** SAVE FIGURE **
@@ -4526,10 +4668,10 @@ class DataRepresentationBuilder:
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
-        medianprops__1 = dict(linewidth=2, color='goldenrod')
-        medianprops__2 = dict(linewidth=2, color='#2c8799')
-        medianprops__3 = dict(linewidth=2, color='firebrick')
-        blue_medians = dict(linewidth=2, color='#1494DF')  # medianprops=blue_medians,
+        medianprops__= dict(linewidth=2, color=testing_set_plot_color)
+        medianprops__ext = dict(linewidth=2, color=external_set_plot_color)
+
+
 
         # one axis per performance metric
         # one box per embedding per axis
@@ -4559,7 +4701,7 @@ class DataRepresentationBuilder:
                 vert=True,  # vertical box alignment
                 patch_artist=True,  # fill with color
                 labels=enc_ls_,
-                flierprops=flierprops__, boxprops=boxprops__,medianprops=blue_medians,
+                flierprops=flierprops__, boxprops=boxprops__,medianprops=medianprops__,
                 capprops=dict(color='black'),
                 whiskerprops=dict(color='black'),
 
@@ -4569,7 +4711,7 @@ class DataRepresentationBuilder:
                 vert=True,  # vertical box alignment
                 patch_artist=True,  # fill with color
                 labels=enc_ls_,
-                flierprops=flierprops__, boxprops=boxprops__,
+                flierprops=flierprops__, boxprops=boxprops__,medianprops=medianprops__ext,
                 capprops=dict(color='black'),
                 whiskerprops=dict(color='black'),
 
@@ -4599,8 +4741,8 @@ class DataRepresentationBuilder:
                 axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                 axs[i].tick_params(axis='y', labelsize=fntsz_)
 
-            self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i], label_color = '#1494DF')
-            self.autolabel_boxplot_below(bplot2['caps'][::2], bplot2['medians'], axs[i], label_color = '#eb9834')
+            #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i], label_color = testing_set_plot_color)
+            #*# self.autolabel_boxplot_below(bplot2['caps'][::2], bplot2['medians'], axs[i], label_color = external_set_plot_color)
 
         fig.suptitle('Compiled Multiple Metrics Final Models ' + str(self.num_rerurun_model_building) +
                      ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
@@ -4618,14 +4760,13 @@ class DataRepresentationBuilder:
         print("Final Models Performance Metrics used to make boxplots (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
 
         # Add legend for parameter values
-        from matplotlib.lines import Line2D
 
         legend_elements = [
             Line2D([0], [0],
-                   color='#1494DF',  # embd_color_dict[embd_][val__],
+                   color=testing_set_plot_color,  # embd_color_dict[embd_][val__],
                    lw=4, label='Test Set'),
             Line2D([0], [0],
-                   color='#eb9834',  # color_,  # embd_color_dict[embd_][val__],
+                   color=external_set_plot_color,  # color_,  # embd_color_dict[embd_][val__],
                    lw=4, label='External Dataset')
         ]
         axs[-1].legend(
@@ -4659,24 +4800,6 @@ class DataRepresentationBuilder:
         pr_curves_dict = self.final_performance_curves_encodings_dict
         pr_curves_dict_ext = self.ext_final_performance_curves_encodings_dict
         pr_curves_keys_ = self.final_key_ls
-
-        import seaborn as sns
-
-        # # Create dictionary of parameter colors based on parameter
-        # param_col_ls = list(sns.color_palette("hls", len(self.param_values_to_loop_)).as_hex())
-        # greys_col_ls = list(sns.color_palette("Greys", len(self.param_values_to_loop_)).as_hex())
-        #
-        # param_col_ls_dict = {}
-        # for i in range(len(self.param_values_to_loop_)):
-        #     param_col_ls_dict[self.param_values_to_loop_[i]] = param_col_ls[i]
-        #
-        # greys_col_ls_dict = {}
-        # for i in range(len(self.param_values_to_loop_)):
-        #     greys_col_ls_dict[self.param_values_to_loop_[i]] = greys_col_ls[i]
-        #
-        # embd_color_dict = {}
-        # for e in self.feature_encoding_ls:
-        #     embd_color_dict[e] = param_col_ls_dict
 
 
         # Plot a single PLOT for each embedding type
@@ -4713,7 +4836,7 @@ class DataRepresentationBuilder:
                         rcurve__,  # r_OH,# x
                         pcurve__,  # p_OH,# y
                         lw=1,
-                        color= '#1494DF',
+                        color= testing_set_plot_color,
                     )
 
                     pcurve__ext__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
@@ -4723,7 +4846,7 @@ class DataRepresentationBuilder:
                         rcurve__ext__,  # r_OH,# x
                         pcurve__ext__,  # p_OH,# y
                         lw=1,
-                        color='#eb9834',
+                        color=external_set_plot_color,
                     )
 
                     # axs[col_].plot(
@@ -4763,14 +4886,13 @@ class DataRepresentationBuilder:
 
 
         # Add legend for parameter values
-        from matplotlib.lines import Line2D
 
         legend_elements = [
                         Line2D([0], [0],
-                   color='#1494DF',  # embd_color_dict[embd_][val__],
+                   color=testing_set_plot_color, # embd_color_dict[embd_][val__],
                    lw=4, label='Test Set'),
             Line2D([0], [0],
-                   color= '#eb9834',#color_,  # embd_color_dict[embd_][val__],
+                   color= external_set_plot_color,#color_,  # embd_color_dict[embd_][val__],
                    lw=4, label='External Dataset')
         ]
         axs[-1].legend(handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), title=self.parameter_to_optimize, title_fontsize=12, fontsize=12)
@@ -4792,6 +4914,142 @@ class DataRepresentationBuilder:
         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
         fnm_ = (self.output_directory + 'figures/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_and-test-set')
         fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_and-test-set')
+        fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
+        fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
+        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        return
+
+
+    def plot_final_model_and_external_data_box_plots_f_score_only(self):
+        print("\nPlotting box plots -- F-Score ONLY -- for final models and on external datset...")
+        ## Plot Compiled Multimetrics Model Performance - Final Models per metric
+        final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
+        final_metric_df_ext = pd.DataFrame(self.ext_final_performance_metrics_encodings_dict)
+
+        # fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_on-test-dataset_per-metric.csv')
+        # final_metric_df.to_csv(fnm_, index=True)
+        # print("Final Models Performance Metrics on Test Dataset Dataframe saved to:\n\t", fnm_)
+
+        # Each column of final_detailed_metric_df contains a single round for a single embedding type
+        # fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_per-metric.csv')
+        # final_metric_df_ext.to_csv(fnm_, index=True)
+        # print("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
+
+
+        metrics_ls = ['F-Score']#list(final_metric_df.index)
+        enc_ls_ = self.feature_encoding_ls
+
+        flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
+        boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
+        medianprops__= dict(linewidth=2, color=testing_set_plot_color)
+        medianprops__ext = dict(linewidth=2, color=external_set_plot_color)
+
+
+
+        # one axis per performance metric
+        # one box per embedding per axis
+        fig, axs = plt.subplots(1, 1+1)
+        fig.set_size_inches(w=3+1, h=3)
+        fntsz_ = 7
+
+        # For exporting data used to make boxplots
+        bxplt_data_dict ={} # dict of lists by metric
+        bxplt_data_ext_dict ={} # dict of lists by metric
+
+        for i in range(len(metrics_ls)):
+            metric_ = metrics_ls[i]
+
+            data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
+            data_ext = [list(final_metric_df_ext[[enc_ + '_' + str(i) for i in list(range(self.num_rerurun_model_building)) ]].transpose()[metric_]) for enc_ in enc_ls_]
+
+            # data_ = [list(final_metric_df[[enc_ + '_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in enc_ls_]
+            # data_ext = [list(final_metric_df_ext[[enc_ + '_' + str(i) for i in [0, 1]]].transpose()[metric_]) for enc_ in enc_ls_]
+
+            # For exporting data used to make boxplots
+            bxplt_data_dict[metric_] = data_
+            bxplt_data_ext_dict[metric_] = data_ext
+
+            bplot1 = axs[i].boxplot(
+                data_,
+                vert=True,  # vertical box alignment
+                patch_artist=True,  # fill with color
+                labels=enc_ls_,
+                flierprops=flierprops__, boxprops=boxprops__,medianprops=medianprops__,
+                capprops=dict(color='black'),
+                whiskerprops=dict(color='black'),
+
+            )  # will be used to label x-ticks
+            bplot2 = axs[i].boxplot(
+                data_ext,
+                vert=True,  # vertical box alignment
+                patch_artist=True,  # fill with color
+                labels=enc_ls_,
+                flierprops=flierprops__, boxprops=boxprops__,medianprops=medianprops__ext,
+                capprops=dict(color='black'),
+                whiskerprops=dict(color='black'),
+
+            )
+            axs[i].set_title(metric_, fontsize=fntsz_)
+            if i == 3:
+                axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=fntsz_)  # ,fontweight='bold')
+
+
+            # # update x-axis labels
+            tick_lab_list__ = []
+            for x in self.feature_encoding_ls:
+                tick_lab_list__.append('')
+            for x in self.feature_encoding_ls:
+                tick_lab_list__.append(feature_encodings_dict[x])
+
+            # axs[i].set_xticklabels([feature_encodings_dict[x] for x in self.feature_encoding_ls], fontsize=fntsz_, rotation=90)
+            axs[i].set_xticklabels(tick_lab_list__, fontsize=fntsz_, rotation=90)
+            # axs[i].set_xticklabels(['','','','one-hot','gensim-weights','gensim-values'], fontsize=fntsz_, rotation=90)
+
+            axs[i].set_ylim(0, 1)
+            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+            axs[i].tick_params(axis='y', labelsize=fntsz_)
+
+            # self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i], label_color = testing_set_plot_color)
+            # self.autolabel_boxplot_below(bplot2['caps'][::2], bplot2['medians'], axs[i], label_color = external_set_plot_color)
+
+        fig.suptitle('F-Score ONLY Final Models and applied to External Dataset ' + str(self.num_rerurun_model_building) +
+                     ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+
+        # # Each column of final_detailed_metric_df contains a single round for a single embedding type
+        # # For exporting data used to make boxplots
+        # bxplt_data_df = pd.DataFrame(bxplt_data_dict)
+        # fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_per-metric.csv')
+        # bxplt_data_df.to_csv(fnm_, index=True)
+        # print("Final Models Performance Metrics used to make boxplots Dataframe saved to:\n\t", fnm_)
+
+        # bxplt_data_ext_df = pd.DataFrame(bxplt_data_ext_dict)
+        # fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_per-metric.csv')
+        # bxplt_data_ext_df.to_csv(fnm_, index=True)
+        # print("Final Models Performance Metrics used to make boxplots (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
+
+        # Add legend for parameter values
+
+        legend_elements = [
+            Line2D([0], [0],
+                   color=testing_set_plot_color,  # embd_color_dict[embd_][val__],
+                   lw=4, label='Test Set'),
+            Line2D([0], [0],
+                   color=external_set_plot_color,  # color_,  # embd_color_dict[embd_][val__],
+                   lw=4, label='External Dataset')
+        ]
+        axs[-1].legend(
+            handles=legend_elements, loc='upper left', frameon=False, bbox_to_anchor=(0, 1), fontsize=12
+            #title=self.parameter_to_optimize, title_fontsize=12,
+        )
+        axs[-1].axis('off')
+
+
+        fig.tight_layout()
+
+        # ** SAVE FIGURE **
+        plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
+        fnm_ = (self.output_directory + 'figures/' + 'f-score_bxp_' + str(self.num_rerurun_model_building) + '-rnds_final_and_external')
+        fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'f-score_bxp_' + str(self.num_rerurun_model_building) + '-rnds_final_and_external')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
         print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))

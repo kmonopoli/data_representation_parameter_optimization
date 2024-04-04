@@ -1,4 +1,4 @@
-from main import DataRepresentationBuilder
+from data_representation import DataRepresentationBuilder
 
 ##### Flank Length
 
