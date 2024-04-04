@@ -408,50 +408,51 @@ drb = DataRepresentationBuilder(
 )
 '''
 
-
-
-
-
-from data_representation import DataRepresentationBuilder
-
 ext_data_file =   'new_input_data/external_sirna_screen_data_bdna-human-p3_643-sirnas_split-randomly_APR-04-2024_1UCN2.csv'
 train_data_file = 'new_input_data/training_sirna_screen_data_bdna-human-p3_1930-sirnas_split-randomly_APR-04-2024_1UCN2.csv'
 # NOTE: would be renamed if run code in below box
 subset_training_data_file = 'new_input_data/for_troubleshooting_and_testing/SUBSET-training_sirna_screen_data_bdna-human-p3_643-sirnas_split-randomly_APR-04-2024_1UCN2.csv'
 
 
+
+
+
+from data_representation import DataRepresentationBuilder
+
 drb = DataRepresentationBuilder(
     model_type__='random-forest',
     parameter_to_optimize__='None',
-    run_param_optimization__ = False,
-    use_existing_processed_dataset__ = False,
+    run_param_optimization__=False,
+    use_existing_processed_dataset__=False,
     custom_parameter_values_to_loop__=[],
-    num_rerurun_model_building__=2,
+    num_rerurun_model_building__=3,
     kmer_size__=9,
     flank_len__=20,
 
     encoding_ls__=[
         'one-hot',
         'bow-gensim-weights',
-        # 'ann-word2vec-gensim-cbow',
-        # 'ann-word2vec-gensim-skipgram',
-        # 'ann-fasttext-skipgram',
-        # 'ann-fasttext-cbow',
-        # 'ann-fasttext-class-trained',
+        'ann-word2vec-gensim-cbow',
+        #         'ann-word2vec-gensim-skipgram',
+        #         'ann-fasttext-skipgram',
+        #         'ann-fasttext-cbow',
+        #         'ann-fasttext-class-trained',
         # 'bow-countvect', # TODO: DEBUG there is something wrong, taking very long to run (infinite looping?)
     ],
-    input_data_dir__ = 'new_input_data/',
-    apply_final_models_to_external_dataset__ = True,
+    input_data_dir__='new_input_data/',
+    apply_final_models_to_external_dataset__=True,
 
+    input_data_file__=train_data_file.replace('new_input_data/', ''),
+    # input_data_file__ = subset_training_data_file.replace('new_input_data/',''),
+    # input_data_file__ = ext_data_file.replace('new_input_data/',''),
 
-    input_data_file__ = train_data_file.replace('new_input_data/',''),
-    #input_data_file__ = subset_training_data_file.replace('new_input_data/',''),
-    #input_data_file__ = ext_data_file.replace('new_input_data/',''),
+    external_data_file__=ext_data_file.replace('new_input_data/', ''),
+    # external_data_file__ = subset_training_data_file.replace('new_input_data/',''),
 
-    external_data_file__ = ext_data_file.replace('new_input_data/',''),
-    #external_data_file__ = subset_training_data_f5rile.replace('new_input_data/',''),
+    include_random_background_comparison__=True,
 
-    include_random_background_comparison__ = True,
-
+    remove_undefined__=True,
+    f_beta__=0.1,
 
 )
+

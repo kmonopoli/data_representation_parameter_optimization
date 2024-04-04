@@ -282,7 +282,7 @@ class DataRepresentationBuilder:
                  run_round_num__=1,
                  encoding_ls__ = ['one-hot', 'ann-word2vec-gensim', 'bow-gensim', 'ann-keras', 'bow-countvect'],
                  metric_used_to_id_best_po__='F-Score',
-                 f_beta__ = 0.5,
+                 f_beta__ = 0.25, #0.5
                  run_param_optimization__ = True,
                  use_existing_processed_dataset__ = False,
                  apply_final_models_to_external_dataset__ = False, # whether or not to use external_data_file to evaluate final models
@@ -1430,19 +1430,18 @@ class DataRepresentationBuilder:
 
             self.df['numeric_class'] = self.df['numeric_class'].apply(lambda x: reclassify_undefined_numeric(x))
             self.df['class'] = self.df['class'].apply(lambda x: reclassify_undefined_label(x))
-            self.indxs_mid_undefined = list(self.df[self.df['numeric_class'] == -1].index)
 
-
-
-        # Undefined dataset holds all middle values (class = 'undefined' | numeric_class = -1 )
-        self.mid_undef_df = self.df.iloc[self.indxs_mid_undefined].copy()
 
 
 
         # Exclude external undefined data (if added)
         if self.apply_final_models_to_external_dataset_:
+            self.indxs_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (~self.df['from_external_test_dataset'])].index)
+            self.mid_undef_df = self.df.iloc[self.indxs_mid_undefined].copy()
+
             self.df_noundef = self.df[ (self.df['numeric_class'] != -1) & (~self.df['from_external_test_dataset']) ].copy()
             self.df_noundef.reset_index(inplace=True, drop=False)
+
 
             # Save external noundefined dataset
             self.ext_df_noundef = self.df[ (self.df['numeric_class'] != -1) & (self.df['from_external_test_dataset']) ].copy()
@@ -1457,8 +1456,13 @@ class DataRepresentationBuilder:
             print("External Undefined Dataset saved to:\n\t", self.ext_mid_undef_df_fnm)
 
         else:
-            self.c = self.df[self.df['numeric_class'] != -1].copy()
+            self.indxs_mid_undefined = list(self.df[(self.df['numeric_class'] == -1)].index)
+            self.mid_undef_df = self.df.iloc[self.indxs_mid_undefined].copy()
+
+            self.df_noundef = self.df[self.df['numeric_class'] != -1].copy()
             self.df_noundef.reset_index(inplace=True, drop=False)
+
+
 
         if self.remove_undefined_: # note: if don't remove undefined data (i.e. remove_undefined_ = False) below code will not work
             # Name and Plot Undefined (excluded) Dataset
@@ -2782,13 +2786,28 @@ class DataRepresentationBuilder:
                     Y_ext_ = np.array(df_ext['numeric_class'])
 
                 if self.include_random_background_comparison_:
-                    import random
                     print("Including additional evaluation on randomized background dataset")
-                    X_randombackground_ = X_test_.copy()#[[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___) + '_windw-' + str(window_size___) + '-wfreq-' + str(word_freq_cutoff___)]]
-                    random.shuffle(X_randombackground_)
+                    ## NOTE: if using X_test_/Y_test_.copy() may not include undefined data (so performance might be higher than expected)
 
-                    Y_randombackground_ = Y_test_.copy()#list(self.df_train['numeric_class'])
+                    X_randombackground_ = X_train_.copy()#[[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___) + '_windw-' + str(window_size___) + '-wfreq-' + str(word_freq_cutoff___)]]
+                    Y_randombackground_ = Y_train_.copy()#list(self.df_train_['numeric_class'])
+
+                    # To add undefined data back in (if it was removed)
+                    if self.remove_undefined_:
+                        X_randombackground_undef_ = [list(x) for x in list(self.mid_undef_df[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ ) + '_windw-'+str(window_size___)+'-wfreq-'+str(word_freq_cutoff___)  ])]
+                        X_randombackground_ = X_randombackground_ + X_randombackground_undef_
+
+                        Y_randombackground_undef_ = len(self.mid_undef_df)*[0]
+                        Y_randombackground_ = np.array(Y_randombackground_ + Y_randombackground_undef_)
+
+                    # X_randombackground_ = X_ext_.copy()
+                    # Y_randombackground_ = Y_ext_.copy()
+
+
+                    import random
+                    random.shuffle(X_randombackground_)
                     random.shuffle(Y_randombackground_)
+
 
                 #print("Fitting model "+str(n_ + 1)+' / '+str(self.num_rerurun_model_building)+'...')
                 clf_final.fit(X_train_, Y_train_)
@@ -3339,7 +3358,7 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_, fontsize=8.5 )
+                        axs[j,i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
                         if i == 3:
                             #if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
@@ -3372,7 +3391,7 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_, fontsize=8.5 )
+                        axs[i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
                         if i == 3:
                             # if embedding_type_paramop_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_paramop_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
@@ -3816,7 +3835,7 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_, fontsize=8.5 )
+                        axs[j,i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
                         if i == 3:
                             #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
@@ -3851,7 +3870,7 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_, fontsize=8.5 )
+                        axs[i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
                         if i == 3:
                             # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
@@ -3932,7 +3951,7 @@ class DataRepresentationBuilder:
                 whiskerprops=dict(color='black'),
 
             )  # will be used to label x-ticks
-            axs[i].set_title(metric_,fontsize = fntsz_)
+            axs[i].set_title(metric_.replace('beta',str(self.f_beta_)),fontsize = fntsz_)
             if i ==2:
                 axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize= fntsz_)  # ,fontweight='bold')
 
@@ -4367,7 +4386,7 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_, fontsize=8.5 )
+                        axs[j,i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
                         if i == 3:
                             #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
@@ -4406,7 +4425,7 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_, fontsize=8.5 )
+                        axs[i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
                         if i == 3:
                             # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
@@ -4593,7 +4612,7 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_, fontsize=8.5 )
+                        axs[j,i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
                         if i == 3:
                             #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
@@ -4638,7 +4657,7 @@ class DataRepresentationBuilder:
                             whiskerprops=dict(color='black'),
 
                         )  # will be used to label x-ticks
-                        axs[i].set_title(metric_, fontsize=8.5 )
+                        axs[i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
                         if i == 3:
                             # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
                             if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
@@ -4723,7 +4742,7 @@ class DataRepresentationBuilder:
                 whiskerprops=dict(color='black'),
 
             )  # will be used to label x-ticks
-            axs[i].set_title(metric_, fontsize = fntsz_)
+            axs[i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize = fntsz_)
             if i ==2:
                 axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize = fntsz_)  # ,fontweight='bold')
 
@@ -4860,7 +4879,7 @@ class DataRepresentationBuilder:
 
                 )
 
-            axs[i].set_title(metric_, fontsize=fntsz_)
+            axs[i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=fntsz_)
             if i == 3:
                 axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=fntsz_)  # ,fontweight='bold')
 
@@ -5189,7 +5208,7 @@ class DataRepresentationBuilder:
 
                 )
 
-            axs[i].set_title(metric_, fontsize=fntsz_)
+            axs[i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=fntsz_)
             if i == 3:
                 axs[i].set_title('Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=fntsz_)  # ,fontweight='bold')
 
