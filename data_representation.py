@@ -1455,7 +1455,7 @@ class DataRepresentationBuilder:
             print("External Undefined Dataset saved to:\n\t", self.ext_mid_undef_df_fnm)
 
         else:
-            self.df_noundef = self.df[self.df['numeric_class'] != -1].copy()
+            self.c = self.df[self.df['numeric_class'] != -1].copy()
             self.df_noundef.reset_index(inplace=True, drop=False)
 
         if self.remove_undefined_: # note: if don't remove undefined data (i.e. remove_undefined_ = False) below code will not work
@@ -1468,18 +1468,14 @@ class DataRepresentationBuilder:
             self.mid_undef_df.to_csv(self.mid_undef_df_fnm, index=False)
             print("Undefined Dataset saved to:\n\t", self.mid_undef_df_fnm)
 
-        # TODO: TEMP DELETE BELOW:
-        # Name and Plot Entire Dataset (excluding unlabelled data used for semi-supervised)
+        # Name and Plot Dataset excluding undefined data
         all_data_label = "After Remove Undef - All siRNA Data"
-        self.plot_thresholds(self.df.iloc[self.indxs_labeled_data], all_data_label, self.all_data_split_dir + 'figures/')
+        self.plot_thresholds(self.df_noundef, all_data_label, self.all_data_split_dir + 'figures/')
 
         if self.apply_final_models_to_external_dataset_:
-            # Name and Plot External Dataset
+            # Name and Plot External Dataset  excluding undefined data
             ext_data_label = "After Remove Undef - External Test siRNA Data"
-            self.plot_thresholds(self.df[self.df['from_external_test_dataset']] , ext_data_label, self.all_data_split_dir + 'figures/')
-        # TODO: TEMP DELETE ABOVE
-
-
+            self.plot_thresholds(self.ext_df_noundef , ext_data_label, self.all_data_split_dir + 'figures/')
 
 
 
