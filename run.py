@@ -458,6 +458,8 @@ drb = DataRepresentationBuilder(
 )
 
 '''
+
+
 from data_representation import DataRepresentationBuilder
 
 drb = DataRepresentationBuilder(
@@ -478,7 +480,7 @@ drb = DataRepresentationBuilder(
         'one-hot',
         'bow-gensim-weights',
         'ann-word2vec-gensim-cbow',
-        #         'ann-word2vec-gensim-skipgram',
+        'ann-word2vec-gensim-skipgram',
         #         'ann-fasttext-skipgram',
         #         'ann-fasttext-cbow',
         #         'ann-fasttext-class-trained',
@@ -489,3 +491,6 @@ drb = DataRepresentationBuilder(
     apply_final_models_to_external_dataset__=True,
     external_data_file__='external_sirna_screen_data_bdna-human-p3_670-sirnas_MAR-21-2024.csv',
 )
+
+
+
