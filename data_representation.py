@@ -4015,7 +4015,7 @@ class DataRepresentationBuilder:
             # hide axes if nothing plotted
             num_rows_to_erase_ = num_rows_ - num_rows_actually_plotted_
             for j in range(num_rows_to_erase_):
-                for i in range(len(paramop_detailed_metric_df)):
+                for i in range(len(final_detailed_metric_df)):
                     axs[::-1][j, i].set_visible(False)  # reverse because works from bottom up (backwards)
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
@@ -5266,7 +5266,7 @@ class DataRepresentationBuilder:
         # one box per embedding per axis
         fig, axs = plt.subplots(1, 1+1)
         fig.set_size_inches(w=8, h=6)
-        fntsz_ = 7
+        fntsz_ = 12
 
         # For exporting data used to make boxplots
         bxplt_data_dict ={} # dict of lists by metric
