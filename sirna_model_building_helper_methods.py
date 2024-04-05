@@ -69,10 +69,10 @@ def get_flanking_sequence(seq_16mer, flank_seq, flank_len, include_20mer = True)
             try:
                 final_seq = flank_seq[ (ix_ - 3) - flank_len : ( ix_ + 16 + 1 )+ flank_len ] # based off 20mer
                 if len(final_seq) != (flank_len*2) + 20 :
-                    print("WARNING: final sequence did not match expected ("+str((flank_seq*2) + 20)+"nt) length for 16mer:",seq_16mer)                
+                    print("WARNING: final sequence did not match expected ("+str((flank_seq*2) + 20)+"nt) length for 16mer:",seq_16mer)
                 return final_seq
             except:
-                print("WARNING: could not get flanking sequence for 16mer:",seq_16mer)
+                #print("WARNING: could not get flanking sequence for 16mer:",seq_16mer)
                 return np.nan
         ## Get flanks WITHOUT 20mer :
         else:
@@ -84,11 +84,11 @@ def get_flanking_sequence(seq_16mer, flank_seq, flank_len, include_20mer = True)
                     print("WARNING: final sequence did not match expected ("+str((flank_seq*2) + 20)+"nt) length for 16mer:",seq_16mer)
                 return final_seq
             except:
-                print("WARNING: could not get flanking sequence for 16mer:",seq_16mer)
+                #print("WARNING: could not get flanking sequence for 16mer:",seq_16mer)
                 return np.nan
     # 16mer not found in flanking sequence 
     except: 
-        print("WARNING: could not get flanking sequence for 16mer:",seq_16mer,'(16mer not found in flanking sequence)')
+        #print("WARNING: could not get flanking sequence for 16mer:",seq_16mer,'(16mer not found in flanking sequence)')
         return np.nan
 
 
@@ -101,7 +101,7 @@ def get_20mer_from_16mer(seq_16mer, flank_seq, seq_20mer_from_dataset, mismatch_
             if len(seq_20mer_from_dataset) == 20:
                 return seq_20mer_from_dataset
         else:
-            print("WARNING: when calling get_20mer_from_16mer() for 16mer ( "+str(seq_16mer)+" ) there was a mismatch_to_flank  so could not compute 20mer with get_20mer_from_16mer(), but '20mer_targeting_region' from starting dataset was: "+str(seq_20mer_from_dataset))
+            #print("WARNING: when calling get_20mer_from_16mer() for 16mer ( "+str(seq_16mer)+" ) there was a mismatch_to_flank  so could not compute 20mer with get_20mer_from_16mer(), but '20mer_targeting_region' from starting dataset was: "+str(seq_20mer_from_dataset))
             return np.nan
     else:
         seq_16mer = seq_16mer.replace('U', 'T')
@@ -113,15 +113,15 @@ def get_20mer_from_16mer(seq_16mer, flank_seq, seq_20mer_from_dataset, mismatch_
             try:
                 final_seq = flank_seq[(ix_ - 3) - flank_len: (ix_ + 16 + 1) + flank_len]  # based off 20mer
                 if len(final_seq) != 20:
-                    print("WARNING: when calling get_20mer_from_16mer() final sequence did not match expected (20nt) length for 16mer:", seq_16mer)
+                    #print("WARNING: when calling get_20mer_from_16mer() final sequence did not match expected (20nt) length for 16mer:", seq_16mer)
                     return np.nan
                 return final_seq
             except:
-                print("WARNING: when calling get_20mer_from_16mer() could not get 20mer sequence for 16mer:", seq_16mer)
+                #print("WARNING: when calling get_20mer_from_16mer() could not get 20mer sequence for 16mer:", seq_16mer)
                 return np.nan
         # 16mer not found in flanking sequence
         except:
-            print("WARNING:when calling get_20mer_from_16mer() could not get 20mer sequence for 16mer:", seq_16mer, '(16mer not found in flanking sequence)')
+            #print("WARNING:when calling get_20mer_from_16mer() could not get 20mer sequence for 16mer:", seq_16mer, '(16mer not found in flanking sequence)')
             return np.nan
     
 def rgb_to_hex(r, g, b):

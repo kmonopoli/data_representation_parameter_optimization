@@ -287,7 +287,7 @@ class DataRepresentationBuilder:
                  run_round_num__=1,
                  encoding_ls__ = ['one-hot', 'ann-word2vec-gensim', 'bow-gensim', 'ann-keras', 'bow-countvect'],
                  metric_used_to_id_best_po__='F-Score',
-                 f_beta__ = 0.25, #0.5
+                 f_beta__ = 0.1,#0.25, #0.5
                  run_param_optimization__ = True,
                  use_existing_processed_dataset__ = False,
                  apply_final_models_to_external_dataset__ = False, # whether or not to use external_data_file to evaluate final models
@@ -568,18 +568,32 @@ class DataRepresentationBuilder:
             logging.info("\nPlotting box plots from Parameter Optimization...")
             self.plot_param_opt_model_box_plots()
 
-
-
-        if self.apply_final_models_to_external_dataset_:
-            logging.info("\nPlotting box plots from Final Model Building evaluated on External Dataset...")
-            #*# self.plot_final_model_box_plots_per_metric_on_ext_dataset()
-            #*# self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
-            self.plot_final_model_and_external_data_box_plots_per_metric()
-            self.plot_final_model_and_external_data_box_plots_f_score_only()
-        else:
+        if self.run_param_optimization_ and self.apply_final_models_to_external_dataset_:
             logging.info("\nPlotting box plots from Final Model Building...")
             self.plot_final_model_box_plots_per_param_val()
             self.plot_final_model_box_plots_per_metric()
+
+            logging.info("\nPlotting box plot for F-score ONLY from Final Model Building evaluated on External Dataset...")
+            self.plot_final_model_and_external_data_box_plots_f_score_only()
+
+        
+        else:
+            if self.apply_final_models_to_external_dataset_:
+                logging.info("\nPlotting box plots from Final Model Building evaluated on External Dataset...")
+                #*# self.plot_final_model_box_plots_per_metric_on_ext_dataset()
+                #*# self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
+                self.plot_final_model_and_external_data_box_plots_per_metric()
+                self.plot_final_model_and_external_data_box_plots_f_score_only()
+
+            else:
+                logging.info("\nPlotting box plots from Final Model Building...")
+                self.plot_final_model_box_plots_per_param_val()
+                self.plot_final_model_box_plots_per_metric()
+            
+        
+            
+
+
 
         logging.info("\nBox plotting complete!")
 
@@ -2467,6 +2481,7 @@ class DataRepresentationBuilder:
         self.paramop_key_ls = []
         for n_ in range(self.num_rerurun_model_building):
             logging.info('Building Parameter Optimization ' + str(self.model_type_) + ' models for Round: '+str( n_ + 1)+ ' / '+str(self.num_rerurun_model_building))
+            print('Building Parameter Optimization ' + str(self.model_type_) + ' models for Round: '+str( n_ + 1)+ ' / '+str(self.num_rerurun_model_building))
 
             train_data_fnm_ = all_output_dir + self.all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_Training_Data_' + str(100 - (self.test_set_size_pcnt_ + self.paramopt_set_size_pcnt_)) + 'pcnt_partition.csv'
             paramop_data_fnm_ = all_output_dir + self.all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_Parameter_Optimization_Data_' + str(self.paramopt_set_size_pcnt_) + 'pcnt_partition.csv'
@@ -2788,6 +2803,7 @@ class DataRepresentationBuilder:
 
 
             logging.info('Building Final ' + str(model_type___) + ' models for Round: '+str(n_ + 1) +' / ' +str(self.num_rerurun_model_building))
+            print('Building Final ' + str(model_type___) + ' models for Round: ' + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building))
             train_data_fnm_ = all_output_dir + self.all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_Training_Data_' + str(100 - (self.test_set_size_pcnt_ + self.paramopt_set_size_pcnt_)) + 'pcnt_partition.csv'
             test_data_fnm_ = all_output_dir + self.all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_Testing_Data_' + str(self.test_set_size_pcnt_) + 'pcnt_partition.csv'
 
@@ -3333,6 +3349,7 @@ class DataRepresentationBuilder:
             fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'p-r_'+str(self.num_rerurun_model_building)+'-rnds_po_'+e)
             fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
             fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
+            plt.close(fig)
             logging.info('Figure saved to: ' +(fnm_ + '.png').replace(self.output_directory, '~/'))
 
 
@@ -3359,8 +3376,8 @@ class DataRepresentationBuilder:
         # fig, axs = plt.subplots(len(self.feature_encoding_ls), len(paramop_detailed_metric_df))
         # fig.set_size_inches(w=14, h=3 * len(self.feature_encoding_ls))
         # Update: Make plots in sets of num_rows  (so figures not too large)
-        num_rows_ = 3 # number of rows per plot (i.e. number of rows per figure)
-        num_plots_ =  int(int(len(self.feature_encoding_ls)/ num_rows_ )+(len(self.feature_encoding_ls)% num_rows_ ))
+        num_rows_ = 10 # number of rows per plot (i.e. number of rows per figure)
+        num_plots_ = 1# int(int(len(self.feature_encoding_ls)/ num_rows_ )+(len(self.feature_encoding_ls)% num_rows_ ))
         paired_feature_encoding_ls = [self.feature_encoding_ls[i:i+num_rows_] for i in range(0, len(self.feature_encoding_ls), num_rows_)]
 
 
@@ -3375,7 +3392,7 @@ class DataRepresentationBuilder:
             #     fig.set_size_inches(w=14, h=3*len(paired_feature_encoding_ls[plotn_]))
 
             fig, axs = plt.subplots(num_rows_, len(paramop_detailed_metric_df))
-            fig.set_size_inches(w=12, h= num_rows_ * 2.5)
+            fig.set_size_inches(w=12, h= num_rows_ * 1.5)
 
             # Split Evaluation Metric Data per parameter value
             # Loop through each embedding type
@@ -3487,14 +3504,15 @@ class DataRepresentationBuilder:
                     #         axs[i].tick_params(axis='y', labelsize=7)
                     #     #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
 
+
             # hide axes if nothing plotted
             num_rows_to_erase_ = num_rows_ - num_rows_actually_plotted_
             for j in range(num_rows_to_erase_):
                 for i in range(len(paramop_detailed_metric_df)):
                     axs[::-1][j, i].set_visible(False) # reverse because works from bottom up (backwards)
 
-            fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
-                         ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
+            # fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
+            #              ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=7)
             fig.tight_layout()
 
             # ** SAVE FIGURE **
@@ -3834,23 +3852,32 @@ class DataRepresentationBuilder:
         # one box per embedding per axis
         # fig, axs = plt.subplots( len(self.feature_encoding_ls), len(final_detailed_metric_df))
         # fig.set_size_inches(w=14, h=3*len(self.feature_encoding_ls))
+
+
+
         # Update: Make plots in sets of two or fewer (so not too large)
         # TODO: Add +1 to num_plots_ for an extra plot with all embeddings overlayed (in different colors)
-        num_plots_ =  int(int(len(self.feature_encoding_ls)/3)+(len(self.feature_encoding_ls)%3))# + 1
-        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + 3] for i in range(0, len(self.feature_encoding_ls), 3)]
+        num_rows_ = 10
+        num_plots_ =  1#int(int(len(self.feature_encoding_ls)/num_rows_)+(len(self.feature_encoding_ls)%num_rows_))# + 1
+        paired_feature_encoding_ls = [self.feature_encoding_ls[i:i + num_rows_] for i in range(0, len(self.feature_encoding_ls), num_rows_)]
 
         for plotn_ in list(range(num_plots_)):
-            if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row since is a combined plot with all embeddings
-                fig, axs = plt.subplots(1, len(final_detailed_metric_df))
-                fig.set_size_inches(w=14, h=3 )
-            else:
-                fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
-                fig.set_size_inches(w=14, h=3*len(paired_feature_encoding_ls[plotn_]))
+            num_rows_actually_plotted_ = 0
+
+            # if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row since is a combined plot with all embeddings
+            #     fig, axs = plt.subplots(1, len(final_detailed_metric_df))
+            #     fig.set_size_inches(w=14, h=3 )
+            # else:
+            #     fig, axs = plt.subplots(len(paired_feature_encoding_ls[plotn_]), len(final_detailed_metric_df))
+            #     fig.set_size_inches(w=14, h=3*len(paired_feature_encoding_ls[plotn_]))
+            fig, axs = plt.subplots(num_rows_, len(final_detailed_metric_df))
+            fig.set_size_inches(w=12, h=num_rows_ * 1.5)
 
             # Split Evaluation Metric Data per parameter value
             # Loop through all embeddings used
             #for embedding_type_final_eval_, j in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):
             for embedding_type_final_eval_, j in zip(paired_feature_encoding_ls[plotn_], list(range(len(paired_feature_encoding_ls[plotn_])))):
+                num_rows_actually_plotted_+=1
 
                 # From final_detailed_metric_df get just columns for a single selected embedding type
                 # Get just columns with selected embedding metric (embedding_type_final_eval_)
@@ -3905,78 +3932,78 @@ class DataRepresentationBuilder:
                     data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
                     #logging.info(data_)
                     # Multiple Rows
-                    try:
-                        bplot1 = axs[j,i].boxplot(
-                            data_,
-                            vert=True,  # vertical box alignment
-                            patch_artist=True,  # fill with color
-                            labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__,
-                            capprops=dict(color='black'),
-                            whiskerprops=dict(color='black'),
-
-                        )  # will be used to label x-ticks
-                        axs[j,i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
-                        if i == 3:
-                            #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
-                            if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
-                            else:
-                                axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
-
-                        # update x-axis labels
-                        #axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
-                        axs[j, i].set_xticklabels(x_labs_with_counts_, rotation=0, fontsize=8.5)
-                        axs[j,i].set_xlabel(str(self.parameter_to_optimize),fontsize=8.5 )
-
-
-                        if metric_ == 'MCC':
-                            axs[j,i].set_ylim(-1, 1)
-                            axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
-                            axs[j,i].tick_params(axis='y', labelsize=7)
-                        else:
-                            axs[j,i].set_ylim(0, 1)
-                            axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-                            axs[j,i].tick_params(axis='y', labelsize=7)
-
-                    # Single Row
-                    except:
-                        bplot1 = axs[i].boxplot(
-                            data_,
-                            vert=True,  # vertical box alignment
-                            patch_artist=True,  # fill with color
-                            labels=param_vals_one_embd_,
-                            flierprops=flierprops__, boxprops=boxprops__,
-                            capprops=dict(color='black'),
-                            whiskerprops=dict(color='black'),
-
-                        )  # will be used to label x-ticks
-                        axs[i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
-                        if i == 3:
-                            # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
-                            if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
-                                axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_) , fontsize=8.5 )  # ,fontweight='bold')
-                            else:
-                                axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
-
-                        # update x-axis labels
-                        # axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
-                        axs[i].set_xticklabels(x_labs_with_counts_, rotation=0, fontsize=8.5)
-                        axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
-
-                        # label metric score values next to each box
-                        #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
-                        #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
-
-                        if metric_ == 'MCC':
-                            axs[i].set_ylim(-1, 1)
-                            axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
-                            axs[i].tick_params(axis='y', labelsize=7)
-                        else:
-                            axs[i].set_ylim(0, 1)
-                            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-                            axs[i].tick_params(axis='y', labelsize=7)
                     # try:
+                    bplot1 = axs[j,i].boxplot(
+                        data_,
+                        vert=True,  # vertical box alignment
+                        patch_artist=True,  # fill with color
+                        labels=param_vals_one_embd_,
+                        flierprops=flierprops__, boxprops=boxprops__,
+                        capprops=dict(color='black'),
+                        whiskerprops=dict(color='black'),
+
+                    )  # will be used to label x-ticks
+                    axs[j,i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
+                    if i == 3:
+                        #if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                        if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                            axs[j,i].set_title('Plot '+str(plotn_+1)+' / '+str(num_plots_)+' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
+                        else:
+                            axs[j,i].set_title(str(embedding_type_final_eval_)+'\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
+
+                    # update x-axis labels
+                    #axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                    # axs[j, i].set_xticklabels(x_labs_with_counts_, rotation=0, fontsize=8.5)
+                    axs[j,i].set_xlabel(str(self.parameter_to_optimize),fontsize=8.5 )
+
+
+                    if metric_ == 'MCC':
+                        axs[j,i].set_ylim(-1, 1)
+                        axs[j,i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                        axs[j,i].tick_params(axis='y', labelsize=7)
+                    else:
+                        axs[j,i].set_ylim(0, 1)
+                        axs[j,i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                        axs[j,i].tick_params(axis='y', labelsize=7)
+
+                    # # Single Row
+                    # except:
+                    #     bplot1 = axs[i].boxplot(
+                    #         data_,
+                    #         vert=True,  # vertical box alignment
+                    #         patch_artist=True,  # fill with color
+                    #         labels=param_vals_one_embd_,
+                    #         flierprops=flierprops__, boxprops=boxprops__,
+                    #         capprops=dict(color='black'),
+                    #         whiskerprops=dict(color='black'),
+                    #
+                    #     )  # will be used to label x-ticks
+                    #     axs[i].set_title(metric_.replace('beta',str(self.f_beta_)), fontsize=8.5 )
+                    #     if i == 3:
+                    #         # if embedding_type_final_eval_ == self.feature_encoding_ls[0]:# for first row of plots in figure
+                    #         if embedding_type_final_eval_ == paired_feature_encoding_ls[0]:  # for first row of plots in figure
+                    #             axs[i].set_title('Plot ' + str(plotn_ + 1) + ' / ' + str(num_plots_) + ' Final Model Performances (' + str(self.num_rerurun_model_building) + ' Rounds)\n' + str(metric_) , fontsize=8.5 )  # ,fontweight='bold')
+                    #         else:
+                    #             axs[i].set_title(str(embedding_type_final_eval_) + '\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
+                    #
+                    #     # update x-axis labels
+                    #     # axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                    #     #axs[i].set_xticklabels(x_labs_with_counts_, rotation=0, fontsize=8.5)
+                    #     axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
+                    #
+                    #     # label metric score values next to each box
+                    #     #self.autolabel_boxplot(bplot1['medians'], axs[i], label_color='black')
+                    #     #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
+                    #
+                    #     if metric_ == 'MCC':
+                    #         axs[i].set_ylim(-1, 1)
+                    #         axs[i].set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+                    #         axs[i].tick_params(axis='y', labelsize=7)
+                    #     else:
+                    #         axs[i].set_ylim(0, 1)
+                    #         axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                    #         axs[i].tick_params(axis='y', labelsize=7)
+                    # # try:
                     #     # label metric score values next to each box
                     #     #self.autolabel_boxplot(bplot1['medians'], axs[j,i], label_color = 'black')
                     #     #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[j, i])
@@ -3984,6 +4011,12 @@ class DataRepresentationBuilder:
                     #     pass # already labeled above
 
             #if plotn_ == num_plots_ - 1:  # TODO: last plot needs a legend (to identify each embedding as a different color)
+
+            # hide axes if nothing plotted
+            num_rows_to_erase_ = num_rows_ - num_rows_actually_plotted_
+            for j in range(num_rows_to_erase_):
+                for i in range(len(paramop_detailed_metric_df)):
+                    axs[::-1][j, i].set_visible(False)  # reverse because works from bottom up (backwards)
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Final Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)
@@ -5232,7 +5265,7 @@ class DataRepresentationBuilder:
         # one axis per performance metric
         # one box per embedding per axis
         fig, axs = plt.subplots(1, 1+1)
-        fig.set_size_inches(w=3+1, h=3)
+        fig.set_size_inches(w=8, h=6)
         fntsz_ = 7
 
         # For exporting data used to make boxplots
