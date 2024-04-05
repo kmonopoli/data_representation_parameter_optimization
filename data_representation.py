@@ -3351,6 +3351,7 @@ class DataRepresentationBuilder:
 
 
         for plotn_ in list(range(num_plots_)):
+            num_rows_actually_plotted_ = 0
             # if plotn_ == num_plots_ - 1:  # TODO: last plot is just 1 row since is a combined plot with all embeddings
             #     fig, axs = plt.subplots(1, len(paramop_detailed_metric_df))
             #     fig.set_size_inches(w=14, h=3)
@@ -3359,12 +3360,13 @@ class DataRepresentationBuilder:
             #     fig.set_size_inches(w=14, h=3*len(paired_feature_encoding_ls[plotn_]))
 
             fig, axs = plt.subplots(num_rows_, len(paramop_detailed_metric_df))
-            fig.set_size_inches(w=14, h= num_rows_ * 3)
+            fig.set_size_inches(w=12, h= num_rows_ * 2.5)
 
             # Split Evaluation Metric Data per parameter value
             # Loop through each embedding type
             #for embedding_type_paramop_eval_, j in zip(self.feature_encoding_ls, list(range(len(self.feature_encoding_ls)))):
             for embedding_type_paramop_eval_, j in zip(paired_feature_encoding_ls[plotn_], list(range(len(paired_feature_encoding_ls[plotn_])))):
+                num_rows_actually_plotted_ +=1
 
                 # From paramop_detailed_metric_df get just columns for a single selected embedding type
                 # Get just columns with selected embedding metric (embedding_type_paramop_eval_)
@@ -3469,6 +3471,12 @@ class DataRepresentationBuilder:
                     #         axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
                     #         axs[i].tick_params(axis='y', labelsize=7)
                     #     #*# self.autolabel_boxplot_below(bplot1['caps'][::2], bplot1['medians'], axs[i])
+
+            # hide axes if nothing plotted
+            num_rows_to_erase_ = num_rows_ - num_rows_actually_plotted_
+            for j in range(num_rows_to_erase_):
+                for i in range(len(paramop_detailed_metric_df)):
+                    axs[::-1][j, i].set_visible(False) # reverse because works from bottom up (backwards)
 
             fig.suptitle(str(plotn_+1)+' Compiled Multiple Metrics Parameter Optimization Models - Per Parameter Value ' + str(self.num_rerurun_model_building) +
                          ' rounds' + '\n' + self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'), fontsize=9)

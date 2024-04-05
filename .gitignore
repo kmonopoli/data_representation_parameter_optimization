@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 console_output/
+embedding_dictionaries*
 embedding_dictionaries/
 jupyter_notebooks/
 new_input_data/
