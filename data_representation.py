@@ -590,7 +590,7 @@ class DataRepresentationBuilder:
 
     def plot_thresholds(self, df_, figure_label_, output_dir__='', savefig=True):
         fig, ax = plt.subplots()
-        fig.set_size_inches(w=5/3, h=4/3)
+        fig.set_size_inches(w=5, h=4)
 
 
         colors_ls = [x.replace('inefficient', ineff_color).replace('efficient', eff_color).replace('undefined', undef_color) for
