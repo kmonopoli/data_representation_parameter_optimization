@@ -10,6 +10,15 @@ def classify(expr,eff_co,ineff_co):
     else:
         return 'undefined'
 
+
+def classify_no_undefined(expr,eff_co,ineff_co):
+    if expr<eff_co:
+        return 'efficient'
+    elif expr>=ineff_co:
+        return 'inefficient'
+    else:
+        return 'inefficient'
+
 # def get_flank_by_substring(long, short, includes_target_region, flank_len):
 #     try:
 #         indx = long.replace('T','U').index(short.replace('T','U'))

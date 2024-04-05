@@ -60,6 +60,8 @@ from embedding_methods import embed_sequences_with_fasttext_class_trained
 
 
 from sirna_model_building_helper_methods import classify
+from sirna_model_building_helper_methods import classify_no_undefined
+
 from sirna_model_building_helper_methods import get_flanking_sequence
 
 
@@ -980,7 +982,10 @@ class DataRepresentationBuilder:
         #self.df.reset_index(drop=True, inplace=True)
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print((self.df[['chemical_scaffold', 'screen_type', 'species']].value_counts()))
-        self.df['class'] = self.df[self.expr_key].apply(lambda x: classify(x, self.effco_, self.ineffco_))
+        if self.remove_undefined_:
+            self.df['class'] = self.df[self.expr_key].apply(lambda x: classify(x, self.effco_, self.ineffco_))
+        else:
+            self.df['class'] = self.df[self.expr_key].apply(lambda x: classify_no_undefined(x, self.effco_, self.ineffco_))
         print(self.df['class'].value_counts())
 
         # Convert classes into form that can be read by kfld splitter (0's and 1's and -1's for UNLABELLED)
@@ -1098,12 +1103,12 @@ class DataRepresentationBuilder:
             print(self.model_type_, "Does not use unlabeled data")
             if self.apply_final_models_to_external_dataset_:
                 # only include data from initial dataset in indxs_mid_undefined  and indxs_labeled_data
-                self.indxs_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (~self.df['from_external_test_dataset'])].index)
+                # self.indxs_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (~self.df['from_external_test_dataset'])].index)
                 self.indxs_labeled_data = list(self.df[~self.df['from_external_test_dataset']].index)
-                self.indxs_ext_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (self.df['from_external_test_dataset'])].index)
+                # self.indxs_ext_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (self.df['from_external_test_dataset'])].index)
 
             else:
-                self.indxs_mid_undefined = list(self.df[self.df['numeric_class'] == -1].index)
+                # self.indxs_mid_undefined = list(self.df[self.df['numeric_class'] == -1].index)
                 self.indxs_labeled_data = list(self.df.index)
 
 
@@ -1403,6 +1408,8 @@ class DataRepresentationBuilder:
         all_data_label = "All siRNA Data"
         self.plot_thresholds(self.df.iloc[self.indxs_labeled_data], all_data_label, self.all_data_split_dir + 'figures/')
 
+
+
         if self.apply_final_models_to_external_dataset_:
             # Name and Plot External Dataset
             ext_data_label = "External Test siRNA Data"
@@ -1450,6 +1457,7 @@ class DataRepresentationBuilder:
             print("External Labeled (i.e. no middle/undefined data) Dataset saved to:\n\t", self.ext_noundef_df_fnm)
 
             # Save external undefined (middle) dataset
+            self.indxs_ext_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (self.df['from_external_test_dataset'])].index)
             self.ext_mid_undef_df = self.df.iloc[self.indxs_ext_mid_undefined].copy()
             self.ext_mid_undef_df_fnm = all_output_dir + self.all_data_split_dir + 'undefined_data_from_external_test_dataset' + '_partition.csv'
             self.ext_mid_undef_df.to_csv(self.ext_mid_undef_df_fnm, index=False)
