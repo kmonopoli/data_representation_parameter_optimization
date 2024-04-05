@@ -407,7 +407,7 @@ drb = DataRepresentationBuilder(
 
 )
 '''
-"""
+
 ext_data_file =   'new_input_data/external_sirna_screen_data_bdna-human-p3_643-sirnas_split-randomly_APR-04-2024_1UCN2.csv'
 train_data_file = 'new_input_data/training_sirna_screen_data_bdna-human-p3_1930-sirnas_split-randomly_APR-04-2024_1UCN2.csv'
 # NOTE: would be renamed if run code in below box
@@ -454,9 +454,12 @@ drb = DataRepresentationBuilder(
     remove_undefined__=True,
     f_beta__=0.1,
 
-)"""
+    plot_starting_data_thresholds__=False,
+
+)
 
 
+"""
 from data_representation import DataRepresentationBuilder
 
 drb = DataRepresentationBuilder(
@@ -491,5 +494,5 @@ drb = DataRepresentationBuilder(
 
 
 
-
+"""
 

@@ -299,6 +299,7 @@ class DataRepresentationBuilder:
                  input_data_dir__='new_input_data/',
                  input_data_file__ = 'training_sirna_screen_data_bdna-human-p3_1903-sirnas_MAR-21-2024.csv',
                  include_random_background_comparison__ = False,
+                 plot_starting_data_thresholds__ = True,
                  ):
         '''
         #########################################################################################################################################
@@ -384,6 +385,7 @@ class DataRepresentationBuilder:
         self.input_data_dir = input_data_dir__ #= 'new_input_data/',
         self.input_data_file = input_data_file__ #= 'training_sirna_screen_data_bdna-human-p3_1903-sirnas_MAR-21-2024.csv',
 
+        self.plot_starting_data_thresholds_ = plot_starting_data_thresholds__
         self.num_rerurun_model_building = num_rerurun_model_building__  # times to rerun building models using INDEPENDENT 80:10:10 datasets
         self.run_round_num = run_round_num__  # NOTE: for running additional looping beyond num_rerurun_model_building__, currently not used
         self.screen_type_ls = screen_type_ls__  # NOTE: DualGlo will not have flanking regions
@@ -588,7 +590,7 @@ class DataRepresentationBuilder:
 
     def plot_thresholds(self, df_, figure_label_, output_dir__='', savefig=True):
         fig, ax = plt.subplots()
-        fig.set_size_inches(w=5, h=4)
+        fig.set_size_inches(w=5/3, h=4/3)
 
 
         colors_ls = [x.replace('inefficient', ineff_color).replace('efficient', eff_color).replace('undefined', undef_color) for
@@ -1439,14 +1441,16 @@ class DataRepresentationBuilder:
 
         # Name and Plot Entire Dataset (excluding unlabelled data used for semi-supervised)
         all_data_label = "All siRNA Data"
-        self.plot_thresholds(self.df.iloc[self.indxs_labeled_data], all_data_label, self.all_data_split_dir + 'figures/')
+        if self.plot_starting_data_thresholds_:
+            self.plot_thresholds(self.df.iloc[self.indxs_labeled_data], all_data_label, self.all_data_split_dir + 'figures/')
 
 
 
         if self.apply_final_models_to_external_dataset_:
             # Name and Plot External Dataset
             ext_data_label = "External Test siRNA Data"
-            self.plot_thresholds(self.df[self.df['from_external_test_dataset']], ext_data_label, self.all_data_split_dir + 'figures/')
+            if self.plot_starting_data_thresholds_:
+                self.plot_thresholds(self.df[self.df['from_external_test_dataset']], ext_data_label, self.all_data_split_dir + 'figures/')
 
 
 
@@ -1508,7 +1512,8 @@ class DataRepresentationBuilder:
         if self.remove_undefined_: # note: if don't remove undefined data (i.e. remove_undefined_ = False) below code will not work
             # Name and Plot Undefined (excluded) Dataset
             undefined_label = "Undefined Data"
-            self.plot_thresholds(self.mid_undef_df, undefined_label + "\nexcluded from training and evaluation - for now",self.all_data_split_dir + 'figures/')
+            if self.plot_starting_data_thresholds_:
+                self.plot_thresholds(self.mid_undef_df, undefined_label + "\nexcluded from training and evaluation - for now",self.all_data_split_dir + 'figures/')
 
             # Save Undefined dataset
             self.mid_undef_df_fnm = all_output_dir + self.all_data_split_dir + undefined_label.replace(' ', '_').replace('%','pcnt') + '_partition.csv'
@@ -1517,12 +1522,14 @@ class DataRepresentationBuilder:
 
         # Name and Plot Dataset excluding undefined data
         all_data_label = "After Remove Undef - All siRNA Data"
-        self.plot_thresholds(self.df_noundef, all_data_label, self.all_data_split_dir + 'figures/')
+        if self.plot_starting_data_thresholds_:
+            self.plot_thresholds(self.df_noundef, all_data_label, self.all_data_split_dir + 'figures/')
 
         if self.apply_final_models_to_external_dataset_:
             # Name and Plot External Dataset  excluding undefined data
             ext_data_label = "After Remove Undef - External Test siRNA Data"
-            self.plot_thresholds(self.ext_df_noundef , ext_data_label, self.all_data_split_dir + 'figures/')
+            if self.plot_starting_data_thresholds_:
+                self.plot_thresholds(self.ext_df_noundef , ext_data_label, self.all_data_split_dir + 'figures/')
 
 
 
@@ -1677,21 +1684,24 @@ class DataRepresentationBuilder:
                     train_split__label = 'ROUND-' + str(n_ + 1) + " Training Data " + str(
                         100 - (self.test_set_size_pcnt_ + self.paramopt_set_size_pcnt_)) + "%"
                     if self.num_rerurun_model_building < 2:
-                        self.plot_thresholds(train_split_df, train_split__label + "\n of labeled (not undefined) data",
-                                        self.all_data_split_dir + 'figures/')
+                        if self.plot_starting_data_thresholds_:
+                            self.plot_thresholds(train_split_df, train_split__label + "\n of labeled (not undefined) data",
+                                            self.all_data_split_dir + 'figures/')
 
                     # Name and Plot Testing Dataset
                     testing_data_label = 'ROUND-' + str(n_ + 1) + " Testing Data " + str(self.test_set_size_pcnt_) + "%"
                     if self.num_rerurun_model_building < 2:
-                        self.plot_thresholds(test_split_df, testing_data_label + "\n of  evaluation (testing) dataset",
-                                        self.all_data_split_dir + 'figures/')
+                        if self.plot_starting_data_thresholds_:
+                            self.plot_thresholds(test_split_df, testing_data_label + "\n of  evaluation (testing) dataset",
+                                            self.all_data_split_dir + 'figures/')
 
                     # Name and Plot Parameter Optimization Dataset
                     paramopt_data_label = 'ROUND-' + str(n_ + 1) + " Parameter Optimization Data " + str(
                         self.paramopt_set_size_pcnt_) + "%"
                     if self.num_rerurun_model_building < 2:
-                        self.plot_thresholds(paramop_split_df, paramopt_data_label + "\n of  evaluation (testing) dataset",
-                                        self.all_data_split_dir + 'figures/')
+                        if self.plot_starting_data_thresholds_:
+                            self.plot_thresholds(paramop_split_df, paramopt_data_label + "\n of  evaluation (testing) dataset",
+                                            self.all_data_split_dir + 'figures/')
 
                     ## Save Datasets
 
