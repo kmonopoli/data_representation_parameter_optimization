@@ -45,7 +45,7 @@ def embed_sequences_with_bow_countvect(seq_ls, kmer_size_, window_size_, word_fr
     if len(str(out_ls_[0][0])) >= 32000:
         raise Exception('ERROR: exported vector for bow countvectorizer embeddings is longer than 32000, update embedding parameters to shorten vector sizes')
 
-    print('BOW embedding using CountVectorizer complete!')
+    #**#print('BOW embedding using CountVectorizer complete!')
     return out_ls_
 
 
@@ -70,11 +70,11 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
     import numpy as np
     import pandas as pd
 
-    print('\n\n\n\n*****************************************\n\n')
-    print("KMER SIZE:",kmer_size_)
-    print('WINDOW SIZE:',window_size_)
-    print('seq_ls[0]:',seq_ls[0][0:20])
-    print(set([type(x) for x in seq_ls]))
+    #**#print('\n\n\n\n*****************************************\n\n')
+    #**#print("KMER SIZE:",kmer_size_)
+    #**#print('WINDOW SIZE:',window_size_)
+    #**#print('seq_ls[0]:',seq_ls[0][0:20])
+    #**#print(set([type(x) for x in seq_ls]))
     texts_sirna = [get_kmers_(x,kmer_size_,window_size_) for x in seq_ls]
 
     
@@ -145,7 +145,7 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
     # Export bag of words corpus lengths to .csv file
     bow_corpus_lens_fnm__ = rand_seed_enc_lab__+'_bow_corpus_lengths_dict_kmer-'+str(kmer_size_)+'_window-'+str( window_size_)+'_word-freq-co-'+str(word_freq_cutoff_)+'.csv'
     bow_corpus_sirna_lens_df_.to_csv(embedding_dict_dir+bow_corpus_lens_fnm__)
-    print('Bag-of-words corpus lengths saved to:\n\t','embedding_dictionaries/'+bow_corpus_lens_fnm__)
+    #**#print('Bag-of-words corpus lengths saved to:\n\t','embedding_dictionaries/'+bow_corpus_lens_fnm__)
     # TODO: for troubleshooting (delete/commment out above)
 
 
@@ -169,7 +169,7 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
         for b in bow_corpus_sirna:
             f.write(str(b) + ' ,\n')
     f.close()
-    print('Bag-of-words corpus saved to:\n\t', 'embedding_dictionaries/' + bow_corpus_sirna_fnm__)
+    #**#print('Bag-of-words corpus saved to:\n\t', 'embedding_dictionaries/' + bow_corpus_sirna_fnm__)
     # TODO: for troubleshooting (delete/commment out above)
 
     #########################################################################################
@@ -200,7 +200,7 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
     #     for v in vects_all:
     #         f.write(str(v)+' ,\n')
     # f.close()
-    # print('Vectors saved to:\n\t', 'embedding_dictionaries/' + vect_fnm__)
+    # #**#print('Vectors saved to:\n\t', 'embedding_dictionaries/' + vect_fnm__)
     # # TODO: for troubleshooting (delete/commment out above)
 
 
@@ -214,7 +214,7 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
         for t in tfidf_vecs_all:
             f.write(str(t) + ' ,\n')
     f.close()
-    print('Vectors transformed to TF-IDF vector space saved to:\n\t', 'embedding_dictionaries/' + tfidf_vect_fnm__)
+    #**#print('Vectors transformed to TF-IDF vector space saved to:\n\t', 'embedding_dictionaries/' + tfidf_vect_fnm__)
     # TODO: for troubleshooting (delete/commment out above)
 
 
@@ -236,7 +236,7 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
     # # **SAME AS bag of words corpus lengths (exported to file above)
     # tfidf_vector_lens_fnm__ = rand_seed_enc_lab__ + '_tfidf-vector-lens-df'    + '_kmer-' + str(kmer_size_) + '_window-' + str(window_size_) + '_word-freq-co-' + str(word_freq_cutoff_) + '.csv'
     # tfidf_vecs_all_lens_df_.to_csv(embedding_dict_dir + tfidf_vector_lens_fnm__)
-    # print('TF-IDF vector lengths(?) saved to:\n\t', 'embedding_dictionaries/' + tfidf_vector_lens_fnm__)
+    # #**#print('TF-IDF vector lengths(?) saved to:\n\t', 'embedding_dictionaries/' + tfidf_vector_lens_fnm__)
     # # TODO: for troubleshooting (delete/commment out above)
 
     ## Pad Vectors so all same length 
@@ -279,8 +279,8 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
         'weights_times_values_vector': []
     }
 
-    print('\n\n\n\n\n*****\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/****\n')
-    print('\n\nLENGTHS:', len(padded_tfidf_vecs_all), len(data_classes_), '\n\n\n')
+    #**#print('\n\n\n\n\n*****\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/****\n')
+    #**#print('\n\nLENGTHS:', len(padded_tfidf_vecs_all), len(data_classes_), '\n\n\n')
 
     for x, dat__, src__, nm__, expcnt_norm__, expcnt__, num_class__, ct in zip(
             padded_tfidf_vecs_all,
@@ -303,27 +303,27 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
         bow_temp_label_data_dict__['values_vector'].append( [y[0] for y in x])
         bow_temp_label_data_dict__['weights_times_values_vector'] .append([y[1] * y[0] for y in x])
 
-    #     print('\n')
-    #     print(str(ct+1))
-    #     print('class:',dat__)
-    #     print('data source:',src__)
-    #     print('oligo name:', nm__)
-    #     print('expression percent:', expcnt_norm__)
-    #     print('weight:',[y[1] for y in x])
-    #     print('sum weight:',sum([y[1] for y in x]))
-    #     print('value:',[y[0] for y in x])
-    #     print('sum value:', sum([y[0] for y in x]))
-    #     print('weight*value:',[(y[0])*y[1] for y in x])
-    #     print('sum weight*value:', sum([(y[0])*y[1] for y in x]))
-    #     print('\n~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
+    #     #**#print('\n')
+    #     #**#print(str(ct+1))
+    #     #**#print('class:',dat__)
+    #     #**#print('data source:',src__)
+    #     #**#print('oligo name:', nm__)
+    #     #**#print('expression percent:', expcnt_norm__)
+    #     #**#print('weight:',[y[1] for y in x])
+    #     #**#print('sum weight:',sum([y[1] for y in x]))
+    #     #**#print('value:',[y[0] for y in x])
+    #     #**#print('sum value:', sum([y[0] for y in x]))
+    #     #**#print('weight*value:',[(y[0])*y[1] for y in x])
+    #     #**#print('sum weight*value:', sum([(y[0])*y[1] for y in x]))
+    #     #**#print('\n~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
     #
-    # print('\n\n\n\n\n*****/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\****\n')
+    # #**#print('\n\n\n\n\n*****/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\****\n')
 
     # Export bow_temp_label_data_df__ to .csv file
     bow_temp_label_data_df_fnm__ = rand_seed_enc_lab__ + '_bow-tfidf-dataframe' +  '_kmer-' + str(kmer_size_) + '_window-' + str(window_size_) + '_word-freq-co-' + str(word_freq_cutoff_) + '.csv'
     bow_temp_label_data_df__ = pd.DataFrame(bow_temp_label_data_dict__).transpose()
     bow_temp_label_data_df__.to_csv(embedding_dict_dir + bow_temp_label_data_df_fnm__)
-    print('Bag-of-words tf-idf dataframe saved to:\n\t', 'embedding_dictionaries/' + bow_temp_label_data_df_fnm__)
+    #**#print('Bag-of-words tf-idf dataframe saved to:\n\t', 'embedding_dictionaries/' + bow_temp_label_data_df_fnm__)
 
     # Export ow_temp_label_data_dict__ to .txt file
     bow_temp_label_data_dict_fnm__ = rand_seed_enc_lab__ + '_bow-tfidf-dict' + '_kmer-' + str(kmer_size_) + '_window-' + str(window_size_) + '_word-freq-co-' + str(word_freq_cutoff_) + '.txt'
@@ -331,7 +331,7 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
         for key in list(bow_temp_label_data_dict__.keys()):
             f.write(str(bow_temp_label_data_dict__[key]) + ' ,\n')
     f.close()
-    print('Bag-of-words tf-idf dictionary saved to:\n\t', 'embedding_dictionaries/' + bow_temp_label_data_dict_fnm__)
+    #**#print('Bag-of-words tf-idf dictionary saved to:\n\t', 'embedding_dictionaries/' + bow_temp_label_data_dict_fnm__)
     # TODO: for troubleshooting (delete/commment out above)
 
 
@@ -356,7 +356,7 @@ def embed_sequences_with_gensim_doc2bow_tfidf(seq_ls, kmer_size_, window_size_, 
 
     if len(str(list(padded_tfidf_vecs_all)[0][0])) >= 32000:
         raise Exception('ERROR: exported vector for gensim bow embeddings is longer than 32000, update embedding parameters to shorten vector sizes')
-    print('BOW embedding using Gensim doc2bow complete!')
+    #**#print('BOW embedding using Gensim doc2bow complete!')
     return list(padded_tfidf_vecs_all)
 
 
@@ -447,23 +447,23 @@ def embed_sequences_with_keras(seq_ls, kmer_size_, window_size_, output_dimmensi
     #model.compile(optimizer='rmsprop', loss='mse') # TODO: consider other parameters for compile --> optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     
-    ##print(model.summary())
+    ###**#print(model.summary())
 
     # Model will take as input a matrix of size (batch, input_length)
     input_array = np.array(i_encoded_seq_ls)
     
-    ##print('\nCNN Input matrix shape:',input_array.shape)
+    ###**#print('\nCNN Input matrix shape:',input_array.shape)
 
     # Transform kmer "sentence" into a dense feature vector matrix using CNN word Embedding layer
     output_array = model.predict(input_array)
-    ##print('\nCNN Output matrix shape:',output_array.shape)
+    ###**#print('\nCNN Output matrix shape:',output_array.shape)
 
     # convert array to form that can be easily added to dataframe
     output_array = [list(x) for x in list(output_array)]
     
     if len(str(output_array[0][0])) >= 32000:
         raise Exception('ERROR: exported vector for keras deep ann embeddings is longer than 32000, update embedding parameters to shorten vector sizes')
-    print('Keras Embedding Complete!')
+    #**#print('Keras Embedding Complete!')
     return output_array
 
 
@@ -488,7 +488,7 @@ def embed_sequences_with_gensim_word2vec_skipgram(seq_ls, kmer_size_, window_siz
     texts_sirna = [get_kmers_(x, kmer_size_, window_size_) for x in seq_ls]
 
     w2v_model.build_vocab(texts_sirna) # Create the vocabulary, which is to be learned by Word2Vec
-    #print(w2v_model)
+    ##**#print(w2v_model)
 
     w2v_model.train(texts_sirna, # Train Neural Network over 5 epochs (NOTE: this can take some time)
                     total_examples=w2v_model.corpus_count,
@@ -521,10 +521,10 @@ def embed_sequences_with_gensim_word2vec_skipgram(seq_ls, kmer_size_, window_siz
             text_vect_avg.append(list(np.zeros(vector_size_n_w2v, dtype=float))) # the same vector size must be used here as for model training
 
     # TODO: for troubleshotting (delete later)
-    # print("\n\n\n\n\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n")
+    # #**#print("\n\n\n\n\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n")
     # for t in text_vect_avg[0:10]:
-    #     print(t)
-    # print("\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n\n\n\n")
+    #     #**#print(t)
+    # #**#print("\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n\n\n\n")
     # NOTE: could move forward and train model based on siRNA efficacy, but not doing that here (just using word2vec to represent/embed data)
 
     return text_vect_avg
@@ -546,7 +546,7 @@ def embed_sequences_with_gensim_word2vec_cbow(seq_ls, kmer_size_, window_size_, 
     texts_sirna = [get_kmers_(x, kmer_size_, window_size_) for x in seq_ls]
 
     w2v_model.build_vocab(texts_sirna) # Create the vocabulary, which is to be learned by Word2Vec
-    #print(w2v_model)
+    ##**#print(w2v_model)
 
     w2v_model.train(texts_sirna, # Train Neural Network over 5 epochs (NOTE: this can take some time)
                     total_examples=w2v_model.corpus_count,
@@ -579,10 +579,10 @@ def embed_sequences_with_gensim_word2vec_cbow(seq_ls, kmer_size_, window_size_, 
             text_vect_avg.append(list(np.zeros(vector_size_n_w2v, dtype=float))) # the same vector size must be used here as for model training
 
     # TODO: for troubleshotting (delete later)
-    # print("\n\n\n\n\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n")
+    # #**#print("\n\n\n\n\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n")
     # for t in text_vect_avg[0:10]:
-    #     print(t)
-    # print("\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n\n\n\n")
+    #     #**#print(t)
+    # #**#print("\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n\n\n\n")
     # NOTE: could move forward and train model based on siRNA efficacy, but not doing that here (just using word2vec to represent/embed data)
 
     return text_vect_avg
@@ -777,7 +777,7 @@ def embed_sequences_with_keras_new(seq_ls, kmer_size_, window_size_, word_freq_c
 #     texts_sirna = [get_kmers_(x, kmer_size_, window_size_) for x in seq_ls_no_ext] # seq_ls]
 #
 #     w2v_model.build_vocab(texts_sirna) # Create the vocabulary, which is to be learned by Word2Vec
-#     #print(w2v_model)
+#     ##**#print(w2v_model)
 #
 #     w2v_model.train(texts_sirna, # Train Neural Network over 5 epochs (NOTE: this can take some time)
 #                     total_examples=w2v_model.corpus_count,
@@ -809,10 +809,10 @@ def embed_sequences_with_keras_new(seq_ls, kmer_size_, window_size_, word_freq_c
 #             text_vect_avg.append(list(np.zeros(vector_size_n_w2v, dtype=float))) # the same vector size must be used here as for model training
 #
 #     # # TODO: for troubleshotting (delete later)
-#     # print("\n\n\n\n\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n")
+#     # #**#print("\n\n\n\n\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n")
 #     # for t in text_vect_avg[0:10]:
-#     #     print(t)
-#     # print("\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n\n\n\n")
+#     #     #**#print(t)
+#     # #**#print("\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n\n\n\n")
 #
 #
 #     # Add efficiacy data and train model
@@ -915,10 +915,10 @@ def embed_sequences_with_gensim_word2vec (seq_ls, kmer_size_, window_size_, word
 
     w2v_model.train(processed_corpus_sirna, total_examples=len(seq_ls), epochs=1)
 
-    print("\n\n w2v_model shape:",w2v_model.wv[processed_corpus_sirna[0]].shape)
-    print("\n\n w2v_model shape:", w2v_model.wv[processed_corpus_sirna[-2]].shape)
-    print("\n\n w2v_model shape:", w2v_model.wv[processed_corpus_sirna[-1]].shape)
-    print("corpus size:",len(processed_corpus_sirna))
+    #**#print("\n\n w2v_model shape:",w2v_model.wv[processed_corpus_sirna[0]].shape)
+    #**#print("\n\n w2v_model shape:", w2v_model.wv[processed_corpus_sirna[-2]].shape)
+    #**#print("\n\n w2v_model shape:", w2v_model.wv[processed_corpus_sirna[-1]].shape)
+    #**#print("corpus size:",len(processed_corpus_sirna))
 
     # flatten vector 
     ls_ = [list(w2v_model.wv[ pc_ ].flatten()) for pc_ in processed_corpus_sirna]
@@ -934,7 +934,7 @@ def embed_sequences_with_gensim_word2vec (seq_ls, kmer_size_, window_size_, word
     # Check that the length of a single vector isn't longer than what can be stored in a csv file
     if len(str(ls_padded_[0][0])) >= 32000:
         raise Exception('ERROR: exported vector for gensim word2vec embeddings is longer than 32000, update embedding parameters to shorten vector sizes')
-    print("Word2vec embedding complete!")
+    #**#print("Word2vec embedding complete!")
     return ls_padded_
 
         
@@ -965,7 +965,7 @@ def one_hot_encode_sequences(seq_ls):
     # Check that the length of a single vector isn't longer than what can be stored in a csv file
     if len(str(encoded_seq_ls[0][0])) >= 32000:
         raise Exception('ERROR: exported vector for one-hot-encoding embeddings is longer than 32000, update embedding parameters to shorten vector sizes')
-    print('One-Hot Encoding Complete!')
+    #**#print('One-Hot Encoding Complete!')
     return encoded_seq_ls
     
     

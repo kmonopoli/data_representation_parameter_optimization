@@ -67,6 +67,8 @@ from sirna_model_building_helper_methods import get_20mer_from_16mer
 
 
 
+import logging
+
 
 
 
@@ -303,11 +305,14 @@ class DataRepresentationBuilder:
         #####################################        Dataset Parameters (Instance Variables)        #############################################
         #########################################################################################################################################
         '''
+        logging.basicConfig(level=logging.DEBUG, filename="logfile", filemode="a+",
+                            format="%(asctime)-15s %(levelname)-8s %(message)s")
+        logging.info("\n\n\n ------------------- NEW RUN ------------------- \n\n\n")
 
         pd.set_option('display.max_columns', None)
 
         if not run_param_optimization__:
-            print("\n\n\nIMPORTANT: run_param_optimization__ is set to ("+str(run_param_optimization__)+") so will not be running parameter optimization"+
+            logging.info("\n\n\nIMPORTANT: run_param_optimization__ is set to ("+str(run_param_optimization__)+") so will not be running parameter optimization"+
                   "(will only be building final models). Any mention of parameter optimization from Constructor can be ignored.\n\n\n" )
 
         if not run_param_optimization__:
@@ -433,11 +438,11 @@ class DataRepresentationBuilder:
         else:
             self.param_values_to_loop_ = default_params_to_loop_dict[self.parameter_to_optimize]
             if self.param_values_to_loop_ == []:
-                print("\n\n\nNOTE: running without optimizing any parameters\n\n\n")
+                logging.info("\n\n\nNOTE: running without optimizing any parameters\n\n\n")
             else:
                 self.param_opt_working_keys_ls = []
 
-        print("\n\n\nNOTE: parameter_to_optimize = ("+str(self.parameter_to_optimize)+") if this parameter was set in the input, it will be ignored!"+
+        logging.info("\n\n\nNOTE: parameter_to_optimize = ("+str(self.parameter_to_optimize)+") if this parameter was set in the input, it will be ignored!"+
               "\t Instead will consider these parameter values: [ "+str(', '.join([str(x) for x in self.param_values_to_loop_])) + "]\n\n\n" )
 
         if self.parameter_to_optimize == 'kmer-size':
@@ -478,14 +483,14 @@ class DataRepresentationBuilder:
         # Get date - for labeling and saving files
         self.date_ = calendar.month_abbr[datetime.now().month].upper() + '-' + str(datetime.now().day) + '-' + str(
             datetime.now().year)
-        print("Date set successfully!",str(self.date_))
+        logging.info("Date set successfully!"+str(self.date_))
 
-        #print("Construction complete!")
+        #logging.info("Construction complete!")
 
 
         existing_dataset_dir__ = ''
         if self.use_existing_processed_dataset_:
-            print("\n\n\nSearching for existing pre-processed data with matching parameters...\n")
+            logging.info("\n\n\nSearching for existing pre-processed data with matching parameters...\n")
             # Exclude semi-supervised model building from utilizing pre-loaded data (since embeddings of unlabeled data are not stored and all data must be embedded at the same time for some embedding methods)
             if ('semi-sup-' in self.model_type_):
                 raise Exception("ERROR: cannot use existing processed datasets for model type (" + str(self.model_type_) + ") because is semi-supervised learning and embeddigs of unlabeled data are not stored")
@@ -498,14 +503,14 @@ class DataRepresentationBuilder:
 
         # Load in existing pre-processed data (only if it exists)
         if self.use_existing_processed_dataset_ and (existing_dataset_dir__ != ''):
-            print("\n\n\nIMPORTANT: use_existing_processed_dataset__ is set to (" + str(use_existing_processed_dataset__) + ") so will use existing processed data to build models\n\n\n")
-            print("Loading in pre-processed dataset ("+str(existing_dataset_dir__)+") ...")
+            logging.info("\n\n\nIMPORTANT: use_existing_processed_dataset__ is set to (" + str(use_existing_processed_dataset__) + ") so will use existing processed data to build models\n\n\n")
+            logging.info("Loading in pre-processed dataset ("+str(existing_dataset_dir__)+") ...")
             self.load_in_existing_process_datasets(existing_dataset_dir__)
 
-            print("Loading existing pre-processed datasets complete!")
+            logging.info("Loading existing pre-processed datasets complete!")
 
         else:
-            print("\nCreating processed datasets...\n")
+            logging.info("\nCreating processed datasets...\n")
             # General label describing siRNA data used for model building
             self.all_data_label_str_ = (
                     '-'.join(self.species_ls) +
@@ -528,55 +533,55 @@ class DataRepresentationBuilder:
             ).replace(' ', '_')
 
 
-            print("\t all_data_label_str_ = "+str(self.all_data_label_str_))
-            print("\t abbrev_all_data_label_str_ = " + str(self.abbrev_all_data_label_str_))
+            logging.info("\t all_data_label_str_ = "+str(self.all_data_label_str_))
+            logging.info("\t abbrev_all_data_label_str_ = " + str(self.abbrev_all_data_label_str_))
 
             self.create_processed_datasets()
-            print("Creating processed datasets complete!\n\n\n")
+            logging.info("Creating processed datasets complete!\n\n\n")
 
-        print("\nRunning model fittings...")
+        logging.info("\nRunning model fittings...")
         self.run_model_fittings()
-        print("Model Fittings complete!\n")
+        logging.info("Model Fittings complete!\n")
 
 
         if self.run_param_optimization_:
-            print("\nPloting precision-recall curves from Parameter Optimization...")
+            logging.info("\nPloting precision-recall curves from Parameter Optimization...")
             self.plot_param_opt_precision_recall_curves()
 
 
 
         if self.apply_final_models_to_external_dataset_:
-            print("\nPloting precision-recall curves from Final Model Building evaluated on External Dataset...")
+            logging.info("\nPloting precision-recall curves from Final Model Building evaluated on External Dataset...")
             # self.plot_final_model_precision_recall_curves_on_ext_dataset()
             # self.plot_final_model_top_precision_recall_curves_on_ext_dataset()
             self.plot_final_model_precision_recall_curves_on_ext_dataset_and_test_set()
         else:
-            print("\nPloting precision-recall curves from Final Model Building...")
+            logging.info("\nPloting precision-recall curves from Final Model Building...")
             self.plot_final_model_precision_recall_curves()
             ## self.plot_final_model_top_precision_recall_curves()
 
-        print("\nCurve plotting complete!")
+        logging.info("\nCurve plotting complete!")
 
         if self.run_param_optimization_:
-            print("\nPlotting box plots from Parameter Optimization...")
+            logging.info("\nPlotting box plots from Parameter Optimization...")
             self.plot_param_opt_model_box_plots()
 
 
 
         if self.apply_final_models_to_external_dataset_:
-            print("\nPlotting box plots from Final Model Building evaluated on External Dataset...")
+            logging.info("\nPlotting box plots from Final Model Building evaluated on External Dataset...")
             #*# self.plot_final_model_box_plots_per_metric_on_ext_dataset()
             #*# self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
             self.plot_final_model_and_external_data_box_plots_per_metric()
             self.plot_final_model_and_external_data_box_plots_f_score_only()
         else:
-            print("\nPlotting box plots from Final Model Building...")
+            logging.info("\nPlotting box plots from Final Model Building...")
             self.plot_final_model_box_plots_per_param_val()
             self.plot_final_model_box_plots_per_metric()
 
-        print("\nBox plotting complete!")
+        logging.info("\nBox plotting complete!")
 
-        print("\n\n\nPROCESS FINISHED\n\n\n")
+        logging.info("\n\n\nPROCESS FINISHED\n\n\n")
         return ## End constructor
 
 
@@ -649,7 +654,7 @@ class DataRepresentationBuilder:
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
 
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-            print('Figure saved to:', fnm_ + '.png')
+            logging.info('Figure saved to:'+str(fnm_) + '.png')
 
     def plot_proportions_pie(self, figure_label_, output_dir__, df_, undefined_df_, train_split_df_, split_initial_df_,
                              df_train_kfld_, df_test_kfld_, df_paramopt_kfld_, round_ct_, savefig=True):
@@ -700,7 +705,7 @@ class DataRepresentationBuilder:
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
 
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-            print('Figure saved to:', fnm_ + '.png')
+            logging.info('Figure saved to:'+str(fnm_) + '.png')
 
     def find_existing_processed_datasets(self):
         '''
@@ -748,7 +753,7 @@ class DataRepresentationBuilder:
         # Read processed_dataset_parameters_index_file to identify pre-processed dataset(s) (if any) that match current parameters
         if not os.path.exists(processed_dataset_parameters_index_file):
             # If processed_dataset_parameters_index_file file does not already exist then can't load in data
-            print("\n\n\nWARNING: processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + ") file containing information to index pre-processed data does not exist, so cannot load in pre-processed dataset \n\n\n")
+            logging.info("\n\n\nWARNING: processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + ") file containing information to index pre-processed data does not exist, so cannot load in pre-processed dataset \n\n\n")
             return  "" # call create processed datasets since cannot find info to load any existing datasets
 
         else:
@@ -763,22 +768,22 @@ class DataRepresentationBuilder:
             # Identify any values in row_strings_ls that match row_strings_ls
             matching_rows_ls = [x for x in row_strings_ls if x.split('~~~')[-1] == query_row_string_]
             if len(matching_rows_ls) == 0:
-                print("\n\n\nWARNING: no data with parameters matching this run found in processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + "), cannot load in pre-processed dataset \n\n\n")
-                print('\n\nquery_row_string_:')
-                print(query_row_string_)
-                print('\n\n 1st in row_strings_ls:')
-                print(row_strings_ls[0].split('~~~')[-1])
-                print('\n\n')
+                logging.info("\n\n\nWARNING: no data with parameters matching this run found in processed_dataset_parameters_index_file (" + str(processed_dataset_parameters_index_file) + "), cannot load in pre-processed dataset \n\n\n")
+                logging.info('\n\nquery_row_string_:')
+                logging.info(query_row_string_)
+                logging.info('\n\n 1st in row_strings_ls:')
+                logging.info(row_strings_ls[0].split('~~~')[-1])
+                logging.info('\n\n')
                 return "" # call create processed datasets since cannot find info to load any existing datasets
             else:
                 # Select directory name based off of matching_rows_ls to return
-                print("\n\nFound", len(matching_rows_ls), "indicies with data parameters matching those for this run")
+                logging.info("\n\nFound "+str(len(matching_rows_ls))+ " indicies with data parameters matching those for this run")
                 if len(matching_rows_ls) > 1:
-                    print("Selecting first occurrence") # TODO: update to pick randomly?
+                    logging.info("Selecting first occurrence") # TODO: update to pick randomly?
                 # If more than one match, picks first occurrence
                 indx_match_ = int(matching_rows_ls[0].split('~~~')[0])
                 match_dir_ = lines_[indx_match_].split(',')[0]
-                print("\nPre-processed data directory selected:\n\t\t",match_dir_,'\n')
+                logging.info("\nPre-processed data directory selected:\n\t\t",match_dir_,'\n')
                 return match_dir_
 
     def load_in_existing_process_datasets(preproc_data_dir, self):
@@ -812,40 +817,40 @@ class DataRepresentationBuilder:
 
     def create_processed_datasets(self):
 
-        print("Creating processed datasets...")
+        logging.info("Creating processed datasets...")
 
         # Read in Data
         try:
             self.df = pd.read_excel(self.input_data_dir + self.input_data_file)
         except:
             self.df = pd.read_csv(self.input_data_dir + self.input_data_file)
-            print("Successfully read in .csv data")
+            logging.info("Successfully read in .csv data")
 
-        print("\n\n\nSuccessfully read in - " + str(len(self.df)) + ' siRNAs')
+        logging.info("\n\n\nSuccessfully read in - " + str(len(self.df)) + ' siRNAs')
         ########################################################################
         ##                     ~*~ Select Data ~*~                       ##
         ########################################################################
         self.df.drop(columns=['expression_replicate_1', 'expression_replicate_2', 'expression_replicate_3', 'ntc_replicate_1', 'ntc_replicate_2', 'ntc_replicate_3', 'untreated_cells_replicate_1', 'untreated_cells_replicate_2', 'untreated_cells_replicate_3'], inplace=True)
 
-        print(self.df['chemical_scaffold'].value_counts())
-        print()
-        print(self.df['screen_type'].value_counts())
-        print()
-        print(self.df['species'].value_counts())
+        logging.info(str(self.df['chemical_scaffold'].value_counts()))
+        logging.info('')
+        logging.info(str(self.df['screen_type'].value_counts()))
+        logging.info('')
+        logging.info(str(self.df['species'].value_counts()))
 
-        print("Selecting data with screen type:\n", self.screen_type_ls)
+        logging.info("Selecting data with screen type:\n"+str(self.screen_type_ls))
         self.df = self.df[self.df['screen_type'].isin(self.screen_type_ls)]
-        print("Selecting data with species:\n", self.species_ls)
+        logging.info("Selecting data with species:\n"+str(self.species_ls))
         self.df = self.df[self.df['species'].isin(self.species_ls)]
-        print("Selecting data with chemical scaffold:\n", self.chemical_scaffold_ls)
+        logging.info("Selecting data with chemical scaffold:\n"+str(self.chemical_scaffold_ls))
         self.df = self.df[self.df['chemical_scaffold'].isin(self.chemical_scaffold_ls)]
 
-        print("Training dataset size:",len(self.df))
+        logging.info("Training dataset size:"+str(len(self.df)))
 
         # If Using additional external dataset to evaluate final models Load in
         if self.apply_final_models_to_external_dataset_:
-            print("\n\n\nIMPORTANT: apply_final_models_to_external_dataset_ set to ("+str(self.apply_final_models_to_external_dataset_)+") so using additional external dataset to evaluate final models\n\n\n")
-            print("\n\n\nLoading in external_data_file_ ("+str(self.external_data_file_)+") along with input_data_file ...\n\n\n")
+            logging.info("\n\n\nIMPORTANT: apply_final_models_to_external_dataset_ set to ("+str(self.apply_final_models_to_external_dataset_)+") so using additional external dataset to evaluate final models\n\n\n")
+            logging.info("\n\n\nLoading in external_data_file_ ("+str(self.external_data_file_)+") along with input_data_file ...\n\n\n")
 
             try:
                 df_ext = pd.read_excel(self.input_data_dir + self.external_data_file_)
@@ -855,7 +860,7 @@ class DataRepresentationBuilder:
                 df_ext = pd.read_csv(self.input_data_dir + self.external_data_file_)
                 #df_ext = pd.read_csv(self.input_data_dir + self.input_data_file) # for cases where using different data from same dataset (eg chemical scaffolds, species, etc.)
 
-            print("Successfully read in external dataset - "+str(len(df_ext))+' siRNAs (NOTE: this includes middle (undefined) efficacy siRNAs')
+            logging.info("Successfully read in external dataset - "+str(len(df_ext))+' siRNAs (NOTE: this includes middle (undefined) efficacy siRNAs')
 
             ########################################################################
             ##                 ~*~ Select External Data ~*~                       ##
@@ -863,16 +868,16 @@ class DataRepresentationBuilder:
             df_ext.drop(columns=['expression_replicate_1', 'expression_replicate_2', 'expression_replicate_3', 'ntc_replicate_1', 'ntc_replicate_2', 'ntc_replicate_3', 'untreated_cells_replicate_1', 'untreated_cells_replicate_2', 'untreated_cells_replicate_3'], inplace=True)
 
 
-            print("Selecting external data with screen type:\n", self.screen_type_ls)
+            logging.info("Selecting external data with screen type:\n" +str(self.screen_type_ls))
             df_ext = df_ext[df_ext['screen_type'].isin(self.screen_type_ls)]
-            print("Selecting external data with species:\n", self.ext_species_ls)
+            logging.info("Selecting external data with species:\n"+str(self.ext_species_ls))
             df_ext = df_ext[df_ext['species'].isin(self.ext_species_ls)]
-            print("Selecting external data with chemical scaffold:\n", self.ext_chemical_scaffold_ls)
+            logging.info("Selecting external data with chemical scaffold:\n"+str(self.ext_chemical_scaffold_ls))
             df_ext = df_ext[df_ext['chemical_scaffold'].isin(self.ext_chemical_scaffold_ls)]
 
             # Randomize expression data
             #if self.randomize_ext_data_:
-            # print("\n\n\nWARNING: Randomizing external dataset expression data\n\n\n")
+            # logging.info("\n\n\nWARNING: Randomizing external dataset expression data\n\n\n")
             # #df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
 
             # ext_expr_ls = list(df_ext[self.expr_key])
@@ -881,7 +886,7 @@ class DataRepresentationBuilder:
 
             # # # # # Randomize expression data (from TRAINING dataet)
             # # # # # if self.randomize_ext_data_:
-            # # # # print("\n\n\nWARNING: Randomizing TRAINING dataset expression data\n\n\n")
+            # # # # logging.info("\n\n\nWARNING: Randomizing TRAINING dataset expression data\n\n\n")
             # # # # #df_ext[self.expr_key] = [float(x) for x in list(np.random.randint(1, high=100, size=len(df_ext)))]
             # # # # train_expr_ls = list(self.df[self.expr_key])
             # # # # random.shuffle(train_expr_ls)
@@ -896,14 +901,14 @@ class DataRepresentationBuilder:
             self.df.reset_index(inplace=True, drop=True)
             self.df.sort_values(by='from_external_test_dataset', ascending=True, inplace=True)
             self.df.reset_index(inplace=True, drop=True)
-            print('Successfully concatenated input and external datasets\n')
+            logging.info('Successfully concatenated input and external datasets\n')
 
 
         ########################################################################
         ##                         ~*~  Clean Data ~*~                        ##
         ########################################################################
 
-        print('region_ =', self.region_)
+        logging.info('region_ = '+self.region_)
         # Define key to identify column with sequence data used for model building
         self.flank_seq_working_key = 'seq'
 
@@ -913,7 +918,7 @@ class DataRepresentationBuilder:
         len_before = len(self.df)
         self.df = self.df[self.df['from_16mer_20mer_targeting_region'].notna()]
         self.df.reset_index(drop=True, inplace=True)
-        print("Dropped", len_before - len(self.df), "siRNAs for missing 20mer targeting region sequence data  (", len(self.df), "Remaining)")
+        logging.info("Dropped "+str(len_before - len(self.df)) +" siRNAs for missing 20mer targeting region sequence data  ( "+str(len(self.df))+ " Remaining)")
 
         # If using flanking sequence Remove sequences missing flanking regions
         if 'flank' in self.region_:  # check if using flanking region
@@ -924,13 +929,13 @@ class DataRepresentationBuilder:
             len_before = len(self.df)
             self.df = self.df[self.df['flanking_sequence_1'].notna()]
             self.df.reset_index(drop=True, inplace=True)
-            print("Dropped", len_before - len(self.df), "siRNAs for missing flanking sequence data (", len(self.df), "Remaining)")
+            logging.info("Dropped "+str(len_before - len(self.df)) +" siRNAs for missing flanking sequence data ( "+str(len(self.df))+ " Remaining)")
 
             # 2) Drop sequences with mismatch in 16mer (when finding flanks) # TODO: UPDATE THIS TO INCLUDE MISMATCH IN 16MERS?
             len_before = len(self.df)
             self.df = self.df[self.df['mismatch_16mer_for_flanks'] == '16mer perfect match to target']
             self.df.reset_index(inplace=True, drop=True)
-            print("Dropped", len_before - len(self.df), 'siRNAs for having mismatch 16mer')
+            logging.info("Dropped" +str(len_before - len(self.df)) + ' siRNAs for having mismatch 16mer')
 
             # 3) Drop sequences where could not get longest flanking sequence
             if self.parameter_to_optimize == 'flank-length':
@@ -942,7 +947,7 @@ class DataRepresentationBuilder:
             indxs_too_short_flanks_ = list(self.df[self.df.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], self.longest_flank_len, True), axis=1).isna()].index)
             self.df.drop(index=indxs_too_short_flanks_, inplace=True)
             self.df.reset_index(drop=True, inplace=True)
-            print("Dropped", len_before - len(self.df), "siRNAs because could not get longest flanking sequence (", len(self.df), "Remaining)")
+            logging.info("Dropped "+str(len_before - len(self.df)) +" siRNAs because could not get longest flanking sequence ( "+str(len(self.df))+ " Remaining)")
 
             # 4) Take longest flank_len_ from flank_lens_to_loop_ and check there aren't any sequences that aren't long enough to extract longest flanking sequence
             if 'True' in [str(x) for x in list(set(self.df.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], self.longest_flank_len, True), axis=1).isna()))]:
@@ -952,8 +957,8 @@ class DataRepresentationBuilder:
                 self.longest_flank_len = self.flank_len_
                 if 'target' in self.region_:
                     self.flank_seq_working_key += '_target'
-                    print("***********")
-                    print(self.df.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], self.flank_len_, True), axis=1))
+                    logging.info("***********")
+                    logging.info(self.df.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], self.flank_len_, True), axis=1))
                     self.df[self.flank_seq_working_key] = self.df.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], self.flank_len_, True), axis=1)
                 else:
                     self.flank_seq_working_key += '_NO-target'
@@ -978,7 +983,7 @@ class DataRepresentationBuilder:
                 else:
                     flank_seq_working_key__ = 'seq'
                     flank_seq_working_key__ += '_flank-' + str(flank_len_) + 'nts'
-                    print("Flanking sequence size (per side):", flank_len_, 'nts')
+                    logging.info("Flanking sequence size (per side):"+ str(flank_len_)+' nts')
                     if 'target' in self.region_:  # If True include target region in flanking sequence
                         flank_seq_working_key__ += '_target'
                         # Get flanking sequence of desired length along with target region (drop sequences that don't have long enough flanking sequences)
@@ -995,17 +1000,17 @@ class DataRepresentationBuilder:
                     self.param_opt_working_keys_ls = []
                     self.param_opt_working_keys_ls.append(flank_seq_working_key__)
                 #for f_ in self.param_opt_working_keys_ls:
-                    #print('\n', f_, ' ', list(self.df[f_].apply(lambda x: len(x)).value_counts().index)[0])
+                    #logging.info('\n', f_, ' ', list(self.df[f_].apply(lambda x: len(x)).value_counts().index)[0])
 
         self.df.sort_values(by=[self.expr_key], inplace=True)
         #self.df.reset_index(drop=True, inplace=True)
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print((self.df[['chemical_scaffold', 'screen_type', 'species']].value_counts()))
+        logging.info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        logging.info((self.df[['chemical_scaffold', 'screen_type', 'species']].value_counts()))
         if self.remove_undefined_:
             self.df['class'] = self.df[self.expr_key].apply(lambda x: classify(x, self.effco_, self.ineffco_))
         else:
             self.df['class'] = self.df[self.expr_key].apply(lambda x: classify_no_undefined(x, self.effco_, self.ineffco_))
-        print(self.df['class'].value_counts())
+        logging.info(self.df['class'].value_counts())
 
         # Convert classes into form that can be read by kfld splitter (0's and 1's and -1's for UNLABELLED)
         self.df['numeric_class'] = [int(x.replace('inefficient', '0').replace('efficient', '1').replace('undefined', '-1')) for x in list(self.df['class'])]
@@ -1018,7 +1023,7 @@ class DataRepresentationBuilder:
 
 
     def load_in_unlab_data(self):
-        print("\nloading in unlabeled Data..")
+        logging.info("\nloading in unlabeled Data..")
         ###############################################################################################################
         ###############################  (if applicable) Load in Unlabeled Data   #####################################
         ###############################################################################################################
@@ -1037,42 +1042,42 @@ class DataRepresentationBuilder:
             len_before = len(self.df_unlab)
             self.df_unlab = self.df_unlab[self.df_unlab['from_16mer_20mer_targeting_region'].notna()]
             self.df_unlab.reset_index(drop=True, inplace=True)
-            print("Dropped", len_before - len(self.df_unlab), "siRNAs for missing 20mer targeting region sequence data  (", len(self.df_unlab), "Remaining)")
+            logging.info("Dropped " +str(len_before - len(self.df_unlab))+ " siRNAs for missing 20mer targeting region sequence data  ( "+str(len(self.df_unlab))+ " Remaining)")
 
 
-            print('region_ =', self.region_)
+            logging.info('region_ =', self.region_)
             # Define key to identify column with sequence data used for model building
             if 'flank' in self.region_:  # check if using flanking region
                 # Remove sequences missing flanking regions (not necessary, undefined data all have flanks)
                 # Take longest flank_len_ from flank_lens_to_loop_ and check there aren't any sequences that aren't long enough to extract longest flanking sequence
-                print("Longest Flanking sequence size (per side):\n", self.longest_flank_len, 'nts')
+                logging.info("Longest Flanking sequence size (per side):\n" + str(self.longest_flank_len) + ' nts')
                 indxs_to_drop_ = list(self.df_unlab[(self.df_unlab.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], self.longest_flank_len, True), axis=1)).isna()].index)
-                print("\n\n\nDropping", len(indxs_to_drop_), 'unlabelled siRNAs because could not determine flanking sequence')
+                logging.info("\n\n\nDropping "+ str(len(indxs_to_drop_))+ ' unlabelled siRNAs because could not determine flanking sequence')
                 self.df_unlab.drop(index=indxs_to_drop_, inplace=True)
                 self.df_unlab.reset_index(inplace=True, drop=True)
-                print("Now have", len(self.df_unlab), 'siRNAs in unlabelled dataset')
+                logging.info("Now have "+str(len(self.df_unlab))+' siRNAs in unlabelled dataset')
 
             # If optimizing Flank length parameter generate sequences with different flank lengths
             if self.parameter_to_optimize == 'flank-length':
-                print("\nGetting flanking sequences for unlabeled data...")
+                logging.info("\nGetting flanking sequences for unlabeled data...")
                 for flank_len_, flank_seq_working_key in zip(self.param_values_to_loop_, self.param_opt_working_keys_ls):  # if parameter_to_optimize == 'flank-len':
-                    print("Flanking sequence size (per side):", flank_len_, 'nts')
+                    logging.info("Flanking sequence size (per side): " + str(flank_len_) + ' nts')
                     # Get flanking sequence of desired length along with target region (drop sequences that don't have long enough flanking sequences) and create new column to store sequences
                     if 'target' in self.region_:
                         self.df_unlab[flank_seq_working_key] = self.df_unlab.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], flank_len_, True), axis=1)
                     else:
                         self.df_unlab[flank_seq_working_key] = self.df_unlab.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], flank_len_, False), axis=1)
                 # for f_ in self.param_opt_working_keys_ls:
-                #     print('\n', f_, ' ', list(self.df_unlab[f_].apply(lambda x: len(x)).value_counts().index)[0])
+                #     logging.info('\n', f_, ' ', list(self.df_unlab[f_].apply(lambda x: len(x)).value_counts().index)[0])
                 for flank_seq_working_key in self.param_opt_working_keys_ls:
                     ## Drop Unlabelled siRNAs where the working sequence could not be determined
                     len_before = len(self.df_unlab)
                     self.df_unlab.drop(index=self.df_unlab[self.df_unlab[flank_seq_working_key].isna()].index, inplace=True)
                     self.df_unlab.reset_index(inplace=True, drop=True)
-                    print('Dropped', len_before - len(self.df_unlab), 'unlabelled siRNAs where the working (i.e. flanking) sequence could not be determined for flank_seq_working_key:', flank_seq_working_key)
+                    logging.info('Dropped', len_before - len(self.df_unlab), 'unlabelled siRNAs where the working (i.e. flanking) sequence could not be determined for flank_seq_working_key:', flank_seq_working_key)
             else:
-                print("\nGetting flanking sequences for unlabeled data...")
-                print("Flanking sequence size (per side):", self.flank_len_, 'nts')
+                logging.info("\nGetting flanking sequences for unlabeled data...")
+                logging.info("Flanking sequence size (per side): " +str(self.flank_len_) +' nts')
                 # Get flanking sequence of desired length along with target region (drop sequences that don't have long enough flanking sequences) and create new column to store sequences
                 if 'target' in self.region_:
                     self.df_unlab[self.flank_seq_working_key] = self.df_unlab.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], self.flank_len_, True), axis=1)
@@ -1084,13 +1089,13 @@ class DataRepresentationBuilder:
                 len_before = len(self.df_unlab)
                 self.df_unlab.drop(index=self.df_unlab[self.df_unlab[self.flank_seq_working_key].isna()].index, inplace=True)
                 self.df_unlab.reset_index(inplace=True, drop=True)
-                print('\nDropped', len_before - len(self.df_unlab), 'unlabelled siRNAs where the working (i.e. flanking) sequence could not be determined for flank_seq_working_key:', self.flank_seq_working_key)
+                logging.info('\nDropped', len_before - len(self.df_unlab), 'unlabelled siRNAs where the working (i.e. flanking) sequence could not be determined for flank_seq_working_key:', self.flank_seq_working_key)
 
-            print("Selecting data with species:\n", self.species_ls)
+            logging.info("Selecting data with species:\n" +str(self.species_ls))
             self.df_unlab = self.df_unlab[self.df_unlab['species'].isin(self.species_ls)]
 
             # TODO: for Parameter Optimization of unlabelled data set SIZE , add option to alter dataset size - BUT DO THIS CAREFULLY SO DON'T HAVE A LOT OF DATA IN RAM
-            print('\n\n\nNumber of unlabelled siRNAs loaded:', len(self.df_unlab))
+            logging.info('\n\n\nNumber of unlabelled siRNAs loaded:', len(self.df_unlab))
 
             # Format Unlabelled to match Labelled Data
             # Add missing columns to self.df_unlab
@@ -1128,7 +1133,7 @@ class DataRepresentationBuilder:
                 copy=True,
             )
         else:
-            print(self.model_type_, "Does not use unlabeled data")
+            logging.info(str(self.model_type_) +" Does not use unlabeled data")
             if self.apply_final_models_to_external_dataset_:
                 # only include data from initial dataset in indxs_mid_undefined  and indxs_labeled_data
                 # self.indxs_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (~self.df['from_external_test_dataset'])].index)
@@ -1142,7 +1147,7 @@ class DataRepresentationBuilder:
 
 
     def perform_feature_embedding(self):
-        print("\n\nPerforming feature embedding...")
+        logging.info("\n\nPerforming feature embedding...")
         ###############################################################################################################
         ###############################          Perform Feature Embedding        #####################################
         ###############################################################################################################
@@ -1161,56 +1166,56 @@ class DataRepresentationBuilder:
         #['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
 
 
-        print_kmer_size_ = False
-        print_flank_seq_working_key_ = False
-        print_window_size_ = False
-        print_word_freq_cutoff_ = False
+        prnt_kmer_size_ = False
+        prnt_flank_seq_working_key_ = False
+        prnt_window_size_ = False
+        prnt_word_freq_cutoff_ = False
 
         if self.parameter_to_optimize == 'kmer-size':
             kmer_sizes_ls = self.param_values_to_loop_
-            print_kmer_size_ = True
+            prnt_kmer_size_ = True
         else:
             kmer_sizes_ls = [self.kmer_size_]
 
         if self.parameter_to_optimize == 'flank-length':
             flank_seq_working_key__ls = self.param_opt_working_keys_ls
-            print_flank_seq_working_key_ = True
+            prnt_flank_seq_working_key_ = True
         else:
             flank_seq_working_key__ls = [self.flank_seq_working_key]
 
 
         for kmer_ in kmer_sizes_ls:
-            if print_kmer_size_:
-                print('\nkmer size:', kmer_)
+            if prnt_kmer_size_:
+                logging.info('\nkmer size: '+str(kmer_))
             for flank_seq_working_key__ in flank_seq_working_key__ls:
-                if print_flank_seq_working_key_:
-                    print('\nflank_seq_working_key:',flank_seq_working_key__)
+                if prnt_flank_seq_working_key_:
+                    logging.info('\nflank_seq_working_key: '+str(flank_seq_working_key__))
                 for encoding_ in self.feature_encoding_ls:
                     if (self.parameter_to_optimize == 'window-size'):
-                        print('PARAMOPT - encoding:',encoding_,self.parameter_to_optimize)
+                        logging.info('PARAMOPT - encoding: '+encoding_+' '+self.parameter_to_optimize)
                         window_size_ls_ = self.param_values_to_loop_
                         word_freq_cutoff_ls_ = [self.word_freq_cutoff_]
-                        print_window_size_ = True
+                        prnt_window_size_ = True
 
                     elif (self.parameter_to_optimize == 'word-frequency-cutoff'):
-                        print('PARAMOPT - encoding:', encoding_, self.parameter_to_optimize)
+                        logging.info('PARAMOPT - encoding:'+str(encoding_)+' '+str(self.parameter_to_optimize))
                         window_size_ls_ = [self.window_size_]
                         word_freq_cutoff_ls_ = self.param_values_to_loop_
-                        print_word_freq_cutoff_ = True
+                        prnt_word_freq_cutoff_ = True
 
                     else:
-                        print('encoding:', encoding_)
+                        logging.info('encoding:'+str(encoding_))
                         window_size_ls_ = [self.window_size_]
                         word_freq_cutoff_ls_ = [self.word_freq_cutoff_]
 
                     for wndwsz_ in window_size_ls_:
-                        if print_window_size_:
-                            print('\nwindow_size_ = ', wndwsz_)
+                        if prnt_window_size_:
+                            logging.info('\nwindow_size_ = '+str(wndwsz_))
                         if wndwsz_ > kmer_:
                             raise Exception("ERROR: window_size ("+str(wndwsz_)+") cannot exceed kmer_size ("+str(kmer_)+") ")
                         for wfco_ in word_freq_cutoff_ls_:
-                            if print_word_freq_cutoff_:
-                                print('\nword_freq_cutoff_ = ', wfco_)
+                            if prnt_word_freq_cutoff_:
+                                logging.info('\nword_freq_cutoff_ = '+str(wfco_))
                             if encoding_ == 'one-hot': ### One-Hot Encoding ###
                                 self.df['one-hot_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_)+ '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)] = one_hot_encode_sequences(
                                     list(self.df[flank_seq_working_key__]))
@@ -1301,8 +1306,8 @@ class DataRepresentationBuilder:
                                 raise ValueError('ERROR: encoding '+str(encoding_)+' is not supported')
 
         ## Print out Encoded Vector Lengths
-        print_vector_lens_start_ls = []
-        print_vector_lens_end_ls = []
+        prnt_vector_lens_start_ls = []
+        prnt_vector_lens_end_ls = []
         for kmer_ in kmer_sizes_ls:
             for flank_seq_working_key__ in flank_seq_working_key__ls:
                 for encoding_ in self.feature_encoding_ls:
@@ -1311,22 +1316,22 @@ class DataRepresentationBuilder:
                             v_len_start_ = len(self.df.iloc[0][encoding_ + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)])
                             v_len_end_ = len(self.df.iloc[-1][encoding_+'_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_)])
                             if encoding_ == 'one-hot':
-                                print_vector_lens_start_ls.append(str(v_len_start_) + ' \t')
-                                print_vector_lens_end_ls.append(str(v_len_end_)+' \t')
+                                prnt_vector_lens_start_ls.append(str(v_len_start_) + ' \t')
+                                prnt_vector_lens_end_ls.append(str(v_len_end_)+' \t')
                             else:
-                                print_vector_lens_start_ls.append(str(v_len_start_) + ' \t\t')
-                                print_vector_lens_end_ls.append(str(v_len_end_) + ' \t\t')
-        print('\n\nEncoded vector lengths:\n\n')
-        print('\t '.join(encodings_ls))
-        print(' '.join(print_vector_lens_start_ls))
-        print(' '.join(print_vector_lens_end_ls))
-        # print(len(self.df.iloc[0]['one-hot_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t',
+                                prnt_vector_lens_start_ls.append(str(v_len_start_) + ' \t\t')
+                                prnt_vector_lens_end_ls.append(str(v_len_end_) + ' \t\t')
+        logging.info('\n\nEncoded vector lengths:\n\n')
+        logging.info('\t '.join(encodings_ls))
+        logging.info(' '.join(prnt_vector_lens_start_ls))
+        logging.info(' '.join(prnt_vector_lens_end_ls))
+        # logging.info(len(self.df.iloc[0]['one-hot_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t',
         #       len(self.df.iloc[0]['bow-countvect_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
         #       len(self.df.iloc[0]['bow-gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
         #       len(self.df.iloc[0]['ann-keras_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
         #       len(self.df.iloc[0]['ann-word2vec-gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]))
         #
-        # print(len(self.df.iloc[-1]['one-hot_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t',
+        # logging.info(len(self.df.iloc[-1]['one-hot_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t',
         #       len(self.df.iloc[-1]['bow-countvect_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
         #       len(self.df.iloc[-1]['bow-gensim_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
         #       len(self.df.iloc[-1]['ann-keras_encoded_' + self.flank_seq_working_key + '_kmer-' + str(kmer_)]), '\t\t',
@@ -1335,7 +1340,7 @@ class DataRepresentationBuilder:
 
 
     def split_train_test_paramopt(self):
-        print("\nSplitting Datasets into train/test/paramopt...")
+        logging.info("\nSplitting Datasets into train/test/paramopt...")
         ##############################################################################################################
         #################################    Split Dataset into Train:Paramopt:Test    ###############################
         ##############################################################################################################
@@ -1347,14 +1352,14 @@ class DataRepresentationBuilder:
         while self.datasplit_id_ in [x[0:7] for x in os.listdir(all_output_dir)]:
             # self.datasplit_id_ = 'SUPk'+str(randint(100, 999) ) # ID used to find output data file
             self.datasplit_id_ = model_type_dict[self.model_type_] + self.parameter_to_optimize[0].upper() + str(randint(10000, 99999))  # ID used to find output data file
-            #print("self.datasplit_id_ already exists, generating new ID...")
-            #print("NEW self.datasplit_id_ | Randomized " + str(len(self.datasplit_id_)) + "-digit ID for this Set of Rounds:\t " + self.datasplit_id_)
-        print("self.datasplit_id_ | Randomized " + str(len(self.datasplit_id_)) + "-digit ID for this Set of Rounds:\t " + self.datasplit_id_)
+            #logging.info("self.datasplit_id_ already exists, generating new ID...")
+            #logging.info("NEW self.datasplit_id_ | Randomized " + str(len(self.datasplit_id_)) + "-digit ID for this Set of Rounds:\t " + self.datasplit_id_)
+        logging.info("self.datasplit_id_ | Randomized " + str(len(self.datasplit_id_)) + "-digit ID for this Set of Rounds:\t " + self.datasplit_id_)
         self.all_data_split_dir = 'data-' + self.datasplit_id_ + '_' + self.abbrev_all_data_label_str_.replace('|', '-') + '/'
 
         if not os.path.exists(all_output_dir + self.all_data_split_dir):
             os.makedirs(all_output_dir + self.all_data_split_dir)
-            print("All datasets will be stored in:\n", os.getcwd() + all_output_dir + '\n\t' + self.all_data_split_dir)
+            logging.info("All datasets will be stored in:\n"+os.getcwd() + all_output_dir + '\n\t' + self.all_data_split_dir)
             if not os.path.exists(all_output_dir + self.all_data_split_dir + 'figures/'):
                 os.makedirs(all_output_dir + self.all_data_split_dir + 'figures/')
             if not os.path.exists(all_output_dir + self.all_data_split_dir + 'figures/svg_figs/'):
@@ -1424,13 +1429,13 @@ class DataRepresentationBuilder:
             with open(processed_dataset_parameters_index_file, 'w') as f:
                 f.write(header_string_ + '\n')
             f.close()
-            print("Created file for storing data processing parameter data for this and future runs: \n\t",processed_dataset_parameters_index_file)
+            logging.info("Created file for storing data processing parameter data for this and future runs: \n\t"+str(processed_dataset_parameters_index_file))
 
         # Append run parameter info to processed_dataset_parameters_index_file
         with open(processed_dataset_parameters_index_file,'a') as f:
             f.write(row_string_+'\n')
         f.close()
-        print("Data processing parameter data appeneded to: \n\t", processed_dataset_parameters_index_file)
+        logging.info("Data processing parameter data appeneded to: \n\t"+str(processed_dataset_parameters_index_file))
 
         # Name and Plot Entire Dataset (excluding unlabelled data used for semi-supervised)
         all_data_label = "All siRNA Data"
@@ -1447,7 +1452,7 @@ class DataRepresentationBuilder:
 
         # Relabel undefined data as nonfunctional if remove_undefined_ = False (so won't be removed in next part)
         if not self.remove_undefined_:
-            print('\nNOTE: remove_undefined_ set to ' + str(self.remove_undefined_) + ' so Undefined data will not be excluded from either Training or External datasets!')
+            logging.info('\nNOTE: remove_undefined_ set to ' + str(self.remove_undefined_) + ' so Undefined data will not be excluded from either Training or External datasets!')
 
             # Exclude external undefined data (if added)
 
@@ -1482,14 +1487,14 @@ class DataRepresentationBuilder:
             self.ext_df_noundef = self.df[ (self.df['numeric_class'] != -1) & (self.df['from_external_test_dataset']) ].copy()
             self.ext_noundef_df_fnm = all_output_dir + self.all_data_split_dir + 'labeled_data_from_external_test_dataset' + '_partition.csv'
             self.ext_df_noundef.to_csv(self.ext_noundef_df_fnm, index=False)
-            print("External Labeled (i.e. no middle/undefined data) Dataset saved to:\n\t", self.ext_noundef_df_fnm)
+            logging.info("External Labeled (i.e. no middle/undefined data) Dataset saved to:\n\t"+ str(self.ext_noundef_df_fnm))
 
             # Save external undefined (middle) dataset
             self.indxs_ext_mid_undefined = list(self.df[(self.df['numeric_class'] == -1) & (self.df['from_external_test_dataset'])].index)
             self.ext_mid_undef_df = self.df.iloc[self.indxs_ext_mid_undefined].copy()
             self.ext_mid_undef_df_fnm = all_output_dir + self.all_data_split_dir + 'undefined_data_from_external_test_dataset' + '_partition.csv'
             self.ext_mid_undef_df.to_csv(self.ext_mid_undef_df_fnm, index=False)
-            print("External Undefined Dataset saved to:\n\t", self.ext_mid_undef_df_fnm)
+            logging.info("External Undefined Dataset saved to:\n\t"+str(self.ext_mid_undef_df_fnm))
 
         else:
             self.indxs_mid_undefined = list(self.df[(self.df['numeric_class'] == -1)].index)
@@ -1508,7 +1513,7 @@ class DataRepresentationBuilder:
             # Save Undefined dataset
             self.mid_undef_df_fnm = all_output_dir + self.all_data_split_dir + undefined_label.replace(' ', '_').replace('%','pcnt') + '_partition.csv'
             self.mid_undef_df.to_csv(self.mid_undef_df_fnm, index=False)
-            print("Undefined Dataset saved to:\n\t", self.mid_undef_df_fnm)
+            logging.info("Undefined Dataset saved to:\n\t"+str(self.mid_undef_df_fnm))
 
         # Name and Plot Dataset excluding undefined data
         all_data_label = "After Remove Undef - All siRNA Data"
@@ -1522,12 +1527,12 @@ class DataRepresentationBuilder:
 
 
         # Create 80:10:10 splits INDEPENDENTLY on the labelled (efficnet/inefficent) siRNA data
-        print('Allowed percentage classification proportiond deviation: ' + str(self.allowed_classification_prop_deviation_pcnt_) + '% (' + str( int(np.round(len(self.df_noundef) * (self.allowed_classification_prop_deviation_pcnt_ / 100), 0))) + ' siRNAs)')
+        logging.info('Allowed percentage classification proportiond deviation: ' + str(self.allowed_classification_prop_deviation_pcnt_) + '% (' + str( int(np.round(len(self.df_noundef) * (self.allowed_classification_prop_deviation_pcnt_ / 100), 0))) + ' siRNAs)')
         for n_ in range(self.num_rerurun_model_building):  # [0:1]:
             need_to_resplit = True
             resplit_round_ct_ = 0
             while need_to_resplit:
-                # print('Round:',n_+1,'/',num_rerurun_model_building)
+                # logging.info('Round:',n_+1,'/',num_rerurun_model_building)
 
                 ## 1) Create Training set first --> split_initial and train_split_ dataframes for:
                 #    80:10:10 --> train (80) : paramopt (10) : train (10)
@@ -1601,63 +1606,63 @@ class DataRepresentationBuilder:
                         starting_dataset_eff_proportion_ + self.allowed_classification_prop_deviation_pcnt_)) or (
                         train_dataset_eff_proportion_ < (
                         starting_dataset_eff_proportion_ - self.allowed_classification_prop_deviation_pcnt_)):
-                    # print('ERROR: Need to resplit data due to Training set proportions (Round',resplit_round_ct_+1,')')
-                    # print('** Dataset Excluding Undefined:',len(self.df_noundef),'siRNAs Total \t(',int(np.round(100*len(self.df_noundef)/len(self.df_noundef),0)),'% )','\n\t0:',self.df_noundef['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(starting_dataset_ineff_proportion_),'% )',' \n\t1:',self.df_noundef['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(starting_dataset_eff_proportion_),'% )\n')
-                    # print('** Training:',len(train_split_df),'siRNAs Total \t\t\t(',int(np.round(100*len(train_split_df)/len(self.df_noundef),0)),'% )','\n\t0:',train_split_df['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(train_dataset_ineff_proportion_),'% )',' \n\t1:',train_split_df['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(train_dataset_eff_proportion_),'% )\n')
+                    # logging.info('ERROR: Need to resplit data due to Training set proportions (Round',resplit_round_ct_+1,')')
+                    # logging.info('** Dataset Excluding Undefined:',len(self.df_noundef),'siRNAs Total \t(',int(np.round(100*len(self.df_noundef)/len(self.df_noundef),0)),'% )','\n\t0:',self.df_noundef['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(starting_dataset_ineff_proportion_),'% )',' \n\t1:',self.df_noundef['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(starting_dataset_eff_proportion_),'% )\n')
+                    # logging.info('** Training:',len(train_split_df),'siRNAs Total \t\t\t(',int(np.round(100*len(train_split_df)/len(self.df_noundef),0)),'% )','\n\t0:',train_split_df['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(train_dataset_ineff_proportion_),'% )',' \n\t1:',train_split_df['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(train_dataset_eff_proportion_),'% )\n')
                     resplit_round_ct_ += 1
 
                 elif (test_dataset_eff_proportion_ > (
                         starting_dataset_eff_proportion_ + self.allowed_classification_prop_deviation_pcnt_)) or (
                         test_dataset_eff_proportion_ < (
                         starting_dataset_eff_proportion_ - self.allowed_classification_prop_deviation_pcnt_)):
-                    # print('ERROR: Need to resplit data due to Testing set proportions (Round',resplit_round_ct_+1,')')
-                    # print('** Dataset Excluding Undefined:',len(self.df_noundef),'siRNAs Total \t(',int(np.round(100*len(self.df_noundef)/len(self.df_noundef),0)),'% )','\n\t0:',self.df_noundef['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(starting_dataset_ineff_proportion_),'% )',' \n\t1:',self.df_noundef['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(starting_dataset_eff_proportion_),'% )\n')
-                    # print('** Testing:',len(test_split_df),'siRNAs Total \t\t\t(',int(np.round(100*len(test_split_df)/len(self.df_noundef),0)),'% )','\n\t0:',test_split_df['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(test_dataset_ineff_proportion_),'% )',' \n\t1:',test_split_df['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(test_dataset_eff_proportion_),'% )\n')
+                    # logging.info('ERROR: Need to resplit data due to Testing set proportions (Round',resplit_round_ct_+1,')')
+                    # logging.info('** Dataset Excluding Undefined:',len(self.df_noundef),'siRNAs Total \t(',int(np.round(100*len(self.df_noundef)/len(self.df_noundef),0)),'% )','\n\t0:',self.df_noundef['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(starting_dataset_ineff_proportion_),'% )',' \n\t1:',self.df_noundef['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(starting_dataset_eff_proportion_),'% )\n')
+                    # logging.info('** Testing:',len(test_split_df),'siRNAs Total \t\t\t(',int(np.round(100*len(test_split_df)/len(self.df_noundef),0)),'% )','\n\t0:',test_split_df['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(test_dataset_ineff_proportion_),'% )',' \n\t1:',test_split_df['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(test_dataset_eff_proportion_),'% )\n')
                     resplit_round_ct_ += 1
 
                 elif (paramop_dataset_eff_proportion_ > (
                         starting_dataset_eff_proportion_ + self.allowed_classification_prop_deviation_pcnt_)) or (
                         paramop_dataset_eff_proportion_ < (
                         starting_dataset_eff_proportion_ - self.allowed_classification_prop_deviation_pcnt_)):
-                    # print('ERROR: Need to resplit data due to Parameter Optimization set proportions (Round',resplit_round_ct_+1,')')
-                    # print('** Dataset Excluding Undefined:',len(self.df_noundef),'siRNAs Total \t(',int(np.round(100*len(self.df_noundef)/len(self.df_noundef),0)),'% )','\n\t0:',self.df_noundef['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(starting_dataset_ineff_proportion_),'% )',' \n\t1:',self.df_noundef['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(starting_dataset_eff_proportion_),'% )\n')
-                    # print('** Parameter Optimization::',len(paramop_split_df),'siRNAs Total \t(',int(np.round(100*len(paramop_split_df)/len(self.df_noundef),0)),'% )','\n\t0:',paramop_split_df['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(paramop_dataset_ineff_proportion_),'% )',' \n\t1:',paramop_split_df['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(paramop_dataset_eff_proportion_),'% )\n')
+                    # logging.info('ERROR: Need to resplit data due to Parameter Optimization set proportions (Round',resplit_round_ct_+1,')')
+                    # logging.info('** Dataset Excluding Undefined:',len(self.df_noundef),'siRNAs Total \t(',int(np.round(100*len(self.df_noundef)/len(self.df_noundef),0)),'% )','\n\t0:',self.df_noundef['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(starting_dataset_ineff_proportion_),'% )',' \n\t1:',self.df_noundef['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(starting_dataset_eff_proportion_),'% )\n')
+                    # logging.info('** Parameter Optimization::',len(paramop_split_df),'siRNAs Total \t(',int(np.round(100*len(paramop_split_df)/len(self.df_noundef),0)),'% )','\n\t0:',paramop_split_df['numeric_class'].value_counts()[0],'siRNAs','\t\t(',int(paramop_dataset_ineff_proportion_),'% )',' \n\t1:',paramop_split_df['numeric_class'].value_counts()[1],'siRNAs ','\t\t(',int(paramop_dataset_eff_proportion_),'% )\n')
                     resplit_round_ct_ += 1
 
                 else:
                     need_to_resplit = False
 
-                    print('\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Round ' + str(n_ + 1) + ' / ' + str(
+                    logging.info('\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Round ' + str(n_ + 1) + ' / ' + str(
                         self.num_rerurun_model_building) + ' Complete! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-                    print('** Resplit', resplit_round_ct_, 'times')
+                    logging.info('** Resplit '+str(resplit_round_ct_)+' times')
 
-                    print('Dataset Excluding Undefined:', len(self.df_noundef), 'siRNAs Total \t(',
-                          int(np.round(100 * len(self.df_noundef) / len(self.df_noundef), 0)), '% )', '\n\t0:',
-                          self.df_noundef['numeric_class'].value_counts()[0], 'siRNAs', '\t\t(',
-                          int(starting_dataset_ineff_proportion_), '% )', ' \n\t1:',
-                          self.df_noundef['numeric_class'].value_counts()[1], 'siRNAs ', '\t\t(',
-                          int(starting_dataset_eff_proportion_), '% )\n')
-
-                    print('Training:', len(train_split_df), 'siRNAs Total \t\t\t(',
-                          int(np.round(100 * len(train_split_df) / len(self.df_noundef), 0)), '% )', '\n\t0:',
-                          train_split_df['numeric_class'].value_counts()[0], 'siRNAs', '\t\t(',
-                          int(train_dataset_ineff_proportion_), '% )', ' \n\t1:',
-                          train_split_df['numeric_class'].value_counts()[1], 'siRNAs ', '\t\t(',
-                          int(train_dataset_eff_proportion_), '% )\n')
-
-                    print('Testing:', len(test_split_df), 'siRNAs Total \t\t\t(',
-                          int(np.round(100 * len(test_split_df) / len(self.df_noundef), 0)), '% )', '\n\t0:',
-                          test_split_df['numeric_class'].value_counts()[0], 'siRNAs', '\t\t(',
-                          int(test_dataset_ineff_proportion_), '% )', ' \n\t1:',
-                          test_split_df['numeric_class'].value_counts()[1], 'siRNAs ', '\t\t(',
-                          int(test_dataset_eff_proportion_), '% )\n')
-
-                    print('Parameter Optimization::', len(paramop_split_df), 'siRNAs Total \t(',
-                          int(np.round(100 * len(paramop_split_df) / len(self.df_noundef), 0)), '% )', '\n\t0:',
-                          paramop_split_df['numeric_class'].value_counts()[0], 'siRNAs', '\t\t(',
-                          int(paramop_dataset_ineff_proportion_), '% )', ' \n\t1:',
-                          paramop_split_df['numeric_class'].value_counts()[1], 'siRNAs ', '\t\t(',
-                          int(paramop_dataset_eff_proportion_), '% )\n')
+                    # logging.info('Dataset Excluding Undefined: '+str(len(self.df_noundef))+' siRNAs Total \t( '+
+                    #       str(int(np.round(100 * len(self.df_noundef) / len(self.df_noundef), 0)))+ '% )'+'\n\t0:'
+                    #       str(self.df_noundef['numeric_class'].value_counts()[0])+' siRNAs '+'\t\t('+
+                    #       str(int(starting_dataset_ineff_proportion_)) + '% )'+' \n\t1:'+
+                    #       str(self.df_noundef['numeric_class'].value_counts()[1])+' siRNAs '+'\t\t('+
+                    #       str(int(starting_dataset_eff_proportion_))+ '% )\n')
+                    #
+                    # logging.info('Training:', len(train_split_df), 'siRNAs Total \t\t\t(',
+                    #       int(np.round(100 * len(train_split_df) / len(self.df_noundef), 0)), '% )', '\n\t0:',
+                    #       train_split_df['numeric_class'].value_counts()[0], 'siRNAs', '\t\t(',
+                    #       int(train_dataset_ineff_proportion_), '% )', ' \n\t1:',
+                    #       train_split_df['numeric_class'].value_counts()[1], 'siRNAs ', '\t\t(',
+                    #       int(train_dataset_eff_proportion_), '% )\n')
+                    #
+                    # logging.info('Testing:', len(test_split_df), 'siRNAs Total \t\t\t(',
+                    #       int(np.round(100 * len(test_split_df) / len(self.df_noundef), 0)), '% )', '\n\t0:',
+                    #       test_split_df['numeric_class'].value_counts()[0], 'siRNAs', '\t\t(',
+                    #       int(test_dataset_ineff_proportion_), '% )', ' \n\t1:',
+                    #       test_split_df['numeric_class'].value_counts()[1], 'siRNAs ', '\t\t(',
+                    #       int(test_dataset_eff_proportion_), '% )\n')
+                    #
+                    # logging.info('Parameter Optimization::', len(paramop_split_df), 'siRNAs Total \t(',
+                    #       int(np.round(100 * len(paramop_split_df) / len(self.df_noundef), 0)), '% )', '\n\t0:',
+                    #       paramop_split_df['numeric_class'].value_counts()[0], 'siRNAs', '\t\t(',
+                    #       int(paramop_dataset_ineff_proportion_), '% )', ' \n\t1:',
+                    #       paramop_split_df['numeric_class'].value_counts()[1], 'siRNAs ', '\t\t(',
+                    #       int(paramop_dataset_eff_proportion_), '% )\n')
 
                     if (-1 in list(train_split_df['numeric_class'].value_counts().index)):
                         raise Exception("ERROR: train_split_df contains undefined siRNAs when it should not")
@@ -1695,21 +1700,21 @@ class DataRepresentationBuilder:
                                                                                                                              '_').replace(
                         '%', 'pcnt') + '_partition.csv'
                     train_split_df.to_csv(train_split_df_fnm, index=False)
-                    print("split_initial Dataset saved to:\n\t", train_split_df_fnm)
+                    logging.info("split_initial Dataset saved to:\n\t"+str(train_split_df_fnm))
 
                     # Save  Testing Dataset
                     testing_df_fnm = all_output_dir + self.all_data_split_dir + 'datasets/' + testing_data_label.replace(' ',
                                                                                                                          '_').replace(
                         '%', 'pcnt') + '_partition.csv'
                     test_split_df.to_csv(testing_df_fnm, index=False)
-                    print("Testing Dataset saved to:\n\t", testing_df_fnm)
+                    logging.info("Testing Dataset saved to:\n\t"+str(testing_df_fnm))
 
                     # Save   Parameter Optimization Dataset
                     paramopt_df_fnm = all_output_dir + self.all_data_split_dir + 'datasets/' + paramopt_data_label.replace(' ',
                                                                                                                            '_').replace(
                         '%', 'pcnt') + '_partition.csv'
                     paramop_split_df.to_csv(paramopt_df_fnm, index=False)
-                    print("Parameter Optimization Dataset saved to:\n\t", paramopt_df_fnm)
+                    logging.info("Parameter Optimization Dataset saved to:\n\t"+str(paramopt_df_fnm))
 
                     # Name and Plot Partitions
                     partition_label = 'ROUND-' + str(n_ + 1) + '_pie'
@@ -1722,7 +1727,7 @@ class DataRepresentationBuilder:
 
     def plot_data_splits(self):
         if (self.plot_grid_splits_):
-            print("Plotting data splits as a grid...")
+            logging.info("Plotting data splits as a grid...")
             # Plot Data Splitting for each round in a single figure
             if self.num_rerurun_model_building > 2:
 
@@ -1771,7 +1776,7 @@ class DataRepresentationBuilder:
                 for row_ in range(rows_cols_compiled_datasplit_fig):  # num rows
                     for col_ in range(rows_cols_compiled_datasplit_fig):  # num cols -1 (to skip last column)
                         if ct_ < self.num_rerurun_model_building:
-                            # print(ct_,':',[row_,col_])
+                            # logging.info(ct_,':',[row_,col_])
                             plot_coord_dict[ct_] = (row_, col_)
                             max_rows_ = row_ + 1
                         ct_ += 1
@@ -1864,7 +1869,7 @@ class DataRepresentationBuilder:
                     ct_datasplit_rounds_to_plot_ = 1
                     for row_ in range(len(axs)):  # num rows
                         for col_ in range(len(axs[0]) - 1):  # num cols -1 (to skip last column)
-                            # print(row_,col_,ct_datasplit_rounds_to_plot_)
+                            # logging.info(row_,col_,ct_datasplit_rounds_to_plot_)
                             if ct_datasplit_rounds_to_plot_ > self.num_rerurun_model_building:
                                 # remove axis from figure
                                 axs[row_][col_].remove()
@@ -1942,15 +1947,15 @@ class DataRepresentationBuilder:
                         '%', 'pcnt') + '_partition')
 
                     fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
-                    # print('Figure saved to:',fnm_svg_+'.svg')
+                    # logging.info('Figure saved to:',fnm_svg_+'.svg')
 
                     fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-                    print('Figure saved to:', fnm_ + '.png')
+                    logging.info('Figure saved to: '+ fnm_ + '.png')
             else:
-                print("Not enough splits performed to plot as a grid \nwith 'num_rerurun_model_building' set to:",
-                      self.num_rerurun_model_building)
+                logging.info("Not enough splits performed to plot as a grid \nwith 'num_rerurun_model_building' set to: "+
+                      str(self.num_rerurun_model_building))
         else:
-            print("plot_grid_splits_ set to :" + str(self.plot_grid_splits_))
+            logging.info("plot_grid_splits_ set to :" + str(self.plot_grid_splits_))
 
     def plot_pie_of_data_splits(self):
         if self.plot_extra_visuals_:
@@ -2017,13 +2022,13 @@ class DataRepresentationBuilder:
 
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-            print('Figure saved to:', fnm_ + '.png')
+            logging.info('Figure saved to:'+str(fnm_) + '.png')
         else:
-            print("plot_extra_visuals_ set to :" + str(self.plot_extra_visuals_))
+            logging.info("plot_extra_visuals_ set to :" + str(self.plot_extra_visuals_))
 
     def plot_bar_data_splits(self):
         if self.plot_extra_visuals_:
-            print("Plotting data bar splits...")
+            logging.info("Plotting data bar splits...")
             if self.num_rerurun_model_building > 2:
                 # fig,axs = plt.subplots(6, )
 
@@ -2252,17 +2257,17 @@ class DataRepresentationBuilder:
                 fnm_svg_ = fnm_
 
                 fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
-                # print('Figure saved to:',fnm_svg_+'.svg')
+                # logging.info('Figure saved to:',fnm_svg_+'.svg')
 
                 fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=True)
-                print('Figure saved to:', fnm_ + '.png')
+                logging.info('Figure saved to:'+str(fnm_) + '.png')
 
             else:
-                print("Not enough splits performed to construct a graphic \n\twith 'num_rerurun_model_building' set to:",
-                      self.num_rerurun_model_building)
+                logging.info("Not enough splits performed to construct a graphic \n\twith 'num_rerurun_model_building' set to: "+
+                      str(self.num_rerurun_model_building))
 
         else:
-            print("plot_extra_visuals_ set to :" + str(self.plot_extra_visuals_))
+            logging.info("plot_extra_visuals_ set to :" + str(self.plot_extra_visuals_))
 
         #########################################################################################################################################
         ###################################                    Run Model Fitting                     ############################################
@@ -2289,14 +2294,14 @@ class DataRepresentationBuilder:
         # be sure modeltrain_id_ doesn't exist already
         while self.modeltrain_id_ in [x[0:9] for x in os.listdir(all_output_dir)]:
             self.modeltrain_id_ = model_type_dict[self.model_type_] + param_id_dict[self.parameter_to_optimize].upper() + str(randint(10000, 99999))  # ID used to find output data file
-            # print("self.modeltrain_id_ already exists, generating new ID...")
-            # print("NEW self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
-        print("self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
+            # logging.info("self.modeltrain_id_ already exists, generating new ID...")
+            # logging.info("NEW self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
+        logging.info("self.modeltrain_id_ | Randomized " + str(len(self.modeltrain_id_)) + "-digit ID for this Set of Rounds:\t " + self.modeltrain_id_)
         self.output_directory = 'popt-' + str(self.modeltrain_id_) + '_' + model_type_dict[self.model_type_] +'_'+ self.parameter_to_optimize + '_' + str(self.num_rerurun_model_building) + '-rounds_'+self.date_+'/'
 
         # if not os.path.exists(all_output_dir + self.output_directory):
         #     os.makedirs(all_output_dir + self.output_directory)
-        #     print("Output for all " + str(self.run_round_num) + " Rounds stored in:\n" + os.getcwd() + '/'+ all_output_dir + self.output_directory)
+        #     logging.info("Output for all " + str(self.run_round_num) + " Rounds stored in:\n" + os.getcwd() + '/'+ all_output_dir + self.output_directory)
 
         #self.output_directory = 'output_' + model_type_dict[self.model_type_] + '_run_' + str(self.modeltrain_id_) + '_' + self.date_
         #self.output_directory += '/'
@@ -2304,7 +2309,7 @@ class DataRepresentationBuilder:
 
         if not os.path.exists(self.output_directory):
             os.makedirs(self.output_directory)
-            print("Output data stored in:\n" + os.getcwd() + self.output_directory)
+            logging.info("Output data stored in:\n" + os.getcwd() + self.output_directory)
             if not os.path.exists(self.output_directory + 'figures/'):
                 os.makedirs(self.output_directory + 'figures/')
             if not os.path.exists(self.output_directory + 'figures/svg_figs/'):
@@ -2412,18 +2417,18 @@ class DataRepresentationBuilder:
             with open(model_fitting_parameters_index_file, 'w') as f:
                 f.write(header_string_ + '\n')
             f.close()
-            print("Created file for storing model fitting parameter data for this and future runs: \n\t", model_fitting_parameters_index_file)
+            logging.info("Created file for storing model fitting parameter data for this and future runs: \n\t"+str(model_fitting_parameters_index_file))
 
         # Append run parameter info to model_fitting_parameters_index_file
         with open(model_fitting_parameters_index_file, 'a') as f:
             f.write(row_string_ + '\n')
         f.close()
-        print("Model fitting parameter data appeneded to: \n\t", model_fitting_parameters_index_file)
+        logging.info("Model fitting parameter data appeneded to: \n\t"+(model_fitting_parameters_index_file))
 
         ######################################
 
         if self.run_param_optimization_:
-            print("Running model fittings for both Parameter Optimization and after Final Model Building..")
+            logging.info("Running model fittings for both Parameter Optimization and after Final Model Building..")
             # Perform Parameter Optimization first
             self.parameter_optimization()
             # Build Final Models
@@ -2431,9 +2436,9 @@ class DataRepresentationBuilder:
             return
 
         else:
-            print("Running model fittings ONLY for final models (no parameter optimization)")
+            logging.info("Running model fittings ONLY for final models (no parameter optimization)")
             self.output_run_file_info_string_ = self.output_run_file_info_string_.split('_PARAMOPT')[0] + '_FINAL-MODELS-ONLY_' + '_'.join(self.output_run_file_info_string_.split('_PARAMOPT')[-1].split('_')[1:])
-            print('output_run_file_info_string = ',self.output_run_file_info_string_)
+            logging.info('output_run_file_info_string = '+self.output_run_file_info_string_)
             # Build Final Models
             self.build_final_models()
             return
@@ -2442,7 +2447,7 @@ class DataRepresentationBuilder:
 
 
     def parameter_optimization(self):
-        print("Running parameter optimization...")
+        logging.info("Running parameter optimization...")
 
 
         self.top_param_val_per_round_dict = {}
@@ -2451,20 +2456,20 @@ class DataRepresentationBuilder:
         self.paramop_models_encodings_dict = {}
         self.paramop_key_ls = []
         for n_ in range(self.num_rerurun_model_building):
-            print('Building Parameter Optimization ' + str(self.model_type_) + ' models for Round:', n_ + 1, '/',self.num_rerurun_model_building)
+            logging.info('Building Parameter Optimization ' + str(self.model_type_) + ' models for Round: '+str( n_ + 1)+ ' / '+str(self.num_rerurun_model_building))
 
             train_data_fnm_ = all_output_dir + self.all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_Training_Data_' + str(100 - (self.test_set_size_pcnt_ + self.paramopt_set_size_pcnt_)) + 'pcnt_partition.csv'
             paramop_data_fnm_ = all_output_dir + self.all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_Parameter_Optimization_Data_' + str(self.paramopt_set_size_pcnt_) + 'pcnt_partition.csv'
             # Load in Training and Parameter Optimization Datasets
-            print("Loading Training data...")
-            print("1) all_output_dir:\n",all_output_dir,"\n")
-            print("2) self.all_data_split_dir:\n",self.all_data_split_dir,"\n")
-            print("3) train_data_fnm_:\n",train_data_fnm_,"\n")
+            logging.info("Loading Training data...")
+            logging.info("1) all_output_dir:\n"+all_output_dir+"\n")
+            logging.info("2) self.all_data_split_dir:\n"+self.all_data_split_dir+"\n")
+            logging.info("3) train_data_fnm_:\n"+train_data_fnm_+"\n")
             self.df_train = pd.read_csv(train_data_fnm_)
-            print("Training data loaded successfully")
-            print("Loading Parameter optimization data...")
+            logging.info("Training data loaded successfully")
+            logging.info("Loading Parameter optimization data...")
             self.df_paramopt = pd.read_csv(paramop_data_fnm_)
-            print("Parameter optimization data loaded successfully")
+            logging.info("Parameter optimization data loaded successfully")
 
             ## Loop through Parameter Optimization
             # ['kmer-size', 'flank-length', 'model', 'window-size', 'word-frequency-cutoff', 'ANN_output_dimmension',
@@ -2503,28 +2508,28 @@ class DataRepresentationBuilder:
                     else:
                         flank_len__ = flank_seq_working_key__.split('-')[-1].split('nts')[0]
                     for e in self.feature_encoding_ls: # ['one-hot', 'bow-countvect', 'bow-gensim', 'ann-keras', 'ann-word2vec-gensim']
-                        print('\tLoop Embedding:', e) # TODO: delete this line
+                        logging.info('\tLoop Embedding: '+str(e)) # TODO: delete this line
                         for wndwsz_ in window_size_ls_:
                             for wfco_ in word_freq_cutoff_ls:
                                 for m_ in model_type_ls:
                                     # Train Parameter Optimization Models
                                     if self.parameter_to_optimize == 'kmer-size':
-                                        print('  ** Parameter Optimization -- '+str(self.parameter_to_optimize)+' :', kmer_, '**  ')
+                                        logging.info('  ** Parameter Optimization -- '+str(self.parameter_to_optimize)+' : '+str(kmer_)+ ' **  ')
                                         param_ = kmer_
                                     if self.parameter_to_optimize == 'flank-length':
-                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', flank_len__, '**  ')
+                                        logging.info('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' : '+str(flank_len__)+ ' **  ')
                                         param_ = flank_len__
                                     if self.parameter_to_optimize == 'feature_encoding':
-                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', e, '**  ')
+                                        logging.info('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' : '+str(e)+ ' **  ')
                                         param_ = e
                                     if self.parameter_to_optimize == 'model':
-                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', m_, '**  ')
+                                        logging.info('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' : '+str(m_)+ ' **  ')
                                         param_ = m_
                                     if self.parameter_to_optimize == 'window-size':
-                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', wndwsz_, '**  ')
+                                        logging.info('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' : '+str(wndwsz_)+ ' **  ')
                                         param_ = wndwsz_
                                     if self.parameter_to_optimize == 'word-frequency-cutoff':
-                                        print('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' :', wfco_, '**  ')
+                                        logging.info('  ** Parameter Optimization -- ' + str(self.parameter_to_optimize) + ' : '+str(wfco_)+ ' **  ')
                                         param_ = wfco_
 
                                     if m_ == 'PARAMOPT':
@@ -2555,28 +2560,28 @@ class DataRepresentationBuilder:
                                     X_paramopt_ = [[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_paramopt[e + '_encoded_' + flank_seq_working_key__ + '_kmer-' + str(kmer_) + '_windw-'+str(wndwsz_)+'-wfreq-'+str(wfco_) ]]
 
                                     Y_paramopt_ = np.array(self.df_paramopt['numeric_class'])
-                                    print("Training paramopt model...")
+                                    logging.info("Training paramopt model...")
                                     clf_po.fit(X_train_, Y_train_)
-                                    print("Predicting with paramopt model...")
+                                    logging.info("Predicting with paramopt model...")
                                     preds_po = clf_po.predict_proba(X_paramopt_)[:, 1]
                                     preds_binary_po = clf_po.predict(X_paramopt_)
 
 
 
                                     # Pickle parameter optimization models (per round, per embedding)
-                                    # print("Pickling model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
+                                    # logging.info("Pickling model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
                                     fnm_ = self.output_directory + 'models/' + 'paramopt_' + model_type_dict[m_] + '_model_rnd-' + str(n_ + 1) + '_' + feature_encodings_dict[e] + '.pickle'
                                     with open(fnm_, 'wb') as pickle_file:
                                         pickle.dump(clf_po, pickle_file)
                                     pickle_file.close()
-                                    print('\n\n\nParamopt model ' + str(n_ + 1) + ' with encoding ' + str(e) + ' saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
+                                    logging.info('\n\n\nParamopt model ' + str(n_ + 1) + ' with encoding ' + str(e) + ' saved to: '+fnm_.replace(self.output_directory, '~/\n\n'))
 
                                     ## Evaluate Parameter Optimization Model Performance
-                                    print("Evaluating model performance of paramopt model...")
-                                    print("\tModel type:",m_)
-                                    print('\tEmbedding:',e)
+                                    logging.info("Evaluating model performance of paramopt model...")
+                                    logging.info("\tModel type: "+str(m_))
+                                    logging.info('\tEmbedding: '+e)
                                     from sklearn.metrics import precision_recall_curve
-                                    #print('\n\n\npreds_po :',set(preds_po),'\n\n\n')
+                                    #logging.info('\n\n\npreds_po :',set(preds_po),'\n\n\n')
 
                                     ## In cases where is LabelSpreading or LabelPropagation model and One-Hot Encoding,
                                     #     will have an NaN when trying to compute precision-recall
@@ -2590,7 +2595,7 @@ class DataRepresentationBuilder:
 
                                     from sklearn.metrics import fbeta_score
                                     fbetascore_po_ = fbeta_score(Y_paramopt_, preds_binary_po, beta=self.f_beta_)  # , average=None)
-                                    print("Computing fbeta_score with beta =",self.f_beta_)
+                                    logging.info("Computing fbeta_score with beta = "+str(self.f_beta_))
 
                                     from sklearn.metrics import accuracy_score
                                     accuracy_po_ = accuracy_score(Y_paramopt_, preds_binary_po)
@@ -2624,7 +2629,7 @@ class DataRepresentationBuilder:
 
 
                                     else:
-                                        print("WARNING: because model-type is "+str(m_)+' and encoding type is '+str(e)+' Precision-Recall curves cannot be created for this model')
+                                        logging.info("WARNING: because model-type is "+str(m_)+' and encoding type is '+str(e)+' Precision-Recall curves cannot be created for this model')
                                         paramop_performance_curves_dict_ = {
                                             'Precision_Recall_Curve': [[], [], []],
                                             'Unacheivable_Region_Curve': [[], []],
@@ -2660,14 +2665,14 @@ class DataRepresentationBuilder:
                 param_val_ = int(best_po_id_.split((self.parameter_to_optimize) + '-')[-1].split('_')[0])
             except:
                 param_val_ = str(best_po_id_.split((self.parameter_to_optimize) + '-')[-1].split('_')[0])
-            print(
+            logging.info(
                 "Identifying Best Parameter Value in Parameter Optimization:" + '\n\t Metric: ' + metric_used_to_id_best_po_ + '\n\t Score: ' +
                 str(max_score_po_) + '\n\t Parameter ID: ' + best_po_id_ + '\n\t ' + str(self.parameter_to_optimize) + ': ' + str(
                     param_val_))
 
             self.output_run_file_info_string_.replace('PARAMOPT', str(param_val_))
 
-            print('\n\n\n\n\n' +
+            logging.info('\n\n\n\n\n' +
                   '************************************************************************************\n'
                   '****\t\t\t\t\t\t\t\t\t\t****\n' +
                   '****\t\t\t\t' +
@@ -2699,12 +2704,12 @@ class DataRepresentationBuilder:
             for n_ in range(self.num_rerurun_model_building):
                 f.write(str(n_)+', '+str(self.top_param_val_per_round_dict[n_])+',\n')
         f.close()
-        print('Top parameters per round of paramopt model building saved to:\n\t',fnm_)
+        logging.info('Top parameters per round of paramopt model building saved to:\n\t'+fnm_)
 
 
 
     def build_final_models(self):
-        print("Building Final Models...")
+        logging.info("Building Final Models...")
         self.final_models_encodings_dict = {}
         self.final_performance_metrics_encodings_dict = {}
         self.final_detailed_performance_metrics_encodings_dict = {}
@@ -2772,7 +2777,7 @@ class DataRepresentationBuilder:
                 word_freq_cutoff___ = self.word_freq_cutoff_
 
 
-            print('Building Final ' + str(model_type___) + ' models for Round:', n_ + 1, '/', self.num_rerurun_model_building)
+            logging.info('Building Final ' + str(model_type___) + ' models for Round: '+str(n_ + 1) +' / ' +str(self.num_rerurun_model_building))
             train_data_fnm_ = all_output_dir + self.all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_Training_Data_' + str(100 - (self.test_set_size_pcnt_ + self.paramopt_set_size_pcnt_)) + 'pcnt_partition.csv'
             test_data_fnm_ = all_output_dir + self.all_data_split_dir + 'datasets/' + 'ROUND-' + str(n_ + 1) + '_Testing_Data_' + str(self.test_set_size_pcnt_) + 'pcnt_partition.csv'
 
@@ -2781,7 +2786,7 @@ class DataRepresentationBuilder:
             self.df_test = pd.read_csv(test_data_fnm_)
             if self.apply_final_models_to_external_dataset_:
                 ext_data_fnm_ = self.ext_noundef_df_fnm
-                print("Including additional evaluation on external dataset:", ext_data_fnm_)
+                logging.info("Including additional evaluation on external dataset: "+ ext_data_fnm_)
                 # TODO: include undefined data in external test dataset evaluation
                 df_ext = pd.read_csv(ext_data_fnm_)
 
@@ -2822,7 +2827,7 @@ class DataRepresentationBuilder:
                     Y_ext_ = np.array(df_ext['numeric_class'])
 
                 if self.include_random_background_comparison_:
-                    print("Including additional evaluation on randomized background dataset")
+                    logging.info("Including additional evaluation on randomized background dataset")
                     ## NOTE: if using X_test_/Y_test_.copy() may not include undefined data (so performance might be higher than expected)
 
                     X_randombackground_ = X_train_.copy()#[[float(y) for y in x.replace('[', '').replace(']', '').replace(' ', '').split(',')] for x in self.df_test[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___) + '_windw-' + str(window_size___) + '-wfreq-' + str(word_freq_cutoff___)]]
@@ -2845,9 +2850,9 @@ class DataRepresentationBuilder:
                     random.shuffle(Y_randombackground_)
 
 
-                #print("Fitting model "+str(n_ + 1)+' / '+str(self.num_rerurun_model_building)+'...')
+                #logging.info("Fitting model "+str(n_ + 1)+' / '+str(self.num_rerurun_model_building)+'...')
                 clf_final.fit(X_train_, Y_train_)
-                #print("\tfitting complete!")
+                #logging.info("\tfitting complete!")
 
 
                 preds_final = clf_final.predict_proba(X_test_)[:, 1]
@@ -2870,7 +2875,7 @@ class DataRepresentationBuilder:
                     randombackground_preds_final_inv =  clf_final.predict_proba(X_randombackground_)[:, 0]
                     randombackground_preds_binary_final = clf_final.predict(X_randombackground_)
 
-                #print("Evaluating performance of model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
+                #logging.info("Evaluating performance of model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
 
                 ## Evaluate Parameter Optimization Model Performance
                 from sklearn.metrics import precision_recall_curve
@@ -2887,14 +2892,14 @@ class DataRepresentationBuilder:
 
                 from sklearn.metrics import fbeta_score
                 fbetascore_final_ = fbeta_score(Y_test_, preds_binary_final, beta=self.f_beta_)  # , average=None)
-                print("\nComputing Final fbeta_score with beta =", self.f_beta_)
+                logging.info("\nComputing Final fbeta_score with beta = "+str(self.f_beta_))
 
                 accuracy_final_ = accuracy_score(Y_test_, preds_binary_final)
                 from sklearn.metrics import matthews_corrcoef
 
                 mcc_final_ = matthews_corrcoef(Y_test_, preds_binary_final)
 
-                #print("Constructing precision-recall curves for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
+                #logging.info("Constructing precision-recall curves for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
                 # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
                 if not (((model_type___ == 'semi-sup-label-propagation') or (model_type___ == 'semi-sup-label-spreading')) and (e == 'one-hot')):
                     # Compute Unacheiveable Region
@@ -2914,7 +2919,7 @@ class DataRepresentationBuilder:
                     }
                     aucpr_adj_final_ = aucpr_final_ - p_final_[0]
                 else:
-                    print("\n\nWARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model\n\n')
+                    logging.info("\n\nWARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model\n\n')
                     paramop_performance_curves_dict_ = {
                         'Precision_Recall_Curve': [[], [], []],
                         'Unacheivable_Region_Curve': [[], []],
@@ -2947,7 +2952,7 @@ class DataRepresentationBuilder:
 
                 if self.apply_final_models_to_external_dataset_:
 
-                    print("\nEvaluating performance on external dataset for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...\n')
+                    logging.info("\nEvaluating performance on external dataset for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...\n')
 
                     ## Evaluate Parameter Optimization Model Performance
                     # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
@@ -2958,7 +2963,7 @@ class DataRepresentationBuilder:
                     ext_fscore_final_ = f1_score(Y_ext_, ext_preds_binary_final)  # , average=None)
 
                     ext_fbetascore_final_ = fbeta_score(Y_ext_, ext_preds_binary_final, beta=self.f_beta_)  # , average=None)
-                    print("\nComputing Final fbeta_score with beta =", self.f_beta_)
+                    logging.info("\nComputing Final fbeta_score with beta = "+str(self.f_beta_))
 
                     ext_accuracy_final_ = accuracy_score(Y_ext_, ext_preds_binary_final)
 
@@ -2982,7 +2987,7 @@ class DataRepresentationBuilder:
                         }
                         ext_aucpr_adj_final_ = ext_aucpr_final_ - ext_p_final_[0]
                     else:
-                        print("\n\nWARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model\n\n')
+                        logging.info("\n\nWARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model\n\n')
                         ext_paramop_performance_curves_dict_ = {
                             'Precision_Recall_Curve': [[], [], []],
                             'Unacheivable_Region_Curve': [[], []],
@@ -3007,7 +3012,7 @@ class DataRepresentationBuilder:
 
 
                 if self.include_random_background_comparison_:
-                    print("\nEvaluating performance on Randomized (shuffled) Background Data for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...\n')
+                    logging.info("\nEvaluating performance on Randomized (shuffled) Background Data for model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...\n')
 
 
                     ## Evaluate Parameter Optimization Model Performance
@@ -3019,7 +3024,7 @@ class DataRepresentationBuilder:
                     randombackground_fscore_final_ = f1_score(Y_randombackground_, randombackground_preds_binary_final)  # , average=None)
 
                     randombackground_fbetascore_final_ = fbeta_score(Y_randombackground_, randombackground_preds_binary_final, beta=self.f_beta_)  # , average=None)
-                    print("\nComputing Final fbeta_score with beta =", self.f_beta_)
+                    logging.info("\nComputing Final fbeta_score with beta = "+str(self.f_beta_))
 
                     randombackground_accuracy_final_ = accuracy_score(Y_randombackground_, randombackground_preds_binary_final)
 
@@ -3043,7 +3048,7 @@ class DataRepresentationBuilder:
                         }
                         randombackground_aucpr_adj_final_ = randombackground_aucpr_final_ - randombackground_p_final_[0]
                     else:
-                        print("\n\nWARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model\n\n')
+                        logging.info("\n\nWARNING: because model-type is " + str(model_type___) + ' and encoding type is ' + str(e) + ' Precision-Recall curves cannot be created for this model\n\n')
                         randombackground_paramop_performance_curves_dict_ = {
                             'Precision_Recall_Curve': [[], [], []],
                             'Unacheivable_Region_Curve': [[], []],
@@ -3071,14 +3076,14 @@ class DataRepresentationBuilder:
 
 
                 # Pickle final models (per round, per embedding)
-                #print("Pickling model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
+                #logging.info("Pickling model " + str(n_ + 1) + ' / ' + str(self.num_rerurun_model_building) + '...')
                 fnm_ = self.output_directory + 'models/' + 'final_'+model_type_dict[model_type___]+'_model_rnd-' + str(n_+1) + '_'+feature_encodings_dict[e]+'.pickle'
 
                 with open(fnm_, 'wb') as pickle_file:
                     pickle.dump(clf_final, pickle_file)
                 pickle_file.close()
 
-                print('\n\n\nFinal model '+str(n_+1)+' with encoding '+str(e)+' saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
+                logging.info('\n\n\nFinal model '+str(n_+1)+' with encoding '+str(e)+' saved to: '+fnm_.replace(self.output_directory, '~/\n\n'))
 
                 # with open(fnm_, 'wb') as pickle_file:
                 #     clf__ = pickle.load(pickle_file)
@@ -3108,19 +3113,19 @@ class DataRepresentationBuilder:
         fnm_ = self.output_directory + 'data/' + 'predictions_final_models.csv'
         all_preds_dict_df = pd.DataFrame(all_preds_dict)
         all_preds_dict_df.to_csv(fnm_)
-        print('\n\n\nPredictions from final model saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
+        logging.info('\n\n\nPredictions from final model saved to: '+fnm_.replace(self.output_directory, '~/\n\n'))
 
         if self.apply_final_models_to_external_dataset_:
             fnm_ = self.output_directory + 'data/' + 'predictions_final_models_ext_dataset.csv'
             all_preds_dict_ext_df = pd.DataFrame(all_preds_dict_ext)
             all_preds_dict_ext_df.to_csv(fnm_)
-            print('\n\n\nPredictions on External Dataset from final model saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
+            logging.info('\n\n\nPredictions on External Dataset from final model saved to: '+fnm_.replace(self.output_directory, '~/\n\n'))
 
         if self.include_random_background_comparison_:
             fnm_ = self.output_directory + 'data/' + 'predictions_final_models_randombackground_dataset.csv'
             all_preds_dict_randombackground_df = pd.DataFrame(all_preds_dict_randombackground)
             all_preds_dict_randombackground_df.to_csv(fnm_)
-            print('\n\n\nPredictions on Random Background Dataset from final model saved to:', fnm_.replace(self.output_directory, '~/\n\n'))
+            logging.info('\n\n\nPredictions on Random Background Dataset from final model saved to: '+fnm_.replace(self.output_directory, '~/\n\n'))
 
 
 
@@ -3128,7 +3133,7 @@ class DataRepresentationBuilder:
 
 
     def plot_param_opt_precision_recall_curves(self):
-        print("\nPlotting P-R curves for parameter optimization...")
+        logging.info("\nPlotting P-R curves for parameter optimization...")
         ## Plot compiled Parameter Optimization Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
@@ -3179,7 +3184,7 @@ class DataRepresentationBuilder:
             ct_po_rounds_to_plot_ = 1
             for row_ in range(len(axs)):  # num rows
                 for col_ in range(len(axs[0]) - 1):  # num cols -1 (to skip last column)
-                    # print(row_,col_,ct_po_rounds_to_plot_)
+                    # logging.info(row_,col_,ct_po_rounds_to_plot_)
                     if ct_po_rounds_to_plot_ > self.num_rerurun_model_building:#len(p_r_t_po__ls_):
                         # remove axis from figure
                         axs[row_][col_].remove()
@@ -3230,7 +3235,7 @@ class DataRepresentationBuilder:
             # ** SAVE DATA **
             fnm_ = (self.output_directory + 'data/' + 'paramopt_performance_metrics_p-r_' + str(self.num_rerurun_model_building) + '-rnds_po_' + e + '.csv')
             all_prts_paramopt_df.to_csv(fnm_)
-            print('\n\nParamopt. Precision-Recall-Threshold curve data saved to:', fnm_.replace(self.output_directory, '~/'))
+            logging.info('\n\nParamopt. Precision-Recall-Threshold curve data saved to: '+fnm_.replace(self.output_directory, '~/'))
 
 
             col_ = 0
@@ -3266,7 +3271,7 @@ class DataRepresentationBuilder:
 
                             aucpr_ = metrics.auc(prt_ls[1], prt_ls[0])
 
-                        #print(row_,col_)
+                        #logging.info(row_,col_)
                 if col_ == rows_cols_compiled_po_fig-1:
                     col_ = 0
                     row_+=1
@@ -3318,18 +3323,18 @@ class DataRepresentationBuilder:
             fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'p-r_'+str(self.num_rerurun_model_building)+'-rnds_po_'+e)
             fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
             fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
-            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+            logging.info('Figure saved to: ' +(fnm_ + '.png').replace(self.output_directory, '~/'))
 
 
 
     def plot_param_opt_model_box_plots(self):
-        print("\nPlotting box plots for parameter optimization...")
+        logging.info("\nPlotting box plots for parameter optimization...")
         ## Plot Compiled Multimetrics Model Performance - Parameter Optimization Models
         # Each column of paramop_detailed_metric_df contains a single round for a single embedding type
         paramop_detailed_metric_df = pd.DataFrame(self.paramop_performance_metrics_encodings_dict)
         fnm_ = (self.output_directory + 'data/' + 'paramopt_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_paramopt.csv')
         paramop_detailed_metric_df.to_csv(fnm_,index=True)
-        print("Parameter Optimization Models Performance Metrics Dataframe saved to:\n\t",fnm_)
+        logging.info("Parameter Optimization Models Performance Metrics Dataframe saved to:\n\t"+fnm_)
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
@@ -3371,8 +3376,8 @@ class DataRepresentationBuilder:
                 # From paramop_detailed_metric_df get just columns for a single selected embedding type
                 # Get just columns with selected embedding metric (embedding_type_paramop_eval_)
                 cols_with_embd_ = [x for x in list(paramop_detailed_metric_df.columns) if embedding_type_paramop_eval_ in x]
-                print("Columns from paramop_detailed_metric_df with embedding = 'embedding_type_paramop_eval_' = " +
-                      str(embedding_type_paramop_eval_) + " - ", len(cols_with_embd_), 'out of', len(list(paramop_detailed_metric_df.columns)))
+                logging.info("Columns from paramop_detailed_metric_df with embedding = 'embedding_type_paramop_eval_' = " +
+                      str(embedding_type_paramop_eval_) + " - "+str(len(cols_with_embd_))+' out of '+str(len(list(paramop_detailed_metric_df.columns))))
 
                 # Get just columns with selected embedding metric (embedding_type_paramop_eval_)
                 paramop_detailed_metric_one_embd_df = paramop_detailed_metric_df[cols_with_embd_]
@@ -3488,14 +3493,14 @@ class DataRepresentationBuilder:
             fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' +str(plotn_+1)+'_po_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+            logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
 
         return
 
 
 
     def plot_final_model_precision_recall_curves(self):
-        print("\nPlotting precision-recall curves for final models...")
+        logging.info("\nPlotting precision-recall curves for final models...")
         ## Plot Final Model Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
@@ -3629,7 +3634,7 @@ class DataRepresentationBuilder:
         # ** SAVE DATA **
         fnm_ = (self.output_directory + 'data/' + 'final_performance_metrics_p-r_' + str(self.num_rerurun_model_building) + '-rnds.csv')
         all_prts_final_df.to_csv(fnm_)
-        print('\n\nFinal Precision-Recall-Threshold curve data saved to:', fnm_.replace(self.output_directory, '~/'))
+        logging.info('\n\nFinal Precision-Recall-Threshold curve data saved to: '+fnm_.replace(self.output_directory, '~/'))
 
 
         # ** SAVE FIGURE **
@@ -3638,11 +3643,11 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         return
 
     def plot_final_model_top_precision_recall_curves(self):
-        print("\nPlotting top precision recall curves from final models...")
+        logging.info("\nPlotting top precision recall curves from final models...")
         ## Plot Top 5 Final Model Precision-Recall curves as a single figure
         sup_title_id_info = ('' +  # str(num_rerurun_model_building*run_round_num)+' rounds'+'\n'+
                              self.output_run_file_info_string_.replace('_', ' ').replace(self.region_.replace('_', '-'), self.region_.replace('_', '-') + '\n'))
@@ -3769,7 +3774,7 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         # return
 
     def autolabel_boxplot(self, medians, ax_, label_color = 'black'):
@@ -3800,9 +3805,9 @@ class DataRepresentationBuilder:
                          )
 
     def plot_final_model_box_plots_per_param_val(self):
-        print("\nPlotting box plots for final models per parameter value...")
+        logging.info("\nPlotting box plots for final models per parameter value...")
         if self.param_values_to_loop_ == []:
-            print("No parameter values to plot by")
+            logging.info("No parameter values to plot by")
             return
         ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
 
@@ -3810,7 +3815,7 @@ class DataRepresentationBuilder:
         final_detailed_metric_df = pd.DataFrame(self.final_detailed_performance_metrics_encodings_dict)
         fnm_ = (self.output_directory + 'data/' + 'final_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final.csv')
         final_detailed_metric_df.to_csv(fnm_,index=True)
-        print("Final Models Performance Metrics Dataframe saved to:\n\t",fnm_)
+        logging.info("Final Models Performance Metrics Dataframe saved to:\n\t"+fnm_)
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k', )
@@ -3840,8 +3845,8 @@ class DataRepresentationBuilder:
                 # From final_detailed_metric_df get just columns for a single selected embedding type
                 # Get just columns with selected embedding metric (embedding_type_final_eval_)
                 cols_with_embd_ = [x for x in list(final_detailed_metric_df.columns) if embedding_type_final_eval_ in x]
-                print("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
-                      str(embedding_type_final_eval_)+" - ",len(cols_with_embd_),'out of',len(list(final_detailed_metric_df.columns)))
+                logging.info("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
+                      str(embedding_type_final_eval_)+" - "+str(len(cols_with_embd_))+' out of '+str(len(list(final_detailed_metric_df.columns))))
 
                 # Get just columns with selected embedding metric (embedding_type_final_eval_)
                 final_detailed_metric_one_embd_df = final_detailed_metric_df[cols_with_embd_]
@@ -3888,7 +3893,7 @@ class DataRepresentationBuilder:
                             cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
 
                     data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
-                    #print(data_)
+                    #logging.info(data_)
                     # Multiple Rows
                     try:
                         bplot1 = axs[j,i].boxplot(
@@ -3980,12 +3985,12 @@ class DataRepresentationBuilder:
             fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + str(plotn_+1)+'_final_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+            logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         return
 
 
     def plot_final_model_box_plots_per_metric(self):
-        print("\nPlotting box plots -- per performance metric -- for final models...")
+        logging.info("\nPlotting box plots -- per performance metric -- for final models...")
         ## Plot Compiled Multimetrics Model Performance - Final Models per metric
         final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
 
@@ -4048,13 +4053,13 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory+'figures/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final')
         fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
         fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
-        print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
+        logging.info('Figure saved to: '+ (fnm_+'.png').replace(self.output_directory,'~/'))
         return
 
     def plot_final_model_precision_recall_curves_on_ext_dataset(self):
-        print("\nPlotting precision-recall curves for final models evaluated on external dataset...")
+        logging.info("\nPlotting precision-recall curves for final models evaluated on external dataset...")
         if not self.apply_final_models_to_external_dataset_:
-            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            logging.info("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
 
         ## Plot Final Model Precision-Recall curves as a single figure
@@ -4175,7 +4180,7 @@ class DataRepresentationBuilder:
         # ** SAVE DATA **
         fnm_ = (self.output_directory + 'data/' + 'external_eval_final_p-r-curve_' + str(self.num_rerurun_model_building) + '-rnds_ext-data-eval.csv')
         all_prts_final_df.to_csv(fnm_)
-        print('\n\nFinal model Applied to External Dataset Precision-Recall-Threshold curve data saved to:', fnm_.replace(self.output_directory, '~/'))
+        logging.info('\n\nFinal model Applied to External Dataset Precision-Recall-Threshold curve data saved to: '+fnm_.replace(self.output_directory, '~/'))
 
 
         # Add legend for parameter values
@@ -4207,13 +4212,13 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory + 'figures/ext_data/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         return
 
     def plot_final_model_top_precision_recall_curves_on_ext_dataset(self):
-        print("\nPlotting top precision recall curves from final models evaluated on external dataset...")
+        logging.info("\nPlotting top precision recall curves from final models evaluated on external dataset...")
         if not self.apply_final_models_to_external_dataset_:
-            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            logging.info("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
 
         ## Plot Top 5 Final Model Precision-Recall curves as a single figure
@@ -4352,14 +4357,14 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory + 'figures/ext_data/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_top5_final_ext-data-eval')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         # return
 
 
     def plot_final_model_box_plots_per_param_val_on_ext_dataset(self):
-        print("\nPlotting box plots for final models evaluated on external dataset per parameter value...")
+        logging.info("\nPlotting box plots for final models evaluated on external dataset per parameter value...")
         if not self.apply_final_models_to_external_dataset_:
-            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            logging.info("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
 
         ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
@@ -4368,7 +4373,7 @@ class DataRepresentationBuilder:
         final_detailed_metric_df = pd.DataFrame(self.ext_final_detailed_performance_metrics_encodings_dict)
         fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval.csv')
         final_detailed_metric_df.to_csv(fnm_,index=True)
-        print("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t",fnm_)
+        logging.info("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t"+fnm_)
 
         flierprops__ = dict(marker='.', markerfacecolor='none', markersize=4, linewidth=0.1, markeredgecolor='black')  # linestyle='none',
         boxprops__ = dict(facecolor='none', linestyle='none', linewidth=1, edgecolor='k')
@@ -4399,8 +4404,8 @@ class DataRepresentationBuilder:
                 # From final_detailed_metric_df get just columns for a single selected embedding type
                 # Get just columns with selected embedding metric (embedding_type_final_eval_)
                 cols_with_embd_ = [x for x in list(final_detailed_metric_df.columns) if embedding_type_final_eval_ in x]
-                print("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
-                      str(embedding_type_final_eval_)+" - ",len(cols_with_embd_),'out of',len(list(final_detailed_metric_df.columns)))
+                logging.info("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
+                      str(embedding_type_final_eval_)+" - "+str(len(cols_with_embd_))+' out of '+str(len(list(final_detailed_metric_df.columns))))
 
                 # Get just columns with selected embedding metric (embedding_type_final_eval_)
                 final_detailed_metric_one_embd_df = final_detailed_metric_df[cols_with_embd_]
@@ -4439,7 +4444,7 @@ class DataRepresentationBuilder:
                             cols_to_select_.append(embedding_type_final_eval_+'-'+str(self.parameter_to_optimize)+'-'+param_val_ +'_round_'+str(rnd__))
 
                     data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
-                    #print(data_)
+                    #logging.info(data_)
                     # Multiple Rows
                     try:
                         bplot1 = axs[j,i].boxplot(
@@ -4544,14 +4549,14 @@ class DataRepresentationBuilder:
             fnm_svg_ = (self.output_directory + 'figures/ext_data/' + 'svg_figs/' + str(plotn_+1)+'_ext-data-eval_final_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+            logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         return
 
 
     def plot_final_model_box_plots_per_param_val_on_final_and_external(self):
-        print("\nPlotting box plots for final models AND external dataset per parameter value...")
+        logging.info("\nPlotting box plots for final models AND external dataset per parameter value...")
         if not self.apply_final_models_to_external_dataset_:
-            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            logging.info("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
 
         ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
@@ -4564,7 +4569,7 @@ class DataRepresentationBuilder:
 
         ######################################
         if self.param_values_to_loop_ == []:
-            print("No parameter values to plot by")
+            logging.info("No parameter values to plot by")
             return
         ## Plot Compiled Multimetrics Model Performance per Param Val - Final Models
 
@@ -4601,8 +4606,8 @@ class DataRepresentationBuilder:
                 # From final_detailed_metric_df get just columns for a single selected embedding type
                 # Get just columns with selected embedding metric (embedding_type_final_eval_)
                 cols_with_embd_ = [x for x in list(final_detailed_metric_df.columns) if embedding_type_final_eval_ in x]
-                print("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
-                      str(embedding_type_final_eval_)+" - ",len(cols_with_embd_),'out of',len(list(final_detailed_metric_df.columns)))
+                logging.info("Columns from final_detailed_metric_df with embedding = 'embedding_type_final_eval_' = "+
+                      str(embedding_type_final_eval_)+" - "+str(len(cols_with_embd_))+' out of '+str(len(list(final_detailed_metric_df.columns))))
 
                 # Get just columns with selected embedding metric (embedding_type_final_eval_)
                 final_detailed_metric_one_embd_df = final_detailed_metric_df[cols_with_embd_]
@@ -4655,7 +4660,7 @@ class DataRepresentationBuilder:
 
                     data_ = [list(final_detailed_metric_one_embd_df[cols_to_select_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
                     data_ext = [list(final_detailed_metric_one_embd_df_ext[cols_to_select_ext_].transpose()[metric_]) for param_val_ in param_vals_one_embd_]
-                    #print(data_)
+                    #logging.info(data_)
                     # Multiple Rows
                     try:
                         bplot1 = axs[j,i].boxplot(
@@ -4767,14 +4772,14 @@ class DataRepresentationBuilder:
             fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + str(plotn_+1)+'_final_and_ext_bxp_per-param-val_' + str(self.num_rerurun_model_building) + '-rnds')
             fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
             fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-            print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+            logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         return
 
 
     def plot_final_model_box_plots_per_metric_on_ext_dataset(self):
-        print("\nPlotting box plots -- per performance metric -- for final models evaluated on external dataset per parameter value...")
+        logging.info("\nPlotting box plots -- per performance metric -- for final models evaluated on external dataset per parameter value...")
         if not self.apply_final_models_to_external_dataset_:
-            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            logging.info("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
         ## Plot Compiled Multimetrics Model Performance - Final Models per metric
         final_metric_df = pd.DataFrame(self.ext_final_performance_metrics_encodings_dict)
@@ -4848,11 +4853,11 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory+'figures/ext_data/'+'svg_figs/'+'bxp_'+str(self.num_rerurun_model_building)+'-rnds_final_ext-data-eval')
         fig.savefig(fnm_svg_.split('.')[0]+'.svg',format='svg',transparent=True)
         fig.savefig(fnm_.split('.')[0]+'.png',format='png',dpi=300,transparent=False)
-        print('Figure saved to:',fnm_+'.png'.replace(self.output_directory,'~/'))
+        logging.info('Figure saved to: '+ (fnm_+'.png').replace(self.output_directory,'~/'))
         return
 
     def plot_final_model_and_external_data_box_plots_per_metric(self):
-        print("\nPlotting box plots -- per performance metric -- for final models...")
+        logging.info("\nPlotting box plots -- per performance metric -- for final models...")
         ## Plot Compiled Multimetrics Model Performance - Final Models per metric
         final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
         final_metric_df_ext = pd.DataFrame(self.ext_final_performance_metrics_encodings_dict)
@@ -4862,16 +4867,16 @@ class DataRepresentationBuilder:
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
         fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_on-test-dataset_per-metric.csv')
         final_metric_df.to_csv(fnm_, index=True)
-        print("Final Models Performance Metrics on Test Dataset Dataframe saved to:\n\t", fnm_)
+        logging.info("Final Models Performance Metrics on Test Dataset Dataframe saved to:\n\t"+fnm_)
 
         fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_per-metric.csv')
         final_metric_df_ext.to_csv(fnm_, index=True)
-        print("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
+        logging.info("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t"+fnm_)
 
         if self.include_random_background_comparison_:  # randombackground
             fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_randombackground-data-eval_per-metric.csv')
             final_metric_df_randombackground.to_csv(fnm_, index=True)
-            print("Final Models Performance Metrics (when Evaluated on Random Background Shuffled Dataset) Dataframe saved to:\n\t", fnm_)
+            logging.info("Final Models Performance Metrics (when Evaluated on Random Background Shuffled Dataset) Dataframe saved to:\n\t"+fnm_)
 
         metrics_ls = list(final_metric_df.index)
         enc_ls_ = self.feature_encoding_ls
@@ -4984,18 +4989,18 @@ class DataRepresentationBuilder:
         bxplt_data_df = pd.DataFrame(bxplt_data_dict)
         fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_per-metric.csv')
         bxplt_data_df.to_csv(fnm_, index=True)
-        print("Final Models Performance Metrics used to make boxplots Dataframe saved to:\n\t", fnm_)
+        logging.info("Final Models Performance Metrics used to make boxplots Dataframe saved to:\n\t"+fnm_)
 
         bxplt_data_ext_df = pd.DataFrame(bxplt_data_ext_dict)
         fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_per-metric.csv')
         bxplt_data_ext_df.to_csv(fnm_, index=True)
-        print("Final Models Performance Metrics used to make boxplots (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
+        logging.info("Final Models Performance Metrics used to make boxplots (when Evaluated on External Dataset) Dataframe saved to:\n\t"+fnm_)
 
         if self.include_random_background_comparison_:  # randombackground
             bxplt_data_randombackground_df = pd.DataFrame(bxplt_data_randombackground_dict)
             fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_randombackground-data-eval_per-metric.csv')
             bxplt_data_randombackground_df.to_csv(fnm_, index=True)
-            print("Final Models Performance Metrics used to make boxplots (when Evaluated on Randomized Background Shuffled Dataset) Dataframe saved to:\n\t", fnm_)
+            logging.info("Final Models Performance Metrics used to make boxplots (when Evaluated on Randomized Background Shuffled Dataset) Dataframe saved to:\n\t"+fnm_)
 
 
         # Add legend for parameter values
@@ -5029,13 +5034,13 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'bxp_' + str(self.num_rerurun_model_building) + '-rnds_final_and_external')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         return
 
     def plot_final_model_precision_recall_curves_on_ext_dataset_and_test_set(self):
-        print("\nPlotting precision-recall curves for final models on test set AND evaluated on external dataset...")
+        logging.info("\nPlotting precision-recall curves for final models on test set AND evaluated on external dataset...")
         if not self.apply_final_models_to_external_dataset_:
-            print("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
+            logging.info("apply_final_models_to_external_dataset_ is set to False so did not evaluate on an external dataset")
             return
 
 
@@ -5182,12 +5187,12 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'p-r_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_and-test-set')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         return
 
 
     def plot_final_model_and_external_data_box_plots_f_score_only(self):
-        print("\nPlotting box plots -- F-Score ONLY -- for final models and on external datset...")
+        logging.info("\nPlotting box plots -- F-Score ONLY -- for final models and on external datset...")
         ## Plot Compiled Multimetrics Model Performance - Final Models per metric
         final_metric_df = pd.DataFrame(self.final_performance_metrics_encodings_dict)
         final_metric_df_ext = pd.DataFrame(self.ext_final_performance_metrics_encodings_dict)
@@ -5195,12 +5200,12 @@ class DataRepresentationBuilder:
             final_metric_df_randombackground = pd.DataFrame(self.randombackground_final_performance_metrics_encodings_dict)
         # fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_on-test-dataset_per-metric.csv')
         # final_metric_df.to_csv(fnm_, index=True)
-        # print("Final Models Performance Metrics on Test Dataset Dataframe saved to:\n\t", fnm_)
+        # logging.info("Final Models Performance Metrics on Test Dataset Dataframe saved to:\n\t"+fnm_)
 
         # Each column of final_detailed_metric_df contains a single round for a single embedding type
         # fnm_ = (self.output_directory + 'data/' + 'performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_per-metric.csv')
         # final_metric_df_ext.to_csv(fnm_, index=True)
-        # print("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
+        # logging.info("Final Models Performance Metrics (when Evaluated on External Dataset) Dataframe saved to:\n\t"+fnm_)
 
 
         metrics_ls = ['F-Score']#list(final_metric_df.index)
@@ -5308,12 +5313,12 @@ class DataRepresentationBuilder:
         # bxplt_data_df = pd.DataFrame(bxplt_data_dict)
         # fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_per-metric.csv')
         # bxplt_data_df.to_csv(fnm_, index=True)
-        # print("Final Models Performance Metrics used to make boxplots Dataframe saved to:\n\t", fnm_)
+        # logging.info("Final Models Performance Metrics used to make boxplots Dataframe saved to:\n\t"+fnm_)
 
         # bxplt_data_ext_df = pd.DataFrame(bxplt_data_ext_dict)
         # fnm_ = (self.output_directory + 'data/' + 'boxplot_performance_metrics_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_per-metric.csv')
         # bxplt_data_ext_df.to_csv(fnm_, index=True)
-        # print("Final Models Performance Metrics used to make boxplots (when Evaluated on External Dataset) Dataframe saved to:\n\t", fnm_)
+        # logging.info("Final Models Performance Metrics used to make boxplots (when Evaluated on External Dataset) Dataframe saved to:\n\t"+fnm_)
 
         # Add legend for parameter values
 
@@ -5346,7 +5351,7 @@ class DataRepresentationBuilder:
         fnm_svg_ = (self.output_directory + 'figures/' + 'svg_figs/' + 'f-score_bxp_' + str(self.num_rerurun_model_building) + '-rnds_final_and_external')
         fig.savefig(fnm_svg_.split('.')[0] + '.svg', format='svg', transparent=True)
         fig.savefig(fnm_.split('.')[0] + '.png', format='png', dpi=300, transparent=False)
-        print('Figure saved to:', fnm_ + '.png'.replace(self.output_directory, '~/'))
+        logging.info('Figure saved to:'+str(fnm_) + '.png'.replace(self.output_directory, '~/'))
         return
 
 
