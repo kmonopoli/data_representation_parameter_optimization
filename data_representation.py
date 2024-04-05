@@ -63,6 +63,7 @@ from sirna_model_building_helper_methods import classify
 from sirna_model_building_helper_methods import classify_no_undefined
 
 from sirna_model_building_helper_methods import get_flanking_sequence
+from sirna_model_building_helper_methods import get_20mer_from_16mer
 
 
 
@@ -542,15 +543,17 @@ class DataRepresentationBuilder:
             print("\nPloting precision-recall curves from Parameter Optimization...")
             self.plot_param_opt_precision_recall_curves()
 
-        #*# print("\nPloting precision-recall curves from Final Model Building...")
-        #*# self.plot_final_model_precision_recall_curves()
-        # self.plot_final_model_top_precision_recall_curves()
+
 
         if self.apply_final_models_to_external_dataset_:
             print("\nPloting precision-recall curves from Final Model Building evaluated on External Dataset...")
             # self.plot_final_model_precision_recall_curves_on_ext_dataset()
             # self.plot_final_model_top_precision_recall_curves_on_ext_dataset()
             self.plot_final_model_precision_recall_curves_on_ext_dataset_and_test_set()
+        else:
+            print("\nPloting precision-recall curves from Final Model Building...")
+            self.plot_final_model_precision_recall_curves()
+            ## self.plot_final_model_top_precision_recall_curves()
 
         print("\nCurve plotting complete!")
 
@@ -558,15 +561,18 @@ class DataRepresentationBuilder:
             print("\nPlotting box plots from Parameter Optimization...")
             self.plot_param_opt_model_box_plots()
 
-        print("\nPlotting box plots from Final Model Building...")
-        #*# self.plot_final_model_box_plots_per_param_val()
-        #*# self.plot_final_model_box_plots_per_metric()
+
+
         if self.apply_final_models_to_external_dataset_:
             print("\nPlotting box plots from Final Model Building evaluated on External Dataset...")
             #*# self.plot_final_model_box_plots_per_metric_on_ext_dataset()
             #*# self.plot_final_model_box_plots_per_param_val_on_ext_dataset()
             self.plot_final_model_and_external_data_box_plots_per_metric()
             self.plot_final_model_and_external_data_box_plots_f_score_only()
+        else:
+            print("\nPlotting box plots from Final Model Building...")
+            self.plot_final_model_box_plots_per_param_val()
+            self.plot_final_model_box_plots_per_metric()
 
         print("\nBox plotting complete!")
 
@@ -901,6 +907,13 @@ class DataRepresentationBuilder:
         # Define key to identify column with sequence data used for model building
         self.flank_seq_working_key = 'seq'
 
+        # NOTE: Since only '16mer_complementary_region' and 'flanking_sequence_1' are checked for NaNs in cleaning use 16mer_complementary_region to get 20mer
+        self.df['from_16mer_20mer_targeting_region'] = self.df.apply(lambda x: get_20mer_from_16mer(x['16mer_complementary_region'], x['flanking_sequence_1'], x['20mer_targeting_region'],x['mismatch_16mer_for_flanks']), axis=1)
+        # Drop sequences missing from_16mer_20mer_targeting_region
+        len_before = len(self.df)
+        self.df = self.df[self.df['from_16mer_20mer_targeting_region'].notna()]
+        self.df.reset_index(drop=True, inplace=True)
+        print("Dropped", len_before - len(self.df), "siRNAs for missing 20mer targeting region sequence data  (", len(self.df), "Remaining)")
 
         # If using flanking sequence Remove sequences missing flanking regions
         if 'flank' in self.region_:  # check if using flanking region
@@ -947,7 +960,11 @@ class DataRepresentationBuilder:
                     self.df[self.flank_seq_working_key] = self.df.apply(lambda x: get_flanking_sequence(x['16mer_complementary_region'], x['flanking_sequence_1'], self.flank_len_, False), axis=1)
         else:
             if self.parameter_to_optimize != 'flank-length':
-                self.flank_seq_working_key = '20mer_targeting_region'
+                # NOTE: Since only '16mer_complementary_region' and 'flanking_sequence_1' are checked for NaNs in cleaning use 16mer_complementary_region to get 20mer
+                self.flank_seq_working_key = 'from_16mer_20mer_targeting_region' # '20mer_targeting_region'
+
+
+
 
 
         # If optimizing Flank length parameter generate sequences with different flank lengths
@@ -955,7 +972,9 @@ class DataRepresentationBuilder:
             self.flank_seq_working_key = None
             for flank_len_ in self.param_values_to_loop_:  # if parameter_to_optimize == 'flank-len':
                 if flank_len_ == 0:
-                    flank_seq_working_key__ = '20mer_targeting_region'
+                    # NOTE: Since only '16mer_complementary_region' and 'flanking_sequence_1' are checked for NaNs in cleaning use 16mer_complementary_region to get 20mer
+                    flank_seq_working_key__ = 'from_16mer_20mer_targeting_region' #'20mer_targeting_region'
+
                 else:
                     flank_seq_working_key__ = 'seq'
                     flank_seq_working_key__ += '_flank-' + str(flank_len_) + 'nts'
@@ -1013,6 +1032,14 @@ class DataRepresentationBuilder:
             ###################################################################################
             ##                     ~*~ Select & Clean UNLABELLED Data ~*~                    ##
             ###################################################################################
+            self.df_unlab['from_16mer_20mer_targeting_region'] = self.df_unlab.apply(lambda x: get_20mer_from_16mer(x['16mer_complementary_region'], x['flanking_sequence_1'], x['20mer_targeting_region'],x['mismatch_16mer_for_flanks']), axis=1)
+            # Drop sequences missing from_16mer_20mer_targeting_region
+            len_before = len(self.df_unlab)
+            self.df_unlab = self.df_unlab[self.df_unlab['from_16mer_20mer_targeting_region'].notna()]
+            self.df_unlab.reset_index(drop=True, inplace=True)
+            print("Dropped", len_before - len(self.df_unlab), "siRNAs for missing 20mer targeting region sequence data  (", len(self.df_unlab), "Remaining)")
+
+
             print('region_ =', self.region_)
             # Define key to identify column with sequence data used for model building
             if 'flank' in self.region_:  # check if using flanking region
@@ -1024,6 +1051,7 @@ class DataRepresentationBuilder:
                 self.df_unlab.drop(index=indxs_to_drop_, inplace=True)
                 self.df_unlab.reset_index(inplace=True, drop=True)
                 print("Now have", len(self.df_unlab), 'siRNAs in unlabelled dataset')
+
             # If optimizing Flank length parameter generate sequences with different flank lengths
             if self.parameter_to_optimize == 'flank-length':
                 print("\nGetting flanking sequences for unlabeled data...")
@@ -2470,7 +2498,7 @@ class DataRepresentationBuilder:
             param_ = 'X'
             for kmer_ in kmer_sizes_ls:
                 for flank_seq_working_key__ in flank_seq_working_key__ls:
-                    if flank_seq_working_key__ == '20mer_targeting_region':
+                    if flank_seq_working_key__ == 'from_16mer_20mer_targeting_region':#'20mer_targeting_region':
                         flank_len__ = 0
                     else:
                         flank_len__ = flank_seq_working_key__.split('-')[-1].split('nts')[0]
@@ -2722,7 +2750,7 @@ class DataRepresentationBuilder:
 
             if self.parameter_to_optimize == 'flank-length':
                 if param_val_ == 0:
-                    flank_seq_working_key___ = '20mer_targeting_region'
+                    flank_seq_working_key___ = 'from_16mer_20mer_targeting_region'#'20mer_targeting_region'
                 else:
                     flank_seq_working_key___ = 'seq_flank-'+str(param_val_)+'nts_target'
             else:
@@ -3346,6 +3374,15 @@ class DataRepresentationBuilder:
                     param_vals_one_embd_ = [str(x) for x in int_param_vals_one_embd_]
                 except:
                     pass
+
+                # # update x-axis labels
+                tick_lab_list__ = []
+                for x in param_vals_one_embd_:
+                    tick_lab_list__.append('')
+                for x in param_vals_one_embd_:
+                    tick_lab_list__.append(x)
+
+
                 metrics_ls = list(paramop_detailed_metric_one_embd_df.index)
 
                 for i in range(len(metrics_ls)):
@@ -3375,7 +3412,8 @@ class DataRepresentationBuilder:
                                 axs[j,i].set_title(str(embedding_type_paramop_eval_)+'\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        axs[j, i].set_xticklabels(tick_lab_list__, rotation=0, fontsize=8.5)
+                        # axs[j,i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
                         axs[j,i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
                         if metric_ == 'MCC':
                             axs[j,i].set_ylim(-1, 1)
@@ -3408,7 +3446,8 @@ class DataRepresentationBuilder:
                                 axs[i].set_title(str(embedding_type_paramop_eval_) + '\n' + str(metric_), fontsize=8.5 )  # ,fontweight='bold')
 
                         # update x-axis labels
-                        axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
+                        #axs[i].set_xticklabels(tick_lab_list__, rotation=0, fontsize=8.5)
+                        # axs[i].set_xticklabels(param_vals_one_embd_, rotation=0, fontsize=8.5)
                         axs[i].set_xlabel(str(self.parameter_to_optimize), fontsize=8.5 )
                         if metric_ == 'MCC':
                             axs[i].set_ylim(-1, 1)

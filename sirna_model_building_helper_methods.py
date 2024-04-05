@@ -91,6 +91,38 @@ def get_flanking_sequence(seq_16mer, flank_seq, flank_len, include_20mer = True)
         print("WARNING: could not get flanking sequence for 16mer:",seq_16mer,'(16mer not found in flanking sequence)')
         return np.nan
 
+
+def get_20mer_from_16mer(seq_16mer, flank_seq, seq_20mer_from_dataset, mismatch_to_flank ):
+    # Uses 16mer "homology region" to find the 20mer
+    import numpy as np
+    # First check that 16mer can be used to find the 20mer, if not try returning given 20mer from starting dataset (NOTE: this is not done in find flanking region methods because 20mers are defined while flanking regions often are not -- i.e. finding flanks with cross-species reactive siRNAs where there might not be a perfect 20mer match)
+    if mismatch_to_flank != '16mer perfect match to target':
+        if type(seq_20mer_from_dataset) == str:
+            if len(seq_20mer_from_dataset) == 20:
+                return seq_20mer_from_dataset
+        else:
+            print("WARNING: when calling get_20mer_from_16mer() for 16mer ( "+str(seq_16mer)+" ) there was a mismatch_to_flank  so could not compute 20mer with get_20mer_from_16mer(), but '20mer_targeting_region' from starting dataset was: "+str(seq_20mer_from_dataset))
+            return np.nan
+    else:
+        seq_16mer = seq_16mer.replace('U', 'T')
+        flank_seq = flank_seq.replace('U', 'T')
+        flank_len = 0 # since getting just the 20mer
+        try:
+            ix_ = flank_seq.index(seq_16mer)
+            # NOTE: this code gets just the 20mer --> flank_seq[ ix_ - 3 : (ix_ + 16 + 1) ]
+            try:
+                final_seq = flank_seq[(ix_ - 3) - flank_len: (ix_ + 16 + 1) + flank_len]  # based off 20mer
+                if len(final_seq) != 20:
+                    print("WARNING: when calling get_20mer_from_16mer() final sequence did not match expected (20nt) length for 16mer:", seq_16mer)
+                    return np.nan
+                return final_seq
+            except:
+                print("WARNING: when calling get_20mer_from_16mer() could not get 20mer sequence for 16mer:", seq_16mer)
+                return np.nan
+        # 16mer not found in flanking sequence
+        except:
+            print("WARNING:when calling get_20mer_from_16mer() could not get 20mer sequence for 16mer:", seq_16mer, '(16mer not found in flanking sequence)')
+            return np.nan
     
 def rgb_to_hex(r, g, b):
     return '#{:02x}{:02x}{:02x}'.format(r, g, b)
