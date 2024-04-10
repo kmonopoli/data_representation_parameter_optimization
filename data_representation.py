@@ -591,14 +591,18 @@ class DataRepresentationBuilder:
                 self.plot_final_model_box_plots_per_metric()
             
         
-            
-
-
-
         logging.info("\nBox plotting complete!")
 
         logging.info("\n\n\nPROCESS FINISHED\n\n\n")
+        print('Data information saved to:\n\t', self.all_data_split_dir)
+        print('Model information saved to:\n\t',self.output_directory)
+
+
         return ## End constructor
+
+
+
+
 
 
 
