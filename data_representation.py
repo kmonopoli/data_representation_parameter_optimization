@@ -2860,12 +2860,12 @@ class DataRepresentationBuilder:
                     Y_randombackground_ = Y_train_.copy()#list(self.df_train_['numeric_class'])
 
                     # To add undefined data back in (if it was removed)
-                    if self.remove_undefined_:
-                        X_randombackground_undef_ = [list(x) for x in list(self.mid_undef_df[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ ) + '_windw-'+str(window_size___)+'-wfreq-'+str(word_freq_cutoff___)  ])]
-                        X_randombackground_ = X_randombackground_ + X_randombackground_undef_
-
-                        Y_randombackground_undef_ = len(self.mid_undef_df)*[0]
-                        Y_randombackground_ = np.array(Y_randombackground_ + Y_randombackground_undef_)
+                    # if self.remove_undefined_:
+                    #     X_randombackground_undef_ = [list(x) for x in list(self.mid_undef_df[e + '_encoded_' + flank_seq_working_key___ + '_kmer-' + str(kmer_size___ ) + '_windw-'+str(window_size___)+'-wfreq-'+str(word_freq_cutoff___)  ])]
+                    #     X_randombackground_ = X_randombackground_ + X_randombackground_undef_
+                    #
+                    #     Y_randombackground_undef_ = len(self.mid_undef_df)*[0]
+                    #     Y_randombackground_ = np.array(Y_randombackground_ + Y_randombackground_undef_)
 
                     # X_randombackground_ = X_ext_.copy()
                     # Y_randombackground_ = Y_ext_.copy()
