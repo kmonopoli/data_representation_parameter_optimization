@@ -595,7 +595,7 @@ class DataRepresentationBuilder:
 
         logging.info("\n\n\nPROCESS FINISHED\n\n\n")
         print('Data information saved to:\n\t', self.all_data_split_dir)
-        print('Model information saved to:\n\t',self.output_directory)
+        print('Model information saved to:\n\t',self.output_directory.replace('output_model_fitting/',''))
 
 
         return ## End constructor
