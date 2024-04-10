@@ -5102,8 +5102,8 @@ class DataRepresentationBuilder:
         fig, axs = plt.subplots(1,len(self.feature_encoding_ls )+ 1)
         fig.set_size_inches(w=3*(len(self.feature_encoding_ls )+ 1), h=4.5, )  # NOTE: h and w must be large enough to accomodate any legends
 
-        all_prts_dict = {}
-        longest_prt_ = -1
+
+        longest_prt_ = -1  # For exporting Precision-Recall curve numeric data as a .csv file
         for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
             axs[col_].set_title(str(e))
             for n in range(self.num_rerurun_model_building):  # loop through rounds
@@ -5119,6 +5119,8 @@ class DataRepresentationBuilder:
                 # NOTE: no p-r curves for label-propagation/spreading with one-hot encoding
                 if not (((self.parameter_to_optimize == 'model') and ('label' in p) and (e == 'one-hot')) or (
                         ('label' in self.model_type_) and (e == 'one-hot'))):
+
+
 
                     pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
                     rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
@@ -5154,6 +5156,13 @@ class DataRepresentationBuilder:
                             lw=1,
                             color='grey',
                         )
+                        # Get longest curve (for padding)
+                        if longest_prt_ < max(len(pcurve__), len(pcurve__ext__), len(pcurve__randombackground__)):
+                            longest_prt_ = max(len(pcurve__), len(pcurve__ext__), len(pcurve__randombackground__))
+                    else:
+                        # Get longest curve (for padding)
+                        if longest_prt_ < max(len(pcurve__), len(pcurve__ext__)):
+                            longest_prt_ = max(len(pcurve__), len(pcurve__ext__))
 
 
 
@@ -5223,6 +5232,64 @@ class DataRepresentationBuilder:
 
         fig.tight_layout()  # NOTE: h and w (above in fig.set_size... MUST be large enough to accomodate legends or will be cut off/squished in output)
 
+
+        ## For exporting data to .csv file
+        export_pr_dict = {}
+        for e, col_ in zip(self.feature_encoding_ls,list(range(len(self.feature_encoding_ls)))):  # different plots per embedding
+            for n in range(self.num_rerurun_model_building):  # loop through rounds
+                # Get p-r curves per round for given embedding and round
+                key__ = str(e) + '_' + str(n)
+                p = self.final_model_params_ls[n]
+
+                pcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                rcurve__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+                thresholds__ = self.final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+
+                # unach_pcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][0]
+                # unach_rcurve__ = self.final_performance_curves_encodings_dict[key__]['Unacheivable_Region_Curve'][1]
+
+                pcurve__ext__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                rcurve__ext__ = self.ext_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+
+                # fill in values so all same length
+                diff__ = longest_prt_ - len(pcurve__)
+                pcurve__ = list(pcurve__) + diff__ * [-1.0]
+                rcurve__ = list(rcurve__) + diff__ * [-1.0]
+                thresholds__ = list(thresholds__) + diff__ * [-1.0]
+
+                diff__ext__ = longest_prt_ - len(pcurve__ext__)
+                pcurve__ext__ = list(pcurve__ext__) + diff__ext__ * [-1.0]
+                rcurve__ext__ = list(rcurve__ext__) + diff__ext__ * [-1.0]
+
+                export_pr_dict['test_precision_'+  key__] = pcurve__
+                export_pr_dict['test_recall_' +    key__] = rcurve__
+                export_pr_dict['test_threshold_' + key__] = thresholds__
+
+                export_pr_dict['ext_precision_' + key__] = pcurve__ext__
+                export_pr_dict['ext_recall_'    + key__] = rcurve__ext__
+
+                if self.include_random_background_comparison_:
+                    column_title_rand__ = 'random-backgorund_'+key__
+                    pcurve__randombackground__ = self.randombackground_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][0]
+                    rcurve__randombackground__ = self.randombackground_final_performance_curves_encodings_dict[key__]['Precision_Recall_Curve'][1]
+
+                    # fill in values so all same length
+                    diff__rand__ = longest_prt_ - len(pcurve__randombackground__)
+                    pcurve__randombackground__ = list(pcurve__randombackground__) + diff__rand__*[-1.0]
+                    rcurve__randombackground__ = list(rcurve__randombackground__) + diff__rand__ * [-1.0]
+
+                    export_pr_dict['randbkgd_precision_' + key__] = pcurve__randombackground__
+                    export_pr_dict['randbkgd_recall_'    + key__] = rcurve__randombackground__
+
+
+
+
+
+
+        # Export p-r curve data as .csv
+        fnm_ = (self.output_directory + 'data/' + 'p-r_curve_data_' + str(self.num_rerurun_model_building) + '-rnds_final_ext-data-eval_and-test-set.csv')
+        logging.info('P-R curve data saved to:' + str(fnm_))
+        pd.DataFrame(export_pr_dict).to_csv(fnm_)
 
         # ** SAVE FIGURE **
         plt.rcParams['svg.fonttype'] = 'none'  # exports text as strings rather than vector paths (images)
