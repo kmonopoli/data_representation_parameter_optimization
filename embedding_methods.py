@@ -4,7 +4,10 @@
 # helper functions
 def get_kmers_(seq__, kmer_size__, window_size__):
     """ Returns kmers for a SINGLE sequence """
-    return [''.join(seq__[i:kmer_size__+i]) for i in range(len(seq__)-kmer_size__+window_size__)]
+    kmers_ = [''.join(seq__[i:kmer_size__+i]) for i in range(len(seq__)-kmer_size__+window_size__)[::window_size__]]
+    kmers_ = [x for x in kmers_ if x != '']
+    return kmers_
+
 ## Testing:
 ## get_kmers_('TTCAAAAATAGTGACTCAGAAAAGGACAATTCAAAAAGGACATTAC',kmer_size__ = 6,window_size__ = 1)
 
@@ -481,7 +484,7 @@ def embed_sequences_with_gensim_word2vec_skipgram(seq_ls, kmer_size_, window_siz
     vector_size_n_w2v = 120 # TODO: update to something higher(?) 100?
 
     w2v_model = Word2Vec(vector_size=vector_size_n_w2v,
-                         window=5, # number of words to consider on each side for the context TODO: update to larger value?
+                         window=15, #5, # number of words to consider on each side for the context TODO: update to larger value?
                          min_count=word_freq_cutoff_,
                          sg=1)  # 0=CBOW, 1=Skip-gram
 
@@ -539,7 +542,7 @@ def embed_sequences_with_gensim_word2vec_cbow(seq_ls, kmer_size_, window_size_, 
     vector_size_n_w2v = 120 # TODO: update to something higher(?) 100?
 
     w2v_model = Word2Vec(vector_size=vector_size_n_w2v,
-                         window=5, # number of words to consider on each side for the context TODO: update to larger value?
+                         window=15, # 5, # number of words to consider on each side for the context TODO: update to larger value?
                          min_count=word_freq_cutoff_,
                          sg=0 ) # 0=CBOW, 1=Skip-gram
 
@@ -612,9 +615,9 @@ def embed_sequences_with_fasttext_cbow(seq_ls, kmer_size_, window_size_, word_fr
                                         dim = 120, # size of word vectors [100]
                                         ws = 15, # size of the context window [5]
                                         epoch = 15, # number of epochs [5]
-                                        minCount = 1,# minimal number of word occurences [5]
-                                        minn = kmer_size_,  # min length of char ngram [3]
-                                        maxn = kmer_size_, # max length of char ngram [6]
+                                        minCount = word_freq_cutoff_,# minimal number of word occurences [5]
+                                        minn = 2, #kmer_size_,  # min length of char ngram [3]
+                                        maxn = 6, #kmer_size_, # max length of char ngram [6]
                                         # neg # number of negatives sampled [5]
                                         # wordNgrams # max length of word ngram [1]
                                         # loss # loss function {ns, hs, softmax, ova} [ns]
@@ -654,9 +657,9 @@ def embed_sequences_with_fasttext_skipgram(seq_ls, kmer_size_, window_size_, wor
                                         dim = 120, # size of word vectors [100]
                                         ws = 15, # size of the context window [5]
                                         epoch = 15, # number of epochs [5]
-                                        minCount = 1, # minimal number of word occurences [5]
-                                        minn = kmer_size_, # min length of char ngram [3]
-                                        maxn  = kmer_size_, # max length of char ngram [6]
+                                        minCount = word_freq_cutoff_, # minimal number of word occurences [5]
+                                        minn = 2, #kmer_size_, # min length of char ngram [3]
+                                        maxn  = 6, #kmer_size_, # max length of char ngram [6]
                                         # neg # number of negatives sampled [5]
                                         # wordNgrams # max length of word ngram [1]
                                         # loss # loss function {ns, hs, softmax, ova} [ns]
@@ -706,9 +709,9 @@ def embed_sequences_with_fasttext_class_trained(seq_ls, kmer_size_, window_size_
                                         dim = 120, # size of word vectors [100]
                                         ws = 15, # size of the context window [5]
                                         epoch = 15, # number of epochs [5]
-                                        minCount = 1,# minimal number of word occurences [5]
-                                        minn = kmer_size_,  # min length of char ngram [3]
-                                        maxn = kmer_size_, # max length of char ngram [6]
+                                        minCount = word_freq_cutoff_,# minimal number of word occurences [5]
+                                        minn = 2, #kmer_size_,  # min length of char ngram [3]
+                                        maxn = 6, #kmer_size_, # max length of char ngram [6]
                                         # neg # number of negatives sampled [5]
                                         # wordNgrams # max length of word ngram [1]
                                         # loss # loss function {ns, hs, softmax, ova} [ns]
@@ -748,94 +751,6 @@ def embed_sequences_with_keras_new(seq_ls, kmer_size_, window_size_, word_freq_c
 
 
 
-# def embed_sequences_with_gensim_word2vec_new_class_trained(seq_ls, kmer_size_, window_size_, word_freq_cutoff_,
-#                                              data_numeric_classes_, indxs_ext_data_):
-#     ''' NEW UPDATED WORD2VEC METHOD'''
-#
-#     # For utilizing class data, exclude indxs_ext_data_
-#     seq_ls_no_ext = []
-#     seq_ls_ext = []
-#     data_numeric_classes_no_ext = []
-#     for i in list(range(len(indxs_ext_data_))):
-#         if indxs_ext_data_[i] == True:
-#             seq_ls_ext.append(seq_ls[i])
-#         else:
-#             seq_ls_no_ext.append(seq_ls[i])
-#             data_numeric_classes_no_ext.append(data_numeric_classes_[i])
-#
-#     ## UPDATED to use Word2Vec correctly - using CBOW (Common Bag Of Words): Using the context to predict a target word
-#     ## https://michael-fuchs-python.netlify.app/2021/09/01/nlp-word-embedding-with-gensim-for-text-classification/#gensim---word2vec
-#     from gensim.models import Word2Vec
-#
-#     vector_size_n_w2v = 120 # TODO: update to something higher(?) 100?
-#
-#     w2v_model = Word2Vec(vector_size=vector_size_n_w2v,
-#                          window=5, # number of words to consider on each side for the context TODO: update to larger value?
-#                          min_count=word_freq_cutoff_,
-#                          sg=1)  # 0=CBOW, 1=Skip-gram
-#
-#     texts_sirna = [get_kmers_(x, kmer_size_, window_size_) for x in seq_ls_no_ext] # seq_ls]
-#
-#     w2v_model.build_vocab(texts_sirna) # Create the vocabulary, which is to be learned by Word2Vec
-#     ##**#print(w2v_model)
-#
-#     w2v_model.train(texts_sirna, # Train Neural Network over 5 epochs (NOTE: this can take some time)
-#                     total_examples=w2v_model.corpus_count,
-#                     epochs=50) # TODO: update epochs?
-#
-#     # Save to Word2Vec Model (and the vector size
-#     w2v_model.save("embedding_dictionaries/word2vec_model")
-#     import pickle as pk
-#     pk.dump(vector_size_n_w2v, open('embedding_dictionaries/vector_size_w2v_metric.pkl', 'wb'))
-#
-#     # # EXAMPLE: Output of the calculated vector for a given word (kmer) from the vocabulary:
-#     # single_example_kmer__ = texts_sirna[0][0]
-#     # w2v_model.wv[single_example_kmer__]
-#     # # EXAMPLE: Display the words that are most similar to a given word from the vocabulary:
-#     # w2v_model.wv.most_similar(single_example_kmer__)
-#
-#     # Generate aggregate sentence vectors based on the kmer vectors for each kmer in the given sequence
-#     words = set(w2v_model.wv.index_to_key)
-#     import numpy as np
-#     text_vect_ls = np.array([np.array([w2v_model.wv[i] for i in ls if i in words])
-#                                 for ls in texts_sirna ])
-#
-#     # Generation of averaged Sentence Vectors
-#     text_vect_avg = []
-#     for v in text_vect_ls:
-#         if v.size:
-#             text_vect_avg.append(list(v.mean(axis=0)))
-#         else:
-#             text_vect_avg.append(list(np.zeros(vector_size_n_w2v, dtype=float))) # the same vector size must be used here as for model training
-#
-#     # # TODO: for troubleshotting (delete later)
-#     # #**#print("\n\n\n\n\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n")
-#     # for t in text_vect_avg[0:10]:
-#     #     #**#print(t)
-#     # #**#print("\n\n**********************************  WORD2VEC-NEW  ***************************************\n\n\n\n\n")
-#
-#
-#     # Add efficiacy data and train model
-#     from sklearn.svm import SVC
-#     clf_w2v = SVC(kernel='linear')
-#     clf_w2v.fit(text_vect_avg, data_numeric_classes_no_ext)
-#
-#     pk.dump(clf, open('embedding_dictionaries/clf_model.pkl', 'wb'))
-#
-#
-#     texts_ext = [get_kmers_(x, kmer_size_, window_size_) for x in seq_ls_ext]
-#     words = set(w2v_model.wv.index_to_key)
-#     text_vect_ext_ls = np.array([np.array([w2v_model.wv[i] for i in ls if i in words])
-#                                                for ls in texts_ext])
-#
-#     text_vect_ext_avg = []
-#     for v in text_vect_ext_ls:
-#         if v.size:
-#             text_vect_ext_avg.append(v.mean(axis=0))
-#         else:
-#             text_vect_ext_avg.append(np.zeros(vector_size_n_w2v, dtype=float))  # the same vector size must be used here as for model training
-#
-#     return text_vect_avg
 
 
 
@@ -970,9 +885,112 @@ def one_hot_encode_sequences(seq_ls):
     
     
 
+def embed_sequences_with_glove(seq_ls, kmer_size_, window_size_, word_freq_cutoff_):
+        '''Uses Global GloVe embeddings that were pre-trained see Jupyter notebook:
+            data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimization/jupyter_notebooks/training_GloVe_embeddings.ipynb
+
+        '''
+        texts_sirna = [get_kmers_(x, kmer_size_, window_size_) for x in seq_ls]
+
+        # Generate corpus with each word (kmer) separated by a space and each document (sirna) separated by a newline
+        corpus_file_name = 'glove/' + 'kmer-' + str(kmer_size_) + '_windw-' + str(window_size_) + '_wfco-' + str(word_freq_cutoff_) + '_glove_corpus_sirnas-as-docs'
+
+        with open(corpus_file_name+'.txt', 'w+') as f:
+            ct_ = 0
+            for si_ in texts_sirna:
+                f.write(' '.join(si_) + '\n')
+                ct_ += 1
+
+        f.close()
+        print('Sequence data for ' + str(ct_) + ' siRNAs saved to:\n\t', corpus_file_name.split('/')[-1])
+
+        # Run GloVe Fittings
+        import os
+        curdir_ = '/Users/kmonopoli/Dropbox (UMass Medical School)/data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimization'
+        os.chdir('/Users/kmonopoli/Dropbox (UMass Medical School)/data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimization/glove')
+        import subprocess
+
+        subprocess.run(["./kmer_fitting.sh", str(kmer_size_), str(window_size_), str(word_freq_cutoff_)])
+
+        # Load in vectors from GloVe fittings
+        vectors_file_name = corpus_file_name.replace('glove/', '') + '_vectors.txt'
+        with open(vectors_file_name, 'r+') as f:
+            data_ = [x.replace('\n', '') for x in f.readlines()]
+        f.close()
+
+        vector_dict_ = {}
+        for x in data_:
+            vector_dict_[x.split(' ')[0]] = [float(y) for y in x.split(' ')[1:]]
+
+        vect_len_ = len(vector_dict_[list(vector_dict_.keys())[0]])
+        # use dictionary of vector values to produce list of embedded data to return
+        vects_sirna_ = []
+        for t in texts_sirna:
+            concat_sirna_target_vector_ = []
+            # loops through each kmer in siRNA
+            for k in t:
+                try:
+                    concat_sirna_target_vector_ += vector_dict_[k]
+                except:
+                    concat_sirna_target_vector_ += [0.0] * vect_len_
+            vects_sirna_.append(concat_sirna_target_vector_)
+
+        os.chdir(curdir_)
+        return vects_sirna_
 
 
+def embed_sequences_with_glove_one_line(seq_ls, kmer_size_, window_size_, word_freq_cutoff_):
+    '''Uses Global GloVe embeddings that were pre-trained see Jupyter notebook:
+        data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimization/jupyter_notebooks/training_GloVe_embeddings.ipynb
 
+    '''
+    texts_sirna = [get_kmers_(x, kmer_size_, window_size_) for x in seq_ls]
+
+    # Generate corpus with each word (kmer) separated by a space and each document (sirna) separated by a newline
+    corpus_file_name = 'glove/' + 'kmer-' + str(kmer_size_) + '_windw-' + str(window_size_) + '_wfco-' + str(word_freq_cutoff_) + '_glove_corpus_sirnas-as-docs'
+
+    with open(corpus_file_name + '.txt', 'w+') as f:
+        ct_ = 0
+        for si_ in texts_sirna:
+            f.write(' '.join(si_) + ' ') # no newlines so treats all siRNA target sequence as a single document
+            ct_ += 1
+
+    f.close()
+    print('Sequence data for ' + str(ct_) + ' siRNAs saved to:\n\t', corpus_file_name.split('/')[-1])
+
+    # Run GloVe Fittings
+    import os
+    curdir_ = '/Users/kmonopoli/Dropbox (UMass Medical School)/data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimization'
+    os.chdir('/Users/kmonopoli/Dropbox (UMass Medical School)/data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimization/glove')
+    import subprocess
+
+    subprocess.run(["./kmer_fitting.sh", str(kmer_size_), str(window_size_), str(word_freq_cutoff_)])
+
+    # Load in vectors from GloVe fittings
+    vectors_file_name = corpus_file_name.replace('glove/', '') + '_vectors.txt'
+    with open(vectors_file_name, 'r+') as f:
+        data_ = [x.replace('\n', '') for x in f.readlines()]
+    f.close()
+
+    vector_dict_ = {}
+    for x in data_:
+        vector_dict_[x.split(' ')[0]] = [float(y) for y in x.split(' ')[1:]]
+
+    vect_len_ = len(vector_dict_[list(vector_dict_.keys())[0]])
+    # use dictionary of vector values to produce list of embedded data to return
+    vects_sirna_ = []
+    for t in texts_sirna:
+        concat_sirna_target_vector_ = []
+        # loops through each kmer in siRNA
+        for k in t:
+            try:
+                concat_sirna_target_vector_ += vector_dict_[k]
+            except:
+                concat_sirna_target_vector_ += [0.0] * vect_len_
+        vects_sirna_.append(concat_sirna_target_vector_)
+
+    os.chdir(curdir_)
+    return vects_sirna_
 
 #####################################################################################################################################################################################
 ##
