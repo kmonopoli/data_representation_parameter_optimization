@@ -563,40 +563,133 @@
 # 1a - Old datasets - by Experiment ###########################################################################
 
 
+# from data_representation import DataRepresentationBuilder
+#
+# drb = DataRepresentationBuilder(
+#     model_type__='random-forest',
+#     parameter_to_optimize__='None', f_beta__=0.25,
+#     run_param_optimization__=False,
+#     use_existing_processed_dataset__=False,
+#     custom_parameter_values_to_loop__=[],
+#     num_rerurun_model_building__=2,
+#     kmer_size__=9,
+#     flank_len__=20,
+#
+#     encoding_ls__=[
+#         'one-hot',
+#         # 'bow-gensim-weights',
+#         # 'ann-word2vec-gensim-cbow',
+#         # 'ann-word2vec-gensim-skipgram',
+#         # 'ann-fasttext-skipgram',
+#         # 'ann-fasttext-cbow',
+#         # 'ann-fasttext-class-trained',
+#         #'glove',
+#         # 'glove-one-line',
+#
+#         # 'bow-countvect', # TODO: DEBUG there is something wrong, taking very long to run (infinite looping?)
+#     ],
+#     input_data_dir__='new_input_data/',
+#     apply_final_models_to_external_dataset__=True,
+#
+#     input_data_file__='training_sirna_screen_data_bdna-human-p3_1903-sirnas_MAR-21-2024.csv',
+#
+#     external_data_file__='external_sirna_screen_data_bdna-human-p3_670-sirnas_MAR-21-2024.csv',
+#
+#     include_random_background_comparison__=True,
+#
+#     plot_starting_data_thresholds__=False,
+#
+# )
+#
+
+# drb.run_data_representation()
+
+
+## Model params
+# import os
+# os.chdir('/Users/kmonopoli/Dropbox (UMass Medical School)/data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimization')
+
+
+num_rerurun_model_building___ = 1
+
+kmer_size___ = 9
+flank_len___ = 20
+window_size___ = 1
+word_freq_cutoff___ = 1
+
+# model_type___ ='semi-sup-random-forest'
+model_type___ = 'random-forest'
+
+normalized___ = True
+effco___ = 25
+ineffco___ = 60
+remove_undefined___ = True
+
+parameter_to_optimize___ = 'None'
+f_beta___ = 0.25
+run_param_optimization___ = False
+use_existing_processed_dataset___ = False
+custom_parameter_values_to_loop___ = []
+
+encoding_ls___ = [
+    'one-hot',
+    # 'bow-gensim-weights',
+    # 'ann-word2vec-gensim-cbow',
+    # 'ann-word2vec-gensim-skipgram',
+    # 'ann-fasttext-skipgram',
+    # 'ann-fasttext-cbow',
+    # 'ann-fasttext-class-trained',
+    # 'glove',
+    # 'glove-one-line',
+]
+
+input_data_dir___ = 'new_input_data/'
+apply_final_models_to_external_dataset___ = True
+
+include_random_background_comparison___ = False # for semi-supervised set to false (can always just overlay curves from separate run)
+
+plot_starting_data_thresholds___ = False
+
+import os
+
+os.chdir('/Users/kmonopoli/Dropbox (UMass Medical School)/data_representation-sequences/cleaned_parameter_optimization/data_representation_parameter_optimization')
+
 from data_representation import DataRepresentationBuilder
 
 drb = DataRepresentationBuilder(
-    model_type__='random-forest',
-    parameter_to_optimize__='None', f_beta__=0.25,
-    run_param_optimization__=False,
-    use_existing_processed_dataset__=False,
-    custom_parameter_values_to_loop__=[],
-    num_rerurun_model_building__=2,
-    kmer_size__=9,
-    flank_len__=20,
 
-    encoding_ls__=[
-        'one-hot',
-        'bow-gensim-weights',
-        'ann-word2vec-gensim-cbow',
-        # 'ann-word2vec-gensim-skipgram',
-        # 'ann-fasttext-skipgram',
-        # 'ann-fasttext-cbow',
-        # 'ann-fasttext-class-trained',
+    model_type__='semi-sup-random-forest',
 
-        # 'bow-countvect', # TODO: DEBUG there is something wrong, taking very long to run (infinite looping?)
-    ],
-    input_data_dir__='new_input_data/',
-    apply_final_models_to_external_dataset__=True,
+    input_data_file__='training_sirna_screen_data_bdna-human-p3_1930-sirnas_split-randomly_APR-22-2024_7BSO0.csv',  # input_data_file___,
+    external_data_file__='external_sirna_screen_data_bdna-human-p3_643-sirnas_split-randomly_APR-22-2024_7BSO0.csv',  # external_data_file___,
 
-    input_data_file__='training_sirna_screen_data_bdna-human-p3_1903-sirnas_MAR-21-2024.csv',
+    num_rerurun_model_building__=1,  # num_rerurun_model_building___,
+    kmer_size__=kmer_size___,
+    flank_len__=flank_len___,
+    window_size__=window_size___,
+    word_freq_cutoff__=word_freq_cutoff___,
 
-    external_data_file__='external_sirna_screen_data_bdna-human-p3_670-sirnas_MAR-21-2024.csv',
+    normalized__=normalized___,
+    effco__=effco___,
+    ineffco__=ineffco___,
+    remove_undefined__=remove_undefined___,
+    parameter_to_optimize__=parameter_to_optimize___,
+    f_beta__=f_beta___,
+    run_param_optimization__=run_param_optimization___,
+    use_existing_processed_dataset__=use_existing_processed_dataset___,
+    custom_parameter_values_to_loop__=custom_parameter_values_to_loop___,
+    encoding_ls__=encoding_ls___,
+    input_data_dir__=input_data_dir___,
+    apply_final_models_to_external_dataset__=apply_final_models_to_external_dataset___,
 
-    include_random_background_comparison__=True,
-
-    plot_starting_data_thresholds__=False,
-
+    include_random_background_comparison__=include_random_background_comparison___,
+    plot_starting_data_thresholds__=plot_starting_data_thresholds___,
 )
+
+# data_id_,paramopt_id_ = ('data_9999','paramopt_9999') # for testing
+data_id_, paramopt_id_ = drb.run_data_representation()
+
+print(data_id_, paramopt_id_)
+
 
 
